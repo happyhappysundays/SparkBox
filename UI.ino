@@ -50,37 +50,39 @@ void updateIcons() {
     isTimeout = false;
   }
 
-// No battery monitoring mods available so just show empty icon
-#ifdef BATT_CHECK_0
+  // Start by showing the empty icon. drawXBM writes OR on the screen..
+  #ifdef BATT_CHECK_0
   Heltec.display->drawXbm(bat_pos, 0, bat_width, bat_height, bat00_bits);
-#endif
-
-// If advanced charge detection available, and charge detected
-#ifdef BATT_CHECK_2
-  if (chrg_result < CHRG_LOW) {
-    Heltec.display->drawXbm(bat_pos, 0, bat_width, bat_height, batcharging_bits);
-  } else
-#endif
-
-// Basic battery detection available. Coarse cut-offs for visual 
-// guide to remaining capacity
-#if defined(BATT_CHECK_1) || defined(BATT_CHECK_2)
-  if (vbat_result < BATTERY_LOW) {
-    Heltec.display->drawXbm(bat_pos, 0, bat_width, bat_height, bat00_bits);
-  }
-  else if (vbat_result < BATTERY_MID) {
-    Heltec.display->drawXbm(bat_pos, 0, bat_width, bat_height, bat33_bits);
-  }
-  else if (vbat_result < BATTERY_HIGH) {
-    Heltec.display->drawXbm(bat_pos, 0, bat_width, bat_height, bat66_bits);
-  }
-  else if (vbat_result < BATTERY_MAX) {
-    Heltec.display->drawXbm(bat_pos, 0, bat_width, bat_height, bat100_bits);
-  } 
-  else {
-    Heltec.display->drawXbm(bat_pos, 0, bat_width, bat_height, batcharging_bits);
-  } 
-#endif
+  
+  // Basic battery detection available. Coarse cut-offs for visual 
+  // guide to remaining capacity.
+  #else
+    if (vbat_result < BATTERY_LOW) {
+      Heltec.display->drawXbm(bat_pos, 0, bat_width, bat_height, bat00_bits);
+    }
+    else if (vbat_result < BATTERY_MID) {
+      Heltec.display->drawXbm(bat_pos, 0, bat_width, bat_height, bat33_bits);
+    }
+    else if (vbat_result < BATTERY_HIGH) {
+      Heltec.display->drawXbm(bat_pos, 0, bat_width, bat_height, bat66_bits);
+    }
+  
+    // If advanced charge detection available, and charge detected
+    #ifdef BATT_CHECK_2
+      else if (chrg_result < CHRG_LOW) {
+        Heltec.display->drawXbm(bat_pos, 0, bat_width, bat_height, batcharging_bits);
+      }
+    #else
+      else if (vbat_result >= BATTERY_CHRG) {
+        Heltec.display->drawXbm(bat_pos, 0, bat_width, bat_height, batcharging_bits);
+      }
+    #endif 
+  
+    // Printing this first will block out the charge logo
+    else {
+      Heltec.display->drawXbm(bat_pos, 0, bat_width, bat_height, bat100_bits);
+    } 
+  #endif
 }
 
 // Print out the requested preset data

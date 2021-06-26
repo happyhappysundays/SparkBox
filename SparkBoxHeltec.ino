@@ -16,7 +16,7 @@
 // Battery charge function defines. Please uncomment just one.
 //
 // You have no mods to monitor the battery, so it will show empty
-//#define BATT_CHECK_0
+#define BATT_CHECK_0
 //
 // You are monitoring the battery via a 2:1 10k/10k resistive divider to GPIO23
 // You can see an accurate representation of the remaining battery charge and a kinda-sorta
@@ -25,12 +25,12 @@
 //
 // You have the battery monitor mod described above AND you have a connection between the 
 // CHRG pin (1) of the TP4054 chip and GPIO 33. Go you! now you have a guaranteed charge indicator too.
-#define BATT_CHECK_2
+//#define BATT_CHECK_2
 //
 //******************************************************************************************
 
 #define PGM_NAME "SparkBox"
-#define VERSION "0.42"
+#define VERSION "0.43"
 #define MAXNAME 20
 
 SparkIO spark_io(false);              // Non-passthrough Spark IO (per Paul)
@@ -43,7 +43,7 @@ SparkPreset presets[6];               // [5] = current preset
 int8_t pre;                           // Internal current preset number
 int8_t selected_preset;               // Reported current preset number
 int i, j, p;                          // Makes these local later...
-byte bt_byte;                         // Keep-alive variables
+byte bt_byte;                         // Stay-alive variables
 int count;                            // "
 
 hw_timer_t * timer = NULL;
@@ -283,10 +283,9 @@ void loop() {
 
     // Below is part of the 'stay-alive' function
     if (millis() - count > 10000) {
-      // Request serial number and read returned bytes and discard - keep-alive link to Spark
+      // Request serial number and read returned bytes and discard - stay-alive link to Spark
       count = millis();
       spark_io.get_serial();
-      //flush_in();
     }
   
   } // Connected
