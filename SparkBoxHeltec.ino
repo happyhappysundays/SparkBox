@@ -1,5 +1,5 @@
 //******************************************************************************************
-// SparkBox - BT pedal board for the Spark 40 amp - David Thompson 2021
+// SparkBox - BT pedal board for the Spark 40 amp - David Thompson 2021 - Current version v0.43
 // Supports four-switch pedals. Hold any of the effect buttons down for 1s to switch
 // between Preset mode (1 to 4) and Effect mode (Drive, Mod, Delay, Reverb)
 //******************************************************************************************
