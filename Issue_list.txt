@@ -9,5 +9,6 @@ v0.42
 ToDo:
 - BT signal strength display
 - Change to BTE connection
+- Reduce lag
 
 
