@@ -9,6 +9,6 @@ This is a Heltec WIFI Kit 32 version of SparkBox. SparkBox is another BT pedal f
 - Hold down any switch for 1s to switch between Effect mode and Preset mode
 - Show battery level on UI
 
-![alt text](https://github.com/happyhappysundays/SparkBox/blob/main/Pictures/thumbnail_IMG_6513?raw=true)
-![alt text](https://github.com/happyhappysundays/SparkBox/blob/main/Pictures/SparkBox_Heltec.png?raw=true)
-![alt text](https://github.com/happyhappysundays/SparkBox/blob/main/Pictures/Charge_detect.jpg?raw=true)
+![alt text](https://github.com/happyhappysundays/SparkBoxHeltec/blob/main/Pictures/thumbnail_IMG_6513?raw=true)
+![alt text](https://github.com/happyhappysundays/SparkBoxHeltec/blob/main/Pictures/SparkBox_Heltec.png?raw=true)
+![alt text](https://github.com/happyhappysundays/SparkBoxHeltec/blob/main/Pictures/Charge_detect.jpg?raw=true)
