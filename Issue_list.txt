@@ -1,0 +1,13 @@
+Based on Paul's HeltecToSpark9 and SparkBox
+--------------------------------------------------------
+
+v0.42
+- 100% Heltec WIFI kit 32version
+- Battery scale initial calibration done
+- Optional true charging indicator
+
+ToDo:
+- BT signal strength display
+- Change to BTE connection
+
+
