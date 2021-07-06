@@ -4,6 +4,8 @@
 #define DEBUG(x) Serial.println(x)
 
 #define STR_LEN 40
+//#define CHUNK_BUF_LEN 1000
+
 
 typedef struct  {
   uint8_t  curr_preset;

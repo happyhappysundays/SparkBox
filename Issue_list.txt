@@ -6,9 +6,22 @@ v0.42
 - Battery scale initial calibration done
 - Optional true charging indicator
 
-ToDo:
-- BT signal strength display
-- Change to BTE connection
-- Reduce lag
+v0.43
+- Battery display logic tweaked to handle all 3 build options
 
+v0.44
+- Tidy code. Prepare for BLE update
+
+v0.45
+- Initial BLE rough code
+- Throws errors on failed connects
+
+v0.46
+- General BLE release
+- Corrected crashes on failed connects
+- BT RSSI display working
+- Possible occasional unsync on reconnect
+
+ToDo:
+- 
 

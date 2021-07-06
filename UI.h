@@ -13,7 +13,7 @@
 int vbat_result;                                // For battery monitoring
 int chrg_result;                                // For charge state monitoring
 int sw_val[NUM_SWITCHES];     
-int sw_pin[]{17,5,18,23,19,0};                  // Switch gpio numbers
+int sw_pin[]{17,5,18,23};                       // Switch gpio numbers
 
                                                 // SW1 Toggle Drive 
                                                 // SW2 Toggle Modulation
@@ -36,5 +36,4 @@ boolean isBTConnected;                          // Duh
 boolean isStatusReceived;                       // Status received from Spark
 boolean isOLEDUpdate;                           // Flag OLED needs refresh
 boolean isPedalMode;                            // Pedal mode: 0 = preset, 1 = effect
-boolean isRestarted = true;                     // Flag to show that device has just restarted or reconnected
 boolean isHWpresetgot;                          // Flag to show that the hardware preset number has been processed

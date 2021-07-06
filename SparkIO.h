@@ -13,10 +13,6 @@ class SparkIO
     SparkIO(bool passthru);
     ~SparkIO();
 
-    // bluetooth communictions
-
-    SparkComms *comms;
-
     // overall processing
 
     void process();
@@ -25,13 +21,12 @@ class SparkIO
     
     void process_in_blocks();
     void process_in_chunks();
+
     void process_out_chunks();
     void process_out_blocks();
 
-    // processing received messages   
-     
+    // processing received messages    
     bool get_message(unsigned int *cmdsub, SparkMessage *msg, SparkPreset *preset);
-    
     // creating messages to send
 
     void create_preset(SparkPreset *preset);
@@ -68,15 +63,19 @@ class SparkIO
     int rc_cmd;
     int rc_sub;
     int rc_checksum;
+    
     int rc_calc_checksum;
+
     bool rc_multi_chunk;
     int rc_data_pos;
     uint8_t rc_bitmask;
     int rc_bits;
+
     int rc_total_chunks;
     int rc_this_chunk;
     int rc_chunk_len;
     int rc_last_chunk;
+
     int rd_pos;
     
     // message variables for sending
@@ -95,6 +94,7 @@ class SparkIO
     uint8_t oc_cmd;
     uint8_t oc_sub;
     unsigned int oc_len;
+
     uint8_t oc_bit_mask;
     int oc_bit_pos;
     uint8_t oc_checksum;
@@ -106,7 +106,7 @@ class SparkIO
     uint8_t ob_last_seq_sent;
     unsigned int ob_last_sent_time;
 
-    // passthrough
+        // passthrough
 
     uint8_t bt_buf[MAX_BT_BUFFER];
     int bt_pos;
@@ -133,6 +133,7 @@ class SparkIO
     void write_string(const char *str);
     void write_float(float flt);
     void write_onoff(bool onoff);
+
 };
 
 #endif
