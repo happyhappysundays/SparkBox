@@ -85,16 +85,7 @@ SparkIO::~SparkIO() {
  
 }
 
-// Common functions moved here
 
-void uint_to_bytes(unsigned int i, uint8_t *h, uint8_t *l) {
-  *h = (i & 0xff00) / 256;
-  *l = i & 0xff;
-}
-
-void bytes_to_uint(uint8_t h, uint8_t l,unsigned int *i) {
-  *i = (h & 0xff) * 256 + (l & 0xff);
-}
 // 
 // Main processing routine
 //
@@ -111,9 +102,13 @@ void SparkIO::process()
   }
 
   // process outputs
+
+ 
   process_out_chunks();
   process_out_blocks();
+
 }
+
 
 //
 // Routine to read the block from bluetooth and put into the in_chunk ring buffer
@@ -125,8 +120,43 @@ void SparkIO::process_in_blocks() {
   uint8_t b;
   bool boo;
 
-  while (comms->bt->available()) {
-    b = comms->bt->read();
+  while (bt_available()) {
+    b = bt_read();
+   
+    // **** PASSTHROUGH OF SERIAL TO BLUETOOTH ****
+
+    if (pass_through) {
+      if (bt_state == 0 && b == 0x01) 
+        bt_state = 1;
+      else if (bt_state == 1) {
+        if (b == 0xfe) {
+          bt_state = 2;
+          bt_buf[0] = 0x01;
+          bt_buf[1] = 0xfe;
+          bt_pos = 2;
+        }
+        else
+          bt_state = 0;
+      }
+      else if (bt_state == 2) {
+        if (bt_pos == 6) {
+          bt_len = b;
+        }
+        bt_buf[bt_pos++] = b;
+        if (bt_pos == bt_len) {
+          ser_write(bt_buf, bt_pos);
+          bt_pos = 0;
+          bt_len = -1; 
+          bt_state = 0; 
+        }
+      }
+
+      if (bt_pos > MAX_BT_BUFFER) {
+        Serial.println("SPARKIO IO_PROCESS_IN_BLOCKS OVERRUN");
+        while (true);
+      }
+    }
+    // **** END PASSTHROUGH ****
     
     // check the 7th byte which holds the block length
     if (rb_state == 6) {
@@ -323,7 +353,7 @@ void SparkIO::read_string(char *str)
   }
   else {
     read_byte(&a);
-    if (a < 0xa1 || a >= 0xc0) DEBUG("Bad string");
+    if (a < 0xa0 || a >= 0xc0) DEBUG("Bad string");
     len = a - 0xa0;
   }
 
@@ -349,7 +379,7 @@ void SparkIO::read_prefixed_string(char *str)
   read_byte(&a); 
   read_byte(&a);
 
-  if (a < 0xa1 || a >= 0xc0) DEBUG("Bad string");
+  if (a < 0xa0 || a >= 0xc0) DEBUG("Bad string");
   len = a-0xa0;
 
   if (len > 0) {
@@ -478,15 +508,6 @@ bool SparkIO::get_message(unsigned int *cmdsub, SparkMessage *msg, SparkPreset *
       read_string(preset->Name);
       read_string(preset->Version);
       read_string(preset->Description);
-
-      /*// Handle the case where the description is skipped, pushing the next field in its place
-      if (strcmp(preset->Description,"icon.png") == 0){           // Icon data found in description field
-        strcpy(preset->Icon,preset->Description);                 // Copy to icon field from description
-        strcpy(preset->Description,"");                           // Blank description
-      }
-      else {
-        read_string(preset->Icon);
-      }*/
       read_string(preset->Icon);
       read_float(&preset->BPM);
 
@@ -529,7 +550,8 @@ bool SparkIO::get_message(unsigned int *cmdsub, SparkMessage *msg, SparkPreset *
 
   return true;
 }
-   
+
+    
 //
 // Output routines
 //
@@ -695,6 +717,7 @@ void SparkIO::get_hardware_preset_number()
    start_message (0x0210);
    end_message();  
 }
+
 
 void SparkIO::get_preset_details(unsigned int preset)
 {
@@ -905,7 +928,7 @@ void SparkIO::process_out_blocks() {
     }
     out_block[6] = ob_pos;
 
-    comms->bt->write(out_block, ob_pos);
+    bt_write(out_block, ob_pos);
     ob_last_sent_time = millis();
 
     

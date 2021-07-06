@@ -138,12 +138,17 @@ void RingBuffer::dump2() {
     if (v < 16) Serial.print("0");
     Serial.print(v, HEX);
     Serial.print(" ");
+    //Serial.print(rb[(st+i) % RB_BUFF_MAX], HEX);
+    //Serial.print(" ");
   };
   for (i=0; i<t_len; i++) {
     v=rb[(st+len+i) % RB_BUFF_MAX];
     if (v < 16) Serial.print("0");
     Serial.print(v, HEX);
     Serial.print(" ");
+    
+    //Serial.print(rb[(st+len+i) % RB_BUFF_MAX], HEX);
+    //Serial.print(" ");    
   };
   Serial.println();
 }

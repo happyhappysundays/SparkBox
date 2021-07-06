@@ -1,5 +1,5 @@
 //******************************************************************************************
-// SparkBox - BT pedal board for the Spark 40 amp - David Thompson 2021 - Current version v0.43
+// SparkBox - BT pedal board for the Spark 40 amp - David Thompson 2021 - Current version v0.46
 // Supports four-switch pedals. Hold any of the effect buttons down for 1s to switch
 // between Preset mode (1 to 4) and Effect mode (Drive, Mod, Delay, Reverb)
 //******************************************************************************************
@@ -8,7 +8,7 @@
 #include "Spark.h"                  // Paul Hamshere's SparkIO library https://github.com/paulhamsh/SparkIO
 #include "SparkIO.h"                // "
 #include "SparkComms.h"             // "
-#include "font.h"                   // Custom font
+#include "font.h"                   // Custom large font
 #include "bitmaps.h"                // Custom bitmaps (icons)
 #include "UI.h"                     // Any UI-related defines
 
@@ -16,7 +16,7 @@
 // Battery charge function defines. Please uncomment just one.
 //
 // You have no mods to monitor the battery, so it will show empty
-#define BATT_CHECK_0
+//#define BATT_CHECK_0
 //
 // You are monitoring the battery via a 2:1 10k/10k resistive divider to GPIO23
 // You can see an accurate representation of the remaining battery charge and a kinda-sorta
@@ -24,17 +24,17 @@
 //#define BATT_CHECK_1
 //
 // You have the battery monitor mod described above AND you have a connection between the 
-// CHRG pin (1) of the TP4054 chip and GPIO 33. Go you! now you have a guaranteed charge indicator too.
-//#define BATT_CHECK_2
+// CHRG pin (1) of the TP4054 chip and GPIO 33. Go you! Now you have a guaranteed charge indicator too.
+#define BATT_CHECK_2
 //
 //******************************************************************************************
 
 #define PGM_NAME "SparkBox"
-#define VERSION "0.43"
+#define VERSION "BLE 0.46"
 #define MAXNAME 20
 
 SparkIO spark_io(false);              // Non-passthrough Spark IO (per Paul)
-SparkComms spark_comms;
+//SparkComms spark_comms;
 char str[STR_LEN];                    // Used for processing Spark commands from amp
 unsigned int cmdsub;
 SparkMessage msg;                     // SparkIO messsage/preset variables
@@ -46,10 +46,12 @@ int i, j, p;                          // Makes these local later...
 byte bt_byte;                         // Stay-alive variables
 int count;                            // "
 
-hw_timer_t * timer = NULL;
+hw_timer_t * timer = NULL;            // Timer variables
 portMUX_TYPE timerMux = portMUX_INITIALIZER_UNLOCKED;
 volatile boolean isTimeout = false;   // Update battery icon flag
 volatile boolean isRSSIupdate = false;// Update RSSI display flag
+
+//******************************************************************************************
 
 // Timer interrupt handler
 void IRAM_ATTR onTime() {
@@ -59,19 +61,12 @@ void IRAM_ATTR onTime() {
    portEXIT_CRITICAL_ISR(&timerMux);
 }
 
-//Part of the 'stay-alive' function
-void flush_in() {
-  bt_byte = spark_comms.bt->read();
-  while (bt_byte != 0xf7)
-  bt_byte = spark_comms.bt->read();
-}
-
 void setup() {
   // Initialize device OLED display, and flip screen, as OLED library starts upside-down
   Heltec.display->init();
   Heltec.display->flipScreenVertically();
 
-  // Set pushbutton inputs to pull-ups
+  // Set pushbutton inputs to pull-downs
   for (i = 0; i < NUM_SWITCHES; i++) {
     pinMode(sw_pin[i], INPUT_PULLDOWN);
   }
@@ -89,28 +84,25 @@ void setup() {
   Heltec.display->drawString(64, 35, VERSION);
   Heltec.display->display();
 
-  Serial.begin(115200);                 // Start serial debug console monitoring via ESP32
+  Serial.begin(115200);                       // Start serial debug console monitoring via ESP32
   while (!Serial);
 
-  spark_io.comms = &spark_comms;        // Create SparkIO comms and connect
-  spark_comms.start_bt();
-  spark_comms.bt->register_callback(btEventCallback); // Register BT disconnect handler
-
-  isPedalMode = false;                  // Preset mode
+  start_bt(true);                             // Set up BLE
+    
+  isPedalMode = false;                        // Default to Preset mode
 
   timer = timerBegin(0, 80, true);            // Setup timer
   timerAttachInterrupt(timer, &onTime, true); // Attach to our handler
   timerAlarmWrite(timer, 1000000, true);      // Once per second, autoreload
   timerAlarmEnable(timer);                    // Start timer
 
-  delay(1000);
+  delay(1000);                                // Give a moment to display logo
 }
 
 void loop() {
   // Check if amp is connected to device
   if(!isBTConnected) {
     Serial.println("Connecting...");
-    //isRestarted = true;
     isHWpresetgot = false;
 
     // Show reconnection message
@@ -123,7 +115,7 @@ void loop() {
     Heltec.display->drawString(64, 35, "Please wait");
     Heltec.display->display();
     
-    spark_comms.connect_to_spark();
+    connect_to_spark();                      // Connect to SPark via BLE
     isBTConnected = true;
     Serial.println("Connected");
 
@@ -134,17 +126,11 @@ void loop() {
   } 
   // Device connected
   else {
-    // We'd like to update the screen even before any user input, but only once
-    // To do this reliably we have to interrogate the hardware preset number until we've recieved it
- /*   if (!isHWpresetgot){
-      spark_io.get_hardware_preset_number();   // Try to use get_hardware_preset_number() to pre-load the correct number
-      delay(500);
-    }
-    */
-    spark_io.process();
+
+    spark_io.process();           // Process commands from Spark
   
     // Messages from the amp
-    if (spark_io.get_message(&cmdsub, &msg, &preset)) { //there is something there
+    if (spark_io.get_message(&cmdsub, &msg, &preset)) { 
       
       isStatusReceived = true;    // Hopefully this means we have the status
       isOLEDUpdate = true;        // Flag screen update
@@ -204,7 +190,8 @@ void loop() {
   
     // Process user input
     dopushbuttons();
-    
+
+    // In Preset mode, use the four buttons to select the four HW presets
     if ((sw_val[0] == HIGH)&&(!isPedalMode)) {  
       pre = 0;
       spark_io.change_hardware_preset(pre);
@@ -281,21 +268,11 @@ void loop() {
     // Refresh screen when necessary
     refreshUI();
 
-    // Below is part of the 'stay-alive' function
+    // Request serial number every 10s as a 'stay-alive' function.
     if (millis() - count > 10000) {
-      // Request serial number and read returned bytes and discard - stay-alive link to Spark
       count = millis();
       spark_io.get_serial();
     }
   
   } // Connected
 } // loop()
-
-// BT disconnect callback
-void btEventCallback(esp_spp_cb_event_t event, esp_spp_cb_param_t *param){
-  if(event == ESP_SPP_CLOSE_EVT ){    // On BT connection close
-    isBTConnected = false;            // Clear connected flag
-    Serial.println("Lost BT connection");
-    pre = 0; //debug
-  }
-}

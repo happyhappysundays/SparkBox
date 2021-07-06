@@ -1,11 +1,34 @@
 // Update Icons across top of screen
 void updateIcons() {
   
+  // Read RSSI from Spark
+  iRSSI = pClient->getRssi();
+  //Serial.print("RSSI = ");
+  //Serial.println(iRSSI);
+            
   // Show BT icon if connected
+  // Use graduated scale based on the following
+  // 0 bars (very poor) < -70db
+  // 1 bar (poor) = -70db to -60db
+  // 2 bars (fair) = -60db to -50db
+  // 3 bars (good) = -40db to -50db
+  // 4 bars (excellent) = > -40db
   if(isBTConnected){
     Heltec.display->drawXbm(btlogo_pos, 0, bt_width, bt_height, bt_bits);
-    // ToDo: measure BT RSSI
-    Heltec.display->drawXbm(rssi_pos, 0, rssi_width, rssi_height, rssi_bits);
+    // Display BT RSSI icon depending on actual signal
+    if (iRSSI > -40) {
+      Heltec.display->drawXbm(rssi_pos, 0, rssi_width, rssi_height, rssi_4);
+    }
+    else if (iRSSI > -50) {
+      Heltec.display->drawXbm(rssi_pos, 0, rssi_width, rssi_height, rssi_3);
+    }
+    else if (iRSSI > -60) {
+      Heltec.display->drawXbm(rssi_pos, 0, rssi_width, rssi_height, rssi_2);
+    }
+     else if (iRSSI > -70) {
+      Heltec.display->drawXbm(rssi_pos, 0, rssi_width, rssi_height, rssi_2);
+    }
+    // else no bars 
   }
   // Update drive status icons once data available
   if(isStatusReceived || isTimeout){  
@@ -38,8 +61,7 @@ void updateIcons() {
        Heltec.display->drawXbm(rev_pos, 0, icon_width, icon_height, rev_off_bits);
     }
   }
-  // Battery icon control
-  // Measure battery periodically via a timer
+  // Battery icon control - measured periodically via a 1s timer
   if (isTimeout) {
     vbat_result = analogRead(VBAT_AIN); // Read battery voltage
     //Serial.print("Vbat = ");
@@ -50,7 +72,11 @@ void updateIcons() {
     isTimeout = false;
   }
 
-  // Start by showing the empty icon. drawXBM writes OR on the screen..
+  // Start by showing the empty icon. drawXBM writes OR on the screen so care
+  // must be taken not to graphically block out some symbols. This is why the
+  // battery full but not charging is the last in the chain.
+
+  // No battery monitoring so just show the empty symbol
   #ifdef BATT_CHECK_0
   Heltec.display->drawXbm(bat_pos, 0, bat_width, bat_height, bat00_bits);
   
@@ -67,16 +93,17 @@ void updateIcons() {
       Heltec.display->drawXbm(bat_pos, 0, bat_width, bat_height, bat66_bits);
     }
   
-    // If advanced charge detection available, and charge detected
-    #ifdef BATT_CHECK_2
-      else if (chrg_result < CHRG_LOW) {
-        Heltec.display->drawXbm(bat_pos, 0, bat_width, bat_height, batcharging_bits);
-      }
-    #else
-      else if (vbat_result >= BATTERY_CHRG) {
-        Heltec.display->drawXbm(bat_pos, 0, bat_width, bat_height, batcharging_bits);
-      }
-    #endif 
+  // If advanced charge detection available, and charge detected
+  #ifdef BATT_CHECK_2
+    else if (chrg_result < CHRG_LOW) {
+      Heltec.display->drawXbm(bat_pos, 0, bat_width, bat_height, batcharging_bits);
+    }
+  // For level-based charge detection (not very reliable)
+  #else
+    else if (vbat_result >= BATTERY_CHRG) {
+      Heltec.display->drawXbm(bat_pos, 0, bat_width, bat_height, batcharging_bits);
+    }
+  #endif 
   
     // Printing this first will block out the charge logo
     else {
