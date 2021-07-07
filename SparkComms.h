@@ -10,7 +10,6 @@
 
 // Bluetooth vars
 #define  SPARK_NAME  "Spark 40 BLE"
-//#define  SPARK_NAME  "Spark 40 Audio"
 #define  MY_NAME     "SparkBox"
 
 void start_ser();
@@ -25,13 +24,16 @@ uint8_t bt_read();
 
 void ser_write(byte *buf, int len);
 void bt_write(byte *buf, int len);
-    
+
+int ble_getRSSI();
 
 // bluetooth communications
 
 BluetoothSerial *bt;
 HardwareSerial *ser;
 bool is_ble;
+
+boolean isBTConnected;  
 
 // BLE 
 NimBLEAdvertisedDevice device;
@@ -41,10 +43,6 @@ NimBLERemoteCharacteristic *pSender;
 NimBLERemoteCharacteristic *pReceiver;
 
 RingBuffer ble_in;
-
-//byte ble_in[BLE_BUFSIZE];
-//int ble_len;
-//int ble_pos;
 
 void notifyCB(NimBLERemoteCharacteristic* pRemoteCharacteristic, uint8_t* pData, size_t length, bool isNotify);
 

@@ -1,6 +1,3 @@
-
-
-
 void uint_to_bytes(unsigned int i, uint8_t *h, uint8_t *l) {
   *h = (i & 0xff00) / 256;
   *l = i & 0xff;

@@ -30,7 +30,7 @@
 //******************************************************************************************
 
 #define PGM_NAME "SparkBox"
-#define VERSION "BLE 0.46"
+#define VERSION "BLE 0.47"
 #define MAXNAME 20
 
 SparkIO spark_io(false);              // Non-passthrough Spark IO (per Paul)

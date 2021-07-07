@@ -2,7 +2,8 @@
 void updateIcons() {
   
   // Read RSSI from Spark
-  iRSSI = pClient->getRssi();
+  iRSSI = ble_getRSSI();
+  
   //Serial.print("RSSI = ");
   //Serial.println(iRSSI);
             

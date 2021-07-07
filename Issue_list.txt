@@ -23,5 +23,5 @@ v0.46
 - Possible occasional unsync on reconnect
 
 ToDo:
-- 
+- Fix occasional unsync on reconnect
 

@@ -10,6 +10,7 @@
 #define BATTERY_CHRG 2560 // Maybe make this higher?
 
 // Globals
+static int iRSSI = 0;                           // BLE signal strength
 int vbat_result;                                // For battery monitoring
 int chrg_result;                                // For charge state monitoring
 int sw_val[NUM_SWITCHES];     
@@ -32,7 +33,6 @@ boolean AnylongPressActive = false;             // OR of any longPressActive sta
 boolean latchpress;                             // latch to stop repeating the long press state
 
 // Flags
-boolean isBTConnected;                          // Duh
 boolean isStatusReceived;                       // Status received from Spark
 boolean isOLEDUpdate;                           // Flag OLED needs refresh
 boolean isPedalMode;                            // Pedal mode: 0 = preset, 1 = effect
