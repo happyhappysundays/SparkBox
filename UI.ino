@@ -63,10 +63,33 @@ void updateIcons() {
     }
   }
   // Battery icon control - measured periodically via a 1s timer
+  // Average readings to reduce noise
   if (isTimeout) {
     vbat_result = analogRead(VBAT_AIN); // Read battery voltage
-    //Serial.print("Vbat = ");
-    //Serial.print(vbat_result);
+    temp = vbat_result;
+
+    // While collecting data
+    if (vbat_ring_count < VBAT_NUM) {
+      vbat_ring_sum += vbat_result;
+      vbat_ring_count++;
+      vbat_result = vbat_ring_sum / vbat_ring_count;
+    }
+    // Once enough is gathered, do a decimating average
+    else {
+      vbat_ring_sum *= 0.9;
+      vbat_ring_sum += vbat_result;
+      vbat_result = vbat_ring_sum / VBAT_NUM;
+    }
+    /*
+    Serial.print("Vbat = ");
+    Serial.print(temp);      
+    Serial.print(" Vbat avg = ");
+    Serial.print(vbat_result);
+    Serial.print(" Count = ");
+    Serial.print(vbat_ring_count);
+    Serial.print(" Sum = ");
+    Serial.println(vbat_ring_sum);
+   */ 
     chrg_result = analogRead(CHRG_AIN); // Check state of /CHRG output
     //Serial.print(", /CHRG = ");
     //Serial.println(chrg_result);
@@ -77,42 +100,65 @@ void updateIcons() {
   // must be taken not to graphically block out some symbols. This is why the
   // battery full but not charging is the last in the chain.
 
-  // No battery monitoring so just show the empty symbol
+   // No battery monitoring so just show the empty symbol
   #ifdef BATT_CHECK_0
   Heltec.display->drawXbm(bat_pos, 0, bat_width, bat_height, bat00_bits);
+  #endif
   
-  // Basic battery detection available. Coarse cut-offs for visual 
-  // guide to remaining capacity.
-  #else
-    if (vbat_result < BATTERY_LOW) {
-      Heltec.display->drawXbm(bat_pos, 0, bat_width, bat_height, bat00_bits);
+  // For level-based charge detection (not very reliable)
+  #ifdef BATT_CHECK_1
+    if (vbat_result >= BATTERY_CHRG) {
+      Heltec.display->drawXbm(bat_pos, 0, bat_width, bat_height, batcharging_bits);
     }
-    else if (vbat_result < BATTERY_MID) {
-      Heltec.display->drawXbm(bat_pos, 0, bat_width, bat_height, bat33_bits);
-    }
-    else if (vbat_result < BATTERY_HIGH) {
-      Heltec.display->drawXbm(bat_pos, 0, bat_width, bat_height, bat66_bits);
-    }
-  
+  #endif
+      
   // If advanced charge detection available, and charge detected
   #ifdef BATT_CHECK_2
-    else if (chrg_result < CHRG_LOW) {
+    if (chrg_result < CHRG_LOW) {
       Heltec.display->drawXbm(bat_pos, 0, bat_width, bat_height, batcharging_bits);
     }
-  // For level-based charge detection (not very reliable)
-  #else
-    else if (vbat_result >= BATTERY_CHRG) {
-      Heltec.display->drawXbm(bat_pos, 0, bat_width, bat_height, batcharging_bits);
-    }
-  #endif 
+  #endif
   
-    // Printing this first will block out the charge logo
+  // Basic battery detection available. Coarse cut-offs for visual 
+  // guide to remaining capacity. Surprisingly complex feedback to user.
+  // No bars = 0% (should not be discharged further)
+  // Full symbol = >85%
+  #ifndef BATT_CHECK_0
+    else if (vbat_result < BATTERY_LOW) {
+      Heltec.display->drawXbm(bat_pos, 0, bat_width, bat_height, bat00_bits);
+    }
+    else if (vbat_result < BATTERY_10) {
+      Heltec.display->drawXbm(bat_pos, 0, bat_width, bat_height, bat10_bits);
+    }
+    else if (vbat_result < BATTERY_20) {
+      Heltec.display->drawXbm(bat_pos, 0, bat_width, bat_height, bat20_bits);
+    }
+    else if (vbat_result < BATTERY_30) {
+      Heltec.display->drawXbm(bat_pos, 0, bat_width, bat_height, bat30_bits);
+    }    
+    else if (vbat_result < BATTERY_40) {
+      Heltec.display->drawXbm(bat_pos, 0, bat_width, bat_height, bat40_bits);
+    }
+    else if (vbat_result < BATTERY_50) {
+      Heltec.display->drawXbm(bat_pos, 0, bat_width, bat_height, bat50_bits);
+    }
+    else if (vbat_result < BATTERY_60) {
+      Heltec.display->drawXbm(bat_pos, 0, bat_width, bat_height, bat60_bits);
+    }
+    else if (vbat_result < BATTERY_70) {
+      Heltec.display->drawXbm(bat_pos, 0, bat_width, bat_height, bat70_bits);
+    }        
+    else if (vbat_result < BATTERY_80) {
+      Heltec.display->drawXbm(bat_pos, 0, bat_width, bat_height, bat80_bits);
+    }
+    else if (vbat_result < BATTERY_90) {
+      Heltec.display->drawXbm(bat_pos, 0, bat_width, bat_height, bat90_bits);
+    }
     else {
       Heltec.display->drawXbm(bat_pos, 0, bat_width, bat_height, bat100_bits);
     } 
   #endif
 }
-
 // Print out the requested preset data
 void dump_preset(SparkPreset preset) {
   int i,j;
