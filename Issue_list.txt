@@ -22,6 +22,10 @@ v0.46
 - BT RSSI display working
 - Possible occasional unsync on reconnect
 
+v0.48
+- Merged SparkBox mods
+- Updated battery display
+
 ToDo:
 - Fix occasional unsync on reconnect
 
