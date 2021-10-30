@@ -15,3 +15,7 @@ This is a Heltec WIFI Kit 32 version of SparkBox. SparkBox is another BT pedal f
 ![alt text](https://github.com/happyhappysundays/SparkBoxHeltec/blob/main/Pictures/thumbnail_IMG_6513.jpg?raw=true)
 ![alt text](https://github.com/happyhappysundays/SparkBoxHeltec/blob/main/Pictures/SparkBox_Heltec.png?raw=true)
 ![alt text](https://github.com/happyhappysundays/SparkBoxHeltec/blob/main/Pictures/Charge_detect.jpg?raw=true)
+
+Experimental expression pedal input coming soon
+![alt text](https://github.com/happyhappysundays/SparkBoxHeltec/blob/main/Pictures/SparkBox_Heltec_Exp.png?raw=true)
+
