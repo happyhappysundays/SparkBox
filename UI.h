@@ -2,6 +2,7 @@
 #define NUM_SWITCHES 4
 #define VBAT_AIN 32       // Vbat sense (2:1 divider)
 #define CHRG_AIN 33       // Charge pin sense (10k pull-up)
+#define EXP_AIN 34        // Expression pedal input (3V3)
 #define CHRG_LOW 2000
 //
 #define BATTERY_LOW 2082  // Noise floor of 3.61V (<5%)
@@ -52,3 +53,4 @@ boolean isStatusReceived;                       // Status received from Spark
 boolean isOLEDUpdate;                           // Flag OLED needs refresh
 boolean isPedalMode;                            // Pedal mode: 0 = preset, 1 = effect
 boolean isHWpresetgot;                          // Flag to show that the hardware preset number has been processed
+boolean isAppConnected;                         // Flag to show that the app has connected at least initially

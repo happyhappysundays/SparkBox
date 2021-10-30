@@ -9,10 +9,10 @@ void updateIcons() {
             
   // Show BT icon if connected
   // Use graduated scale based on the following
-  // 0 bars (very poor) < -70db
-  // 1 bar (poor) = -70db to -60db
-  // 2 bars (fair) = -60db to -50db
-  // 3 bars (good) = -40db to -50db
+  // 0 bars (very poor) < -95db
+  // 1 bar (poor) = -75db to -95db
+  // 2 bars (fair) = -60db to -75db
+  // 3 bars (good) = -40db to -60db
   // 4 bars (excellent) = > -40db
   if(isBTConnected){
     Heltec.display->drawXbm(btlogo_pos, 0, bt_width, bt_height, bt_bits);
@@ -20,14 +20,14 @@ void updateIcons() {
     if (iRSSI > -40) {
       Heltec.display->drawXbm(rssi_pos, 0, rssi_width, rssi_height, rssi_4);
     }
-    else if (iRSSI > -50) {
+    else if (iRSSI > -60) {
       Heltec.display->drawXbm(rssi_pos, 0, rssi_width, rssi_height, rssi_3);
     }
-    else if (iRSSI > -60) {
+    else if (iRSSI > -75) {
       Heltec.display->drawXbm(rssi_pos, 0, rssi_width, rssi_height, rssi_2);
     }
-     else if (iRSSI > -70) {
-      Heltec.display->drawXbm(rssi_pos, 0, rssi_width, rssi_height, rssi_2);
+     else if (iRSSI > -95) {
+      Heltec.display->drawXbm(rssi_pos, 0, rssi_width, rssi_height, rssi_1);
     }
     // else no bars 
   }
@@ -66,6 +66,13 @@ void updateIcons() {
   // Average readings to reduce noise
   if (isTimeout) {
     vbat_result = analogRead(VBAT_AIN); // Read battery voltage
+
+    // To speed up the display when a battery is connected from scratch
+    // ignore/fudge any readings below the lower threshold
+    if (vbat_result < BATTERY_LOW)
+    {
+      vbat_result = BATTERY_LOW;
+    }
     temp = vbat_result;
 
     // While collecting data
@@ -270,7 +277,18 @@ void refreshUI(void)
        presets[5].Name[MAXNAME - 1]  = '\0';  // Rudely truncate
     }
     Heltec.display->drawString(0, 50, presets[5].Name);
-    
+
+    // Flip GUI flash bool
+    if (isTimeout){
+      flash_GUI = !flash_GUI;
+    }
+    // Flash "Connect App" message when no app connected
+    if (flash_GUI && !isAppConnected){
+      Heltec.display->setFont(ArialMT_Plain_10);
+      Heltec.display->setTextAlignment(TEXT_ALIGN_CENTER);
+      Heltec.display->drawString(64, 37, "Connect App");
+    }
+       
     updateIcons();
     Heltec.display->display();
   }

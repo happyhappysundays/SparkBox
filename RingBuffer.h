@@ -18,6 +18,7 @@ class RingBuffer
     void clear();
     void dump();
     void dump2();
+    void dump3();
   private:
     static const int RB_BUFF_MAX = 5000;
     uint8_t rb[RB_BUFF_MAX];
