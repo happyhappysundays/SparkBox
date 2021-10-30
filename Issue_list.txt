@@ -26,6 +26,7 @@ v0.48
 - Merged SparkBox mods
 - Updated battery display
 
-ToDo:
-- Fix occasional unsync on reconnect
-
+v0.49
+- Merged SparkIO2
+- Works with app now
+- No disconnect ability
