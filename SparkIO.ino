@@ -64,7 +64,11 @@
  * 
  */
 
+// TO FIX
+// *ok_to_send shared across classes, and also checked whilst sending to the app
+// app_rc_seq / sp_rc_seq - anaylse and work out how it should work!!!
 
+// UTILITY FUNCTIONS
 
 void uint_to_bytes(unsigned int i, uint8_t *h, uint8_t *l) {
   *h = (i & 0xff00) / 256;
@@ -76,98 +80,103 @@ void bytes_to_uint(uint8_t h, uint8_t l,unsigned int *i) {
 }
 
  
-//
-// SparkIO class
-//
+// MAIN SparkIO CLASS
 
-SparkIO::SparkIO(bool passthru) {
-  sp_pass_through = passthru;
-  sp_rb_state = 0;
-  sp_rc_state = 0;
-  sp_oc_seq = 0x20;
-  sp_ob_ok_to_send = true;
-  sp_ob_last_sent_time = millis();
-  
-  sp_bt_state = 0;
-  sp_bt_pos = 0;
-  sp_bt_len = -1;
+uint8_t chunk_header_from_spark[16]{0x01, 0xfe, 0x00, 0x00, 0x41, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+uint8_t chunk_header_to_spark[16]  {0x01, 0xfe, 0x00, 0x00, 0x53, 0xfe, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
+void spark_start(bool passthru) {
+  sp_bin.set(passthru, &sp_in_chunk, chunk_header_from_spark);
+  app_bin.set(passthru, &app_in_chunk, chunk_header_to_spark);
 
-  app_pass_through = passthru;
-  app_rb_state = 0;
-  app_rc_state = 0;
-  app_oc_seq = 0x40;
-  app_ob_ok_to_send = true;
-  app_ob_last_sent_time = millis();
+  sp_cin.set(&sp_in_chunk, &sp_in_message, &sp_ok_to_send, &sp_rec_seq);
+  app_cin.set(&app_in_chunk, &app_in_message, &app_ok_to_send, &app_rec_seq);
 
-  app_ser_pos = 0;
-  app_ser_state = 0;
-  app_ser_len = -1;
+  spark_msg_in.set(&sp_in_message);
+  app_msg_in.set(&app_in_message);
+
+  spark_msg_out.set(&sp_out_message);
+  app_msg_out.set(&app_out_message);
+
+  sp_cout.set(&sp_out_chunk, &sp_out_message, &sp_rec_seq);
+  app_cout.set(&app_out_chunk, &app_out_message, &app_rec_seq);
+
+  sp_bout.set(&sp_out_chunk, chunk_header_to_spark, &sp_ok_to_send);
+  app_bout.set(&app_out_chunk, chunk_header_from_spark, &app_ok_to_send);
 }
 
 // 
 // Main processing routine
 //
 
-void SparkIO::sp_process() 
+void spark_process() 
 {
   // process inputs
-  sp_process_in_blocks();
-  sp_process_in_chunks();
+  sp_bin.process();
+  sp_cin.process();
 
-  if (!sp_ob_ok_to_send && (millis() - sp_ob_last_sent_time > 500)) {
+  if (!sp_ok_to_send && (millis() - sp_bout.last_sent_time > 500)) {
     DEBUG("Timeout on send");
-    sp_ob_ok_to_send = true;
+    sp_ok_to_send = true;
   }
 
   // process outputs
-  sp_process_out_chunks();
-  sp_process_out_blocks();
+  sp_cout.process();
+  sp_bout.process();
+
 }
 
 
-//
-// Routine to read the block from bluetooth and put into the in_chunk ring buffer
-//
+void app_process() 
+{
+  // process inputs
+  app_bin.process();
+  app_cin.process();
 
-uint8_t chunk_header_from_spark[16]{0x01, 0xfe, 0x00, 0x00, 0x41, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+  // process outputs
+  app_cout.process();
+  app_bout.process();
+}
 
-void SparkIO::sp_process_in_blocks() {
+// BLOCK INPUT ROUTINES 
+// Routine to read the block and put into the in_chunk ring buffer
+
+void BlockIn::process() {
   uint8_t b;
   bool boo;
 
-  while (sp_available()) {
-    b = sp_read();
+  while (data_available()) {
+    b = data_read();
    
-    // **** PASSTHROUGH OF SERIAL TO BLUETOOTH ****
+    // **** PASSTHROUGH APP AND AMP ****
 
-    if (sp_pass_through) {
-      if (sp_bt_state == 0 && b == 0x01) 
-        sp_bt_state = 1;
-      else if (sp_bt_state == 1) {
+    if (pass_through) {
+      if (io_state == 0 && b == 0x01) 
+        io_state = 1;
+      else if (io_state == 1) {
         if (b == 0xfe) {
-          sp_bt_state = 2;
-          sp_bt_buf[0] = 0x01;
-          sp_bt_buf[1] = 0xfe;
-          sp_bt_pos = 2;
+          io_state = 2;
+          io_buf[0] = 0x01;
+          io_buf[1] = 0xfe;
+          io_pos = 2;
         }
         else
-          sp_bt_state = 0;
+          io_state = 0;
       }
-      else if (sp_bt_state == 2) {
-        if (sp_bt_pos == 6) {
-          sp_bt_len = b;
+      else if (io_state == 2) {
+        if (io_pos == 6) {
+          io_len = b;
         }
-        sp_bt_buf[sp_bt_pos++] = b;
-        if (sp_bt_pos == sp_bt_len) {
-          app_write(sp_bt_buf, sp_bt_pos);
-          sp_bt_pos = 0;
-          sp_bt_len = -1; 
-          sp_bt_state = 0; 
+        io_buf[io_pos++] = b;
+        if (io_pos == io_len) {
+          data_write(io_buf, io_pos);
+          io_pos = 0;
+          io_len = -1; 
+          io_state = 0; 
         }
       }
 
-      if (sp_bt_pos > MAX_BT_BUFFER) {
+      if (io_pos > MAX_IO_BUFFER) {
         DEBUG("SPARKIO IO_PROCESS_IN_BLOCKS OVERRUN");
         while (true);
       }
@@ -175,34 +184,36 @@ void SparkIO::sp_process_in_blocks() {
     // **** END PASSTHROUGH ****
     
     // check the 7th byte which holds the block length
-    if (sp_rb_state == 6) {
-      sp_rb_len = b - 16;
-      sp_rb_state++;
+    if (rb_state == 6) {
+      rb_len = b - 16;
+      rb_state++;
     }
     // check every other byte in the block header for a match to the header standard
-    else if (sp_rb_state >= 0 && sp_rb_state < 16) {
-      if (b == chunk_header_from_spark[sp_rb_state]) {
-        sp_rb_state++;
+    else if (rb_state >= 0 && rb_state < 16) {
+      if (b == blk_hdr[rb_state]) {
+        rb_state++;
       }
       else {
-        Serial.print (sp_rb_state);
+        Serial.print(rb_state);
         Serial.print(" ");
-        Serial.print(b);
+        Serial.print(b, HEX);
         Serial.print(" ");
-        Serial.print(sp_rb_len);
+        Serial.print(blk_hdr[rb_state], HEX);
+        Serial.print(" ");
+        Serial.print(rb_len);
         Serial.println();
-        sp_rb_state = -1;
+        rb_state = -1;
         DEBUG("SparkIO bad block header");
       }
     } 
     // and once past the header just read the next bytes as defined by rb_len
     // store these to the chunk buffer
-    else if (sp_rb_state == 16) {
-      sp_in_chunk.add(b);
-      sp_rb_len--;
-      if (sp_rb_len == 0) {
-        sp_rb_state = 0;
-        sp_in_chunk.commit();
+    else if (rb_state == 16) {
+      rb->add(b);
+      rb_len--;
+      if (rb_len == 0) {
+        rb_state = 0;
+        rb->commit();
       }
     }
       
@@ -210,129 +221,179 @@ void SparkIO::sp_process_in_blocks() {
     // and resets the state to 0 it can be processed here for that byte - saves missing the 
     // first byte of the header if that was misplaced
     
-    if (sp_rb_state == -1) 
-      if (b == chunk_header_from_spark[0]) 
-        sp_rb_state = 1;
+    if (rb_state == -1) 
+      if (b == blk_hdr[0]) 
+        rb_state = 1;
   }
 }
 
-//
-// Routine to read chunks from the in_chunk ring buffer and copy to a in_message msgpack buffer
-//
+void SparkBlockIn::set(bool pass, RingBuffer *ring_buffer, uint8_t *hdr) {
+  rb = ring_buffer;
+  blk_hdr = hdr;
+  pass_through = pass;
+}
 
-void SparkIO::sp_process_in_chunks() {
+bool SparkBlockIn::data_available() {
+  return sp_available();
+}
+
+uint8_t SparkBlockIn::data_read(){
+  return sp_read();
+}
+void SparkBlockIn::data_write(uint8_t *buf, int len){
+  app_write(buf, len);
+}
+
+void AppBlockIn::set(bool pass, RingBuffer *ring_buffer, uint8_t *hdr) {
+  rb = ring_buffer;
+  blk_hdr = hdr;
+  pass_through = pass;
+}
+
+bool AppBlockIn::data_available() {
+  return app_available();
+}
+
+uint8_t AppBlockIn::data_read(){
+  return app_read();
+}
+
+void AppBlockIn::data_write(uint8_t *buf, int len){
+  sp_write(buf, len);
+}
+
+// CHUNK INPUT ROUTINES
+// Routine to read chunks from the in_chunk ring buffer and copy to a in_message msgpack buffer
+
+
+void SparkChunkIn::set(RingBuffer *chunks, RingBuffer *messages, bool *ok, uint8_t *seq) {
+  in_chunk = chunks;
+  in_message = messages;
+  ok_to_send = ok;
+  *ok_to_send = true;
+  rec_seq = seq;
+}
+
+void AppChunkIn::set(RingBuffer *chunks, RingBuffer *messages, bool *ok, uint8_t *seq) {
+  in_chunk = chunks;
+  in_message = messages;
+  ok_to_send = ok;
+  *ok_to_send = true;
+  rec_seq = seq;
+}
+
+void ChunkIn::process() {
   uint8_t b;
   bool boo;
   unsigned int len;
   uint8_t len_h, len_l;
 
-  while (!sp_in_chunk.is_empty()) {               // && in_message.is_empty()) {  -- no longer needed because in_message is now a proper ringbuffer
-    boo = sp_in_chunk.get(&b);
+  while (!in_chunk->is_empty()) {      
+    boo = in_chunk->get(&b);
     if (!boo) DEBUG("Chunk is_empty was false but the buffer was empty!");
 
-    switch (sp_rc_state) {
+    switch (rc_state) {
       case 1:
         if (b == 0x01) 
-          sp_rc_state++; 
+          rc_state++; 
         else 
-          sp_rc_state = 0; 
+          rc_state = 0; 
         break;
       case 2:
-        sp_rc_seq = b; 
-        sp_rc_state++; 
+        rc_seq = b; 
+        *rec_seq = b;
+        rc_state++; 
         break;
       case 3:
-        sp_rc_checksum = b;
-        sp_rc_state++; 
+        rc_checksum = b;
+        rc_state++; 
         break;
       case 4:
-        sp_rc_cmd = b; 
-        sp_rc_state++; 
+        rc_cmd = b; 
+        rc_state++; 
         break;
       case 5:
-        sp_rc_sub = b; 
-        sp_rc_state = 10;
+        rc_sub = b; 
+        rc_state = 10;
 
         // flow control for blocking sends - put here in case we want to check rc_sub too
-        if (sp_rc_cmd == 0x04 && sp_rc_sub == 0x01) {
-          if (sp_ob_ok_to_send == false) {
-            sp_ob_ok_to_send = true;
+        // in here for amp responses - only triggered by the amp
+        if ((rc_cmd == 0x04 || rc_cmd == 0x05) && rc_sub == 0x01) {
+          ////////////// THIS FEELS CLUNKY - HOW CAN THIS BE DONE BETTER? <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+          if (*ok_to_send == false) {
+            *ok_to_send = true;
             DEBUG("Unblocked");
           }
         }
         
         // set up for the main data loop - rc_state 10
-        sp_rc_bitmask = 0x80;
-        sp_rc_calc_checksum = 0;
-        sp_rc_data_pos = 0;
+        rc_bitmask = 0x80;
+        rc_calc_checksum = 0;
+        rc_data_pos = 0;
         
         // check for multi-chunk
-        if (sp_rc_cmd == 3 && sp_rc_sub == 1) 
-          sp_rc_multi_chunk = true;
+        if (rc_sub == 1 && (rc_cmd == 3 || rc_cmd == 1))  
+          rc_multi_chunk = true;
         else {
-          sp_rc_multi_chunk = false;
-          sp_in_message_bad = false;
-          sp_in_message.add(sp_rc_cmd);
-          sp_in_message.add(sp_rc_sub);
-          sp_in_message.add(0);
-          sp_in_message.add(0);
+          rc_multi_chunk = false;
+          in_message_bad = false;
+          in_message->add(rc_cmd);
+          in_message->add(rc_sub);
+          in_message->add(0);
+          in_message->add(0);
         }
         break;
       case 10:                    // the main loop which ends on an 0xf7
         if (b == 0xf7) {
-          if (sp_rc_calc_checksum != sp_rc_checksum) 
-            sp_in_message_bad = true;
-          sp_rc_state = 0;
-          if (!sp_rc_multi_chunk || (sp_rc_this_chunk == sp_rc_total_chunks-1)) { //last chunk in message
-            if (sp_in_message_bad) {
+          if (rc_calc_checksum != rc_checksum) 
+            in_message_bad = true;
+          rc_state = 0;
+          if (!rc_multi_chunk || (rc_this_chunk == rc_total_chunks-1)) { //last chunk in message
+            if (in_message_bad) {
               DEBUG("Bad message, dropped");
-              sp_in_message.drop();
+              in_message->drop();
             }
             else {
-              len = sp_in_message.get_len();
+              len = in_message->get_len();
               uint_to_bytes(len, &len_h, &len_l);
 
-              sp_in_message.set_at_index(2, len_h);
-              sp_in_message.set_at_index(3, len_l);
-              sp_in_message.commit();
-              
-// TRACE
-//              Serial.print("From Spark     ");
-//              sp_in_message.dump3();
+              in_message->set_at_index(2, len_h);
+              in_message->set_at_index(3, len_l);
+              in_message->commit();
             }  
           }
         }
-        else if (sp_rc_bitmask == 0x80) { // if the bitmask got to this value it is now a new bits 
-          sp_rc_calc_checksum ^= b;
-          sp_rc_bits = b;
-          sp_rc_bitmask = 1;
+        else if (rc_bitmask == 0x80) { // if the bitmask got to this value it is now a new bits 
+          rc_calc_checksum ^= b;
+          rc_bits = b;
+          rc_bitmask = 1;
         }
         else {
-          sp_rc_data_pos++;
-          sp_rc_calc_checksum ^= b;          
-          if (sp_rc_bits & sp_rc_bitmask) 
+          rc_data_pos++;
+          rc_calc_checksum ^= b;          
+          if (rc_bits & rc_bitmask) 
             b |= 0x80;
-          sp_rc_bitmask *= 2;
+          rc_bitmask *= 2;
           
-          if (sp_rc_multi_chunk && sp_rc_data_pos == 1) 
-            sp_rc_total_chunks = b;
-          else if (sp_rc_multi_chunk && sp_rc_data_pos == 2) {
-            sp_rc_last_chunk = sp_rc_this_chunk;
-            sp_rc_this_chunk = b;
-            if (sp_rc_this_chunk == 0) {
-              sp_in_message_bad = false;
-              sp_in_message.add(sp_rc_cmd);
-              sp_in_message.add(sp_rc_sub);
-              sp_in_message.add(0);
-              sp_in_message.add(0);
+          if (rc_multi_chunk && rc_data_pos == 1) 
+            rc_total_chunks = b;
+          else if (rc_multi_chunk && rc_data_pos == 2) {
+            rc_last_chunk = rc_this_chunk;
+            rc_this_chunk = b;
+            if (rc_this_chunk == 0) {
+              in_message_bad = false;
+              in_message->add(rc_cmd);
+              in_message->add(rc_sub);
+              in_message->add(0);
+              in_message->add(0);
             }
-            else if (sp_rc_this_chunk != sp_rc_last_chunk+1)
-              sp_in_message_bad = true;
+            else if (rc_this_chunk != rc_last_chunk+1)
+              in_message_bad = true;
           }
-          else if (sp_rc_multi_chunk && sp_rc_data_pos == 3) 
-            sp_rc_chunk_len = b;
+          else if (rc_multi_chunk && rc_data_pos == 3) 
+            rc_chunk_len = b;
           else {  
-            sp_in_message.add(b);             
+            in_message->add(b);             
           }
           
         };
@@ -343,36 +404,57 @@ void SparkIO::sp_process_in_chunks() {
     // and resets the state to 0 it can be processed here for that byte - saves missing the 
     // first byte of the header if that was misplaced
     
-    if (sp_rc_state == 0) {
+    if (rc_state == 0) {
       if (b == 0xf0) 
-        sp_rc_state++;
+        rc_state++;
     }
   }
 }
 
-//// Routines to interpret the data
 
-void SparkIO::sp_read_byte(uint8_t *b)
+
+// MESSAGE INPUT ROUTINES
+// Routine to read messages from the in_message ring buffer and copy to a message C structurer
+
+
+void SparkMessageIn::set(RingBuffer *messages) {
+  in_message = messages;
+}
+
+void AppMessageIn::set(RingBuffer *messages) {
+  in_message = messages;
+}
+
+void MessageIn::read_byte(uint8_t *b)
 {
   uint8_t a;
-  sp_in_message.get(&a);
+  in_message->get(&a);
   *b = a;
 }   
+
+void MessageIn::read_uint(uint8_t *b)
+{
+  uint8_t a;
+  in_message->get(&a);
+  if (a == 0xCC)
+    in_message->get(&a);
+  *b = a;
+}
    
-void SparkIO::sp_read_string(char *str)
+void MessageIn::read_string(char *str)
 {
   uint8_t a, len;
   int i;
 
-  sp_read_byte(&a);
+  read_byte(&a);
   if (a == 0xd9) {
-    sp_read_byte(&len);
+    read_byte(&len);
   }
   else if (a >= 0xa0) {
     len = a - 0xa0;
   }
   else {
-    sp_read_byte(&a);
+    read_byte(&a);
     if (a < 0xa0 || a >= 0xc0) DEBUG("Bad string");
     len = a - 0xa0;
   }
@@ -380,7 +462,7 @@ void SparkIO::sp_read_string(char *str)
   if (len > 0) {
     // process whole string but cap it at STR_LEN-1
     for (i = 0; i < len; i++) {
-      sp_read_byte(&a);
+      read_byte(&a);
       if (a<0x20 || a>0x7e) a=0x20; // make sure it is in ASCII range - to cope with get_serial 
       if (i < STR_LEN -1) str[i]=a;
     }
@@ -391,20 +473,20 @@ void SparkIO::sp_read_string(char *str)
   }
 }   
 
-void SparkIO::sp_read_prefixed_string(char *str)
+void MessageIn::read_prefixed_string(char *str)
 {
   uint8_t a, len;
   int i;
 
-  sp_read_byte(&a); 
-  sp_read_byte(&a);
+  read_byte(&a); 
+  read_byte(&a);
 
   if (a < 0xa0 || a >= 0xc0) DEBUG("Bad string");
   len = a-0xa0;
 
   if (len > 0) {
     for (i = 0; i < len; i++) {
-      sp_read_byte(&a);
+      read_byte(&a);
       if (a<0x20 || a>0x7e) a=0x20; // make sure it is in ASCII range - to cope with get_serial 
       if (i < STR_LEN -1) str[i]=a;
     }
@@ -415,7 +497,7 @@ void SparkIO::sp_read_prefixed_string(char *str)
   }
 }   
 
-void SparkIO::sp_read_float(float *f)
+void MessageIn::read_float(float *f)
 {
   union {
     float val;
@@ -424,24 +506,24 @@ void SparkIO::sp_read_float(float *f)
   uint8_t a;
   int i;
 
-  sp_read_byte(&a);  // should be 0xca
+  read_byte(&a);  // should be 0xca
   if (a != 0xca) return;
 
   // Seems this creates the most significant byte in the last position, so for example
   // 120.0 = 0x42F00000 is stored as 0000F042  
    
   for (i=3; i>=0; i--) {
-    sp_read_byte(&a);
+    read_byte(&a);
     conv.b[i] = a;
   } 
   *f = conv.val;
 }
 
-void SparkIO::sp_read_onoff(bool *b)
+void MessageIn::read_onoff(bool *b)
 {
   uint8_t a;
    
-  sp_read_byte(&a);
+  read_byte(&a);
   if (a == 0xc3)
     *b = true;
   else // 0xc2
@@ -450,7 +532,7 @@ void SparkIO::sp_read_onoff(bool *b)
 
 // The functions to get the message
 
-bool SparkIO::sp_get_message(unsigned int *cmdsub, SparkMessage *msg, SparkPreset *preset)
+bool MessageIn::get_message(unsigned int *cmdsub, SparkMessage *msg, SparkPreset *preset)
 {
   uint8_t cmd, sub, len_h, len_l;
   unsigned int len;
@@ -460,887 +542,27 @@ bool SparkIO::sp_get_message(unsigned int *cmdsub, SparkMessage *msg, SparkPrese
   int i, j;
   uint8_t num;
 
-  if (sp_in_message.is_empty()) return false;
+  if (in_message->is_empty()) return false;
+  
+//  in_message->dump3();
 
-  sp_read_byte(&cmd);
-  sp_read_byte(&sub);
-  sp_read_byte(&len_h);
-  sp_read_byte(&len_l);
+  read_byte(&cmd);
+  read_byte(&sub);
+  read_byte(&len_h);
+  read_byte(&len_l);
   
   bytes_to_uint(len_h, len_l, &len);
   bytes_to_uint(cmd, sub, &cs);
 
   *cmdsub = cs;
   switch (cs) {
-    // change of effect model
-    case 0x0306:
-      sp_read_string(msg->str1);
-      sp_read_string(msg->str2);
-      break;
-    // get current hardware preset number
-    case 0x0310:
-      sp_read_byte(&msg->param1);
-      sp_read_byte(&msg->param2);
-      break;
-    // get name
-    case 0x0311:
-      sp_read_string(msg->str1);
-      break;
-    // enable / disable an effect
-    case 0x0315:
-      sp_read_string(msg->str1);
-      sp_read_onoff(&msg->onoff);
-      break;
-    // get serial number
-    case 0x0323:
-      sp_read_string(msg->str1);
-      break;
-    // store into hardware preset
-    case 0x0327:
-      sp_read_byte(&msg->param1);
-      sp_read_byte(&msg->param2);
-      break;
-    // firmware version number
-    case 0x032f:
-      // really this is a uint32 but it is just as easy to read into 4 uint8 - a bit of a cheat
-      sp_read_byte(&junk);           // this will be 0xce for a uint32
-      sp_read_byte(&msg->param1);      
-      sp_read_byte(&msg->param2); 
-      sp_read_byte(&msg->param3); 
-      sp_read_byte(&msg->param4); 
-      break;
-    // change of effect parameter
-    case 0x0337:
-      sp_read_string(msg->str1);
-      sp_read_byte(&msg->param1);
-      sp_read_float(&msg->val);
-      break;
-    // change of preset number selected on the amp via the buttons
-    case 0x0338:
-      sp_read_byte(&msg->param1);
-      sp_read_byte(&msg->param2);
-      break;
-    // response to a request for a full preset
-    case 0x0301:
-      sp_read_byte(&preset->curr_preset);
-      sp_read_byte(&preset->preset_num);
-      sp_read_string(preset->UUID); 
-      sp_read_string(preset->Name);
-      sp_read_string(preset->Version);
-      sp_read_string(preset->Description);
-      sp_read_string(preset->Icon);
-      sp_read_float(&preset->BPM);
 
-      for (j=0; j<7; j++) {
-        sp_read_string(preset->effects[j].EffectName);
-        sp_read_onoff(&preset->effects[j].OnOff);
-        sp_read_byte(&num);
-        preset->effects[j].NumParameters = num - 0x90;
-        for (i = 0; i < preset->effects[j].NumParameters; i++) {
-          sp_read_byte(&junk);
-          sp_read_byte(&junk);
-          sp_read_float(&preset->effects[j].Parameters[i]);
-        }
-      }
-      sp_read_byte(&preset->chksum);  
-      break;
-    // tap tempo!
-    case 0x0363:
-      sp_read_float(&msg->val);  
-      break;
-    // acks - no payload to read - no ack sent for an 0x104
-    case 0x0401:
-    case 0x0406:
-    case 0x0415:
-    case 0x0438:
-      Serial.print("Got an ack ");
-      Serial.println(cs, HEX);
-      break;
-    default:
-      Serial.print("Unprocessed message SparkIO ");
-      Serial.print (cs, HEX);
-      Serial.print(":");
-      for (i = 0; i < len - 4; i++) {
-        sp_read_byte(&junk);
-        Serial.print(junk, HEX);
-        Serial.print(" ");
-      }
-      Serial.println();
-  }
-
-  return true;
-}
-
-    
-//
-// Output routines
-//
-
-
-void SparkIO::sp_start_message(int cmdsub)
-{
-  sp_om_cmd = (cmdsub & 0xff00) >> 8;
-  sp_om_sub = cmdsub & 0xff;
-
-  // THIS IS TEMPORARY JUST TO SHOW IT WORKS!!!!!!!!!!!!!!!!
-  //sp.out_message.clear();
-
-  sp_out_message.add(sp_om_cmd);
-  sp_out_message.add(sp_om_sub);
-  sp_out_message.add(0);      // placeholder for length
-  sp_out_message.add(0);      // placeholder for length
-
-  sp_out_msg_chksum = 0;
-}
-
-
-void SparkIO::sp_end_message()
-{
-  unsigned int len;
-  uint8_t len_h, len_l;
-  
-  len = sp_out_message.get_len();
-  uint_to_bytes(len, &len_h, &len_l);
-  
-  sp_out_message.set_at_index(2, len_h);   
-  sp_out_message.set_at_index(3, len_l);
-  sp_out_message.commit();
-}
-
-void SparkIO::sp_write_byte_no_chksum(byte b)
-{
-  sp_out_message.add(b);
-}
-
-void SparkIO::sp_write_byte(byte b)
-{
-  sp_out_message.add(b);
-  sp_out_msg_chksum += int(b);
-}
-
-void SparkIO::sp_write_prefixed_string(const char *str)
-{
-  int len, i;
-
-  len = strnlen(str, STR_LEN);
-  sp_write_byte(byte(len));
-  sp_write_byte(byte(len + 0xa0));
-  for (i=0; i<len; i++)
-    sp_write_byte(byte(str[i]));
-}
-
-void SparkIO::sp_write_string(const char *str)
-{
-  int len, i;
-
-  len = strnlen(str, STR_LEN);
-  sp_write_byte(byte(len + 0xa0));
-  for (i=0; i<len; i++)
-    sp_write_byte(byte(str[i]));
-}      
-  
-void SparkIO::sp_write_long_string(const char *str)
-{
-  int len, i;
-
-  len = strnlen(str, STR_LEN);
-  sp_write_byte(byte(0xd9));
-  sp_write_byte(byte(len));
-  for (i=0; i<len; i++)
-    sp_write_byte(byte(str[i]));
-}
-
-void SparkIO::sp_write_float (float flt)
-{
-  union {
-    float val;
-    byte b[4];
-  } conv;
-  int i;
-   
-  conv.val = flt;
-  // Seems this creates the most significant byte in the last position, so for example
-  // 120.0 = 0x42F00000 is stored as 0000F042  
-   
-  sp_write_byte(0xca);
-  for (i=3; i>=0; i--) {
-    sp_write_byte(byte(conv.b[i]));
-  }
-}
-
-void SparkIO::sp_write_onoff (bool onoff)
-{
-  byte b;
-
-  if (onoff)
-  // true is 'on'
-    b = 0xc3;
-  else
-    b = 0xc2;
-  sp_write_byte(b);
-}
-
-//
-//
-//
-
-void SparkIO::sp_change_effect_parameter (char *pedal, int param, float val)
-{
-   sp_start_message (0x0104);
-   sp_write_prefixed_string (pedal);
-   sp_write_byte (byte(param));
-   sp_write_float(val);
-   sp_end_message();
-}
-
-
-void SparkIO::sp_change_effect (char *pedal1, char *pedal2)
-{
-   sp_start_message (0x0106);
-   sp_write_prefixed_string (pedal1);
-   sp_write_prefixed_string (pedal2);
-   sp_end_message();
-}
-
-void SparkIO::sp_change_hardware_preset (uint8_t preset_num)
-{
-   // preset_num is 0 to 3
-
-   sp_start_message (0x0138);
-   sp_write_byte (0);
-   sp_write_byte (preset_num)  ;     
-   sp_end_message();  
-}
-
-void SparkIO::sp_turn_effect_onoff (char *pedal, bool onoff)
-{
-   sp_start_message (0x0115);
-   sp_write_prefixed_string (pedal);
-   sp_write_onoff (onoff);
-   sp_end_message();
-}
-
-void SparkIO::sp_get_serial()
-{
-   sp_start_message (0x0223);
-   sp_end_message();  
-}
-
-void SparkIO::sp_get_name()
-{
-   sp_start_message (0x0211);
-   sp_end_message();  
-}
-
-void SparkIO::sp_get_hardware_preset_number()
-{
-   sp_start_message (0x0210);
-   sp_end_message();  
-}
-
-
-void SparkIO::sp_get_preset_details(unsigned int preset)
-{
-   int i;
-   uint8_t h, l;
-
-   uint_to_bytes(preset, &h, &l);
-   
-   sp_start_message (0x0201);
-   sp_write_byte(h);
-   sp_write_byte(l);
-
-   for (i=0; i<30; i++) {
-     sp_write_byte(0);
-   }
-   
-   sp_end_message(); 
-}
-
-void SparkIO::sp_create_preset(SparkPreset *preset)
-{
-  int i, j, siz;
-
-  sp_start_message (0x0101);
-
-  sp_write_byte_no_chksum (0x00);
-  sp_write_byte_no_chksum (preset->preset_num);   
-  sp_write_long_string (preset->UUID);
-  sp_write_string (preset->Name);
-  sp_write_string (preset->Version);
-  if (strnlen (preset->Description, STR_LEN) > 31)
-    sp_write_long_string (preset->Description);
-  else
-    sp_write_string (preset->Description);
-  sp_write_string(preset->Icon);
-  sp_write_float (preset->BPM);
-
-   
-  sp_write_byte (byte(0x90 + 7));       // always 7 pedals
-
-  for (i=0; i<7; i++) {
-      
-    sp_write_string (preset->effects[i].EffectName);
-    sp_write_onoff(preset->effects[i].OnOff);
-
-    siz = preset->effects[i].NumParameters;
-    sp_write_byte ( 0x90 + siz); 
-      
-    for (j=0; j<siz; j++) {
-      sp_write_byte (j);
-      sp_write_byte (byte(0x91));
-      sp_write_float (preset->effects[i].Parameters[j]);
-    }
-  }
-  sp_write_byte_no_chksum (uint8_t(sp_out_msg_chksum % 256));  
-  sp_end_message();
-}
-
-//
-//
-//
-
-void SparkIO::sp_out_store(uint8_t b)
-{
-  uint8_t bits;
-  
-  if (sp_oc_bit_mask == 0x80) {
-    sp_oc_bit_mask = 1;
-    sp_oc_bit_pos = sp_out_chunk.get_pos();
-    sp_out_chunk.add(0);
-  }
-  
-  if (b & 0x80) {
-    sp_out_chunk.set_bit_at_index(sp_oc_bit_pos, sp_oc_bit_mask);
-    sp_oc_checksum ^= sp_oc_bit_mask;
-  }
-  sp_out_chunk.add(b & 0x7f);
-  sp_oc_checksum ^= (b & 0x7f);
-
-  sp_oc_len++;
-
-  /*
-  if (oc_bit_mask == 0x40) {
-    out_chunk.get_at_index(oc_bit_pos, &bits);
-    oc_checksum ^= bits;    
-  }
-*/  
-  sp_oc_bit_mask *= 2;
-}
-
-
-void SparkIO::sp_process_out_chunks() {
-  int i, j, len;
-  int checksum_pos;
-  uint8_t b;
-  uint8_t len_h, len_l;
-
-  uint8_t num_chunks, this_chunk, this_len;
- 
-  while (!sp_out_message.is_empty()) {
-    sp_out_message.get(&sp_oc_cmd);
-    sp_out_message.get(&sp_oc_sub);
-    sp_out_message.get(&len_h);
-    sp_out_message.get(&len_l);
-    bytes_to_uint(len_h, len_l, &sp_oc_len);
-    len = sp_oc_len -4;
-
-    if (len > 0x80) { //this is a multi-chunk message
-      num_chunks = int(len / 0x80) + 1;
-      for (this_chunk=0; this_chunk < num_chunks; this_chunk++) {
-       
-        // create chunk header
-        sp_out_chunk.add(0xf0);
-        sp_out_chunk.add(0x01);
-        sp_out_chunk.add(sp_oc_seq);
-        
-        sp_oc_seq++;
-        if (sp_oc_seq > 0x7f) sp_oc_seq = 0x20;
-        
-        checksum_pos = sp_out_chunk.get_pos();
-        sp_out_chunk.add(0); // checksum
-        
-        sp_out_chunk.add(sp_oc_cmd);
-        sp_out_chunk.add(sp_oc_sub);
-
-        if (num_chunks == this_chunk+1) 
-          this_len = len % 0x80; 
-        else 
-          this_len = 0x80;
-
-        sp_oc_bit_mask = 0x80;
-        sp_oc_checksum = 0;
-        
-        // create chunk sub-header          
-        sp_out_store(num_chunks);
-        sp_out_store(this_chunk);
-        sp_out_store(this_len);
-        
-        for (i = 0; i < this_len; i++) {
-          sp_out_message.get(&b);
-          sp_out_store(b);
-        }
-        sp_out_chunk.set_at_index(checksum_pos, sp_oc_checksum);        
-        sp_out_chunk.add(0xf7);
-      }
-    } 
-    else { 
-    // create chunk header
-      sp_out_chunk.add(0xf0);
-      sp_out_chunk.add(0x01);
-      sp_out_chunk.add(sp_oc_seq);
-
-      checksum_pos = sp_out_chunk.get_pos();
-      sp_out_chunk.add(0); // checksum
-
-      sp_out_chunk.add(sp_oc_cmd);
-      sp_out_chunk.add(sp_oc_sub);
-
-      sp_oc_bit_mask = 0x80;
-      sp_oc_checksum = 0;
-      for (i = 0; i < len; i++) {
-        sp_out_message.get(&b);
-        sp_out_store(b);
-      }
-     sp_out_chunk.set_at_index(checksum_pos, sp_oc_checksum);        
-     sp_out_chunk.add(0xf7);
-    }
-    sp_out_chunk.commit();
-  }
-}
-
-void SparkIO::sp_process_out_blocks() {
-  int i;
-  int len;
-  uint8_t b;  
-  uint8_t cmd, sub;
-
-  while (!sp_out_chunk.is_empty() && sp_ob_ok_to_send) {
-    sp_ob_pos = 16;
-  
-    sp_out_block[0]= 0x01;
-    sp_out_block[1]= 0xfe;  
-    sp_out_block[2]= 0x00;    
-    sp_out_block[3]= 0x00;
-    sp_out_block[4]= 0x53;
-    sp_out_block[5]= 0xfe;
-    sp_out_block[6]= 0x00;
-    for (i=7; i<16;i++) 
-      sp_out_block[i]= 0x00;
-    
-    b = 0;
-    while (b != 0xf7) {
-      sp_out_chunk.get(&b);
-
-      // look for cmd and sub in the stream and set blocking to true if 0x0101 found - multi chunk
-      // not sure if that should be here because it means the block send needs to understand the chunks content
-      // perhaps it should be between converting msgpack to chunks and put flow control in there
-      if (sp_ob_pos == 20) 
-        cmd = b;
-      if (sp_ob_pos == 21) {
-        sub = b;
-        if (cmd == 0x01 && sub == 0x01) 
-          sp_ob_ok_to_send = false;
-      }
-      sp_out_block[sp_ob_pos++] = b;
-    }
-    sp_out_block[6] = sp_ob_pos;
-
-    sp_write(sp_out_block, sp_ob_pos);
-    sp_ob_last_sent_time = millis();
-
-    
-    if (!sp_ob_ok_to_send) {
-      DEBUG("Blocked");
-    }
-  }
-}
-
-
-
-
-
-// 
-// Main processing routine
-//
-
-void SparkIO::app_process() 
-{
-  // process inputs
-  app_process_in_blocks();
-  app_process_in_chunks();
-
-/* 
-  if (!in_message.is_empty()) {
-    Serial.print("FROM SPARK ");
-    in_message.dump2();
-  }
-  
-  
-  if (!out_message.is_empty()) {
-    Serial.print("TO SPARK ");
-    out_message.dump2();
-  }
-
-  
-  if (!ob_ok_to_send && (millis() - ob_last_sent_time > 500)) {
-    DEBUG("Timeout on send");
-    ob_ok_to_send = true;
-  }
-*/
-
-  // process outputs
-  
-  app_process_out_chunks();
-  app_process_out_blocks();
-}
-
-
-//
-// Routine to read the block from bluetooth and put into the in_chunk ring buffer
-//
-
-uint8_t chunk_header_to_spark[16]{0x01, 0xfe, 0x00, 0x00, 0x53, 0xfe, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-
-void SparkIO::app_process_in_blocks() {
-  uint8_t b;
-  bool boo;
-
-  while (app_available()) {
-    b = app_read();
-
-    // **** PASSTHROUGH OF SERIAL TO BLUETOOTH ****
-
-    if (app_pass_through) {
-      if (app_ser_state == 0 && b == 0x01) {
-        app_ser_state = 1;
-      }
-      else if (app_ser_state == 1) {
-        if (b == 0xfe) {
-          app_ser_state = 2;
-          app_ser_buf[0] = 0x01;
-          app_ser_buf[1] = 0xfe;
-          app_ser_pos = 2;
-        }
-        else 
-          app_ser_state = 0;
-      }
-      else if (app_ser_state == 2) {
-        if (app_ser_pos == 6) {
-          app_ser_len = b;
-        }
-        app_ser_buf[app_ser_pos++] = b;
-        if (app_ser_pos == app_ser_len) {
-          sp_write(app_ser_buf, app_ser_pos);   
-          app_ser_pos = 0;
-          app_ser_len = -1; 
-          app_ser_state = 0; 
-        }
-      }
-      if (app_ser_pos > MAX_SER_BUFFER) {
-        DEBUG("APPIO IO_PROCESS_IN_BLOCKS OVERRUN");
-        while (true);
-      }
-    }
-    
-    // **** END PASSTHROUGH ****
-
-    // check the 7th byte which holds the block length
-    if (app_rb_state == 6) {
-      app_rb_len = b - 16;
-      app_rb_state++;
-    }
-    // check every other byte in the block header for a match to the header standard
-    else if (app_rb_state > 0 && app_rb_state < 16) {
-      if (b == chunk_header_to_spark[app_rb_state]) {
-        app_rb_state++;
-      }
-      else {
-        app_rb_state = 0;
-        DEBUG("SparkAppIO bad block header");
-      }
-    } 
-    // and once past the header just read the next bytes as defined by rb_len
-    // store these to the chunk buffer
-    else if (app_rb_state == 16) {
-      app_in_chunk.add(b);
-      app_rb_len--;
-      if (app_rb_len == 0) {
-        app_rb_state = 0;
-        app_in_chunk.commit();
-      }
-    }
-      
-    // checking for rb_state 0 is done separately so that if a prior step finds a mismatch
-    // and resets the state to 0 it can be processed here for that byte - saves missing the 
-    // first byte of the header if that was misplaced
-    
-    if (app_rb_state == 0) 
-      if (b == chunk_header_to_spark[0]) 
-        app_rb_state++;
-  }
-}
-
-//
-// Routine to read chunks from the in_chunk ring buffer and copy to a in_message msgpack buffer
-//
-
-void SparkIO::app_process_in_chunks() {
-  uint8_t b;
-  bool boo;
-  unsigned int len;
-  uint8_t len_h, len_l;
-
-  while (!app_in_chunk.is_empty()) {               // && in_message.is_empty()) {  -- no longer needed because in_message is now a proper ringbuffer
-    boo = app_in_chunk.get(&b);
-    if (!boo) DEBUG("Chunk is_empty was false but the buffer was empty!");
-
-    switch (app_rc_state) {
-      case 1:
-        if (b == 0x01) 
-          app_rc_state++; 
-        else 
-          app_rc_state = 0; 
-        break;
-      case 2:
-        app_rc_seq = b; 
-        app_rc_state++; 
-        break;
-      case 3:
-        app_rc_checksum = b;
-        app_rc_state++; 
-        break;
-      case 4:
-        app_rc_cmd = b; 
-        app_rc_state++; 
-        break;
-      case 5:
-        app_rc_sub = b; 
-        app_rc_state = 10;
-/*
-        // flow control for blocking sends - put here in case we want to check rc_sub too
-        if (rc_cmd == 0x04 && rc_sub == 0x01) {
-          ob_ok_to_send = true;
-          DEBUG("Unblocked");
-        }
-*/        
-        // set up for the main data loop - rc_state 10
-        app_rc_bitmask = 0x80;
-        app_rc_calc_checksum = 0;
-        app_rc_data_pos = 0;
-        
-        // check for multi-chunk
-        if (app_rc_cmd == 1 && app_rc_sub == 1) 
-          app_rc_multi_chunk = true;
-        else {
-          app_rc_multi_chunk = false;
-          app_in_message_bad = false;
-          app_in_message.add(app_rc_cmd);
-          app_in_message.add(app_rc_sub);
-          app_in_message.add(0);
-          app_in_message.add(0);
-        }
-        break;
-      case 10:                    // the main loop which ends on an 0xf7
-        if (b == 0xf7) {
-          if (app_rc_calc_checksum != app_rc_checksum) 
-            app_in_message_bad = true;
-          app_rc_state = 0;
-          if (!app_rc_multi_chunk || (app_rc_this_chunk == app_rc_total_chunks-1)) { //last chunk in message
-            if (app_in_message_bad) {
-              DEBUG("Bad message, dropped");
-              app_in_message.drop();
-            }
-            else {
-              len = app_in_message.get_len();
-              uint_to_bytes(len, &len_h, &len_l);
-
-              app_in_message.set_at_index(2, len_h);
-              app_in_message.set_at_index(3, len_l);
-              app_in_message.commit();
-
-// TRACE
-//              Serial.print("From App       ");
-//              app_in_message.dump3();
-            }  
-          }
-        }
-        else if (app_rc_bitmask == 0x80) { // if the bitmask got to this value it is now a new bits 
-          app_rc_calc_checksum ^= b;
-          app_rc_bits = b;
-          app_rc_bitmask = 1;
-        }
-        else {
-          app_rc_data_pos++;
-          app_rc_calc_checksum ^= b;          
-          if (app_rc_bits & app_rc_bitmask) 
-            b |= 0x80;
-          app_rc_bitmask *= 2;
-          
-          if (app_rc_multi_chunk && app_rc_data_pos == 1) 
-            app_rc_total_chunks = b;
-          else if (app_rc_multi_chunk && app_rc_data_pos == 2) {
-            app_rc_last_chunk = app_rc_this_chunk;
-            app_rc_this_chunk = b;
-            if (app_rc_this_chunk == 0) {
-              app_in_message_bad = false;
-              app_in_message.add(app_rc_cmd);
-              app_in_message.add(app_rc_sub);
-              app_in_message.add(0);
-              app_in_message.add(0);
-            }
-            else if (app_rc_this_chunk != app_rc_last_chunk+1)
-              app_in_message_bad = true;
-          }
-          else if (app_rc_multi_chunk && app_rc_data_pos == 3) 
-            app_rc_chunk_len = b;
-          else {  
-            app_in_message.add(b);             
-          }
-          
-        };
-        break;
-    }
-
-    // checking for rc_state 0 is done separately so that if a prior step finds a mismatch
-    // and resets the state to 0 it can be processed here for that byte - saves missing the 
-    // first byte of the header if that was misplaced
-    
-    if (app_rc_state == 0) {
-      if (b == 0xf0) 
-        app_rc_state++;
-    }
-  }
-}
-
-//// Routines to interpret the data
-
-void SparkIO::app_read_byte(uint8_t *b)
-{
-  uint8_t a;
-  app_in_message.get(&a);
-  *b = a;
-}   
-   
-void SparkIO::app_read_string(char *str)
-{
-  uint8_t a, len;
-  int i;
-
-  app_read_byte(&a);
-  if (a == 0xd9) {
-    app_read_byte(&len);
-  }
-  else if (a > 0xa0) {
-    len = a - 0xa0;
-  }
-  else {
-    app_read_byte(&a);
-    if (a < 0xa1 || a >= 0xc0) DEBUG("Bad string");
-    len = a - 0xa0;
-  }
-
-  if (len > 0) {
-    // process whole string but cap it at STR_LEN-1
-    for (i = 0; i < len; i++) {
-      app_read_byte(&a);
-      if (a<0x20 || a>0x7e) a=0x20; // make sure it is in ASCII range - to cope with get_serial 
-      if (i < STR_LEN -1) str[i]=a;
-    }
-    str[i > STR_LEN-1 ? STR_LEN-1 : i]='\0';
-  }
-  else {
-    str[0]='\0';
-  }
-}   
-
-void SparkIO::app_read_prefixed_string(char *str)
-{
-  uint8_t a, len;
-  int i;
-
-  app_read_byte(&a); 
-  app_read_byte(&a);
-
-  if (a < 0xa1 || a >= 0xc0) DEBUG("Bad string");
-  len = a-0xa0;
-
-  if (len > 0) {
-    for (i = 0; i < len; i++) {
-      app_read_byte(&a);
-      if (a<0x20 || a>0x7e) a=0x20; // make sure it is in ASCII range - to cope with get_serial 
-      if (i < STR_LEN -1) str[i]=a;
-    }
-    str[i > STR_LEN-1 ? STR_LEN-1 : i]='\0';
-  }
-  else {
-    str[0]='\0';
-  }
-}   
-
-void SparkIO::app_read_float(float *f)
-{
-  union {
-    float val;
-    byte b[4];
-  } conv;   
-  uint8_t a;
-  int i;
-
-  app_read_byte(&a);  // should be 0xca
-  if (a != 0xca) return;
-
-  // Seems this creates the most significant byte in the last position, so for example
-  // 120.0 = 0x42F00000 is stored as 0000F042  
-   
-  for (i=3; i>=0; i--) {
-    app_read_byte(&a);
-    conv.b[i] = a;
-  } 
-  *f = conv.val;
-}
-
-void SparkIO::app_read_onoff(bool *b)
-{
-  uint8_t a;
-   
-  app_read_byte(&a);
-  if (a == 0xc3)
-    *b = true;
-  else // 0xc2
-    *b = false;
-}
-
-// The functions to get the message
-
-bool SparkIO::app_get_message(unsigned int *cmdsub, SparkMessage *msg, SparkPreset *preset)
-{
-  uint8_t cmd, sub, len_h, len_l;
-  unsigned int len;
-  unsigned int cs;
-   
-  uint8_t junk;
-  int i, j;
-  uint8_t num;
-
-  if (app_in_message.is_empty()) return false;
-
-  app_read_byte(&cmd);
-  app_read_byte(&sub);
-  app_read_byte(&len_h);
-  app_read_byte(&len_l);
-  
-  bytes_to_uint(len_h, len_l, &len);
-  bytes_to_uint(cmd, sub, &cs);
-
-  *cmdsub = cs;
-  switch (cs) {
     // 0x02 series - requests
     // get preset information
     case 0x0201:
-      app_read_byte(&msg->param1);
-      app_read_byte(&msg->param2);
-      for (i=0; i < 30; i++) app_read_byte(&junk); // 30 bytes of 0x00
+      read_byte(&msg->param1);
+      read_byte(&msg->param2);
+      for (i=0; i < 30; i++) read_byte(&junk); // 30 bytes of 0x00
       break;            
     // get current hardware preset number - this is a request with no payload
     case 0x0210:
@@ -1356,147 +578,239 @@ bool SparkIO::app_get_message(unsigned int *cmdsub, SparkMessage *msg, SparkPres
       break;
     // the UNKNOWN command - 0x0224 00 01 02 03
     case 0x0224:
+    case 0x022a:
+    case 0x032a:
       // the data is a fixed array of four bytes (0x94 00 01 02 03)
-      app_read_byte(&junk);
-      app_read_byte(&msg->param1);
-      app_read_byte(&msg->param2);
-      app_read_byte(&msg->param3);
-      app_read_byte(&msg->param4);
-      break;
+      read_byte(&junk);
+      read_uint(&msg->param1);
+      read_uint(&msg->param2);
+      read_uint(&msg->param3);
+      read_uint(&msg->param4);
     // get firmware version - this is a request with no payload
     case 0x022f:
       break;
-    // 0x01 series - instructions
     // change effect parameter
     case 0x0104:
-      app_read_string(msg->str1);
-      app_read_byte(&msg->param1);
-      app_read_float(&msg->val);
+      read_string(msg->str1);
+      read_byte(&msg->param1);
+      read_float(&msg->val);
       break;
-    // change effect model
+    // change of effect model
+    case 0x0306:
     case 0x0106:
-      app_read_string(msg->str1);
-      app_read_string(msg->str2);
+      read_string(msg->str1);
+      read_string(msg->str2);
       break;
-    // enable / disable effecct
+    // get current hardware preset number
+    case 0x0310:
+      read_byte(&msg->param1);
+      read_byte(&msg->param2);
+      break;
+    // get name
+    case 0x0311:
+      read_string(msg->str1);
+      break;
+    // enable / disable an effect
+    case 0x0315:
     case 0x0115:
-      app_read_string(msg->str1);
-      app_read_onoff(&msg->onoff);
-      break;    
-    // change preset to 0-3, 0x7f
-    case 0x0138:
-      app_read_byte(&msg->param1);
-      app_read_byte(&msg->param2);
+      read_string(msg->str1);
+      read_onoff(&msg->onoff);
       break;
-    // send whole new preset to 0-3, 0x7f  
+    // get serial number
+    case 0x0323:
+      read_string(msg->str1);
+      break;
+    // store into hardware preset
+    case 0x0327:
+      read_byte(&msg->param1);
+      read_byte(&msg->param2);
+      break;
+    // firmware version number
+    case 0x032f:
+      // really this is a uint32 but it is just as easy to read into 4 uint8 - a bit of a cheat
+      read_byte(&junk);           // this will be 0xce for a uint32
+      read_byte(&msg->param1);      
+      read_byte(&msg->param2); 
+      read_byte(&msg->param3); 
+      read_byte(&msg->param4); 
+      break;
+    // change of effect parameter
+    case 0x0337:
+      read_string(msg->str1);
+      read_byte(&msg->param1);
+      read_float(&msg->val);
+      break;
+    // change of preset number selected on the amp via the buttons
+    case 0x0338:
+    case 0x0138:
+      read_byte(&msg->param1);
+      read_byte(&msg->param2);
+      break;
+    // license key
+    case 0x0170:
+      for (i = 0; i < 64; i++)
+        read_uint(&junk);
+      break;
+    // response to a request for a full preset
+    case 0x0301:
     case 0x0101:
-      app_read_byte(&junk);
-      app_read_byte(&preset->preset_num);
-      app_read_string(preset->UUID); 
-      app_read_string(preset->Name);
-      app_read_string(preset->Version);
-      app_read_string(preset->Description);
-      app_read_string(preset->Icon);
-      app_read_float(&preset->BPM);
+      read_byte(&preset->curr_preset);
+      read_byte(&preset->preset_num);
+      read_string(preset->UUID); 
+      read_string(preset->Name);
+      read_string(preset->Version);
+      read_string(preset->Description);
+      read_string(preset->Icon);
+      read_float(&preset->BPM);
 
       for (j=0; j<7; j++) {
-        app_read_string(preset->effects[j].EffectName);
-        app_read_onoff(&preset->effects[j].OnOff);
-        app_read_byte(&num);
+        read_string(preset->effects[j].EffectName);
+        read_onoff(&preset->effects[j].OnOff);
+        read_byte(&num);
         preset->effects[j].NumParameters = num - 0x90;
         for (i = 0; i < preset->effects[j].NumParameters; i++) {
-          app_read_byte(&junk);
-          app_read_byte(&junk);
-          app_read_float(&preset->effects[j].Parameters[i]);
+          read_byte(&junk);
+          read_byte(&junk);
+          read_float(&preset->effects[j].Parameters[i]);
         }
       }
-      app_read_byte(&preset->chksum);  
+      read_byte(&preset->chksum);  
+
+      break;
+    // tap tempo!
+    case 0x0363:
+      read_float(&msg->val);  
+      break;
+    // acks - no payload to read - no ack sent for an 0x0104
+    case 0x0401:
+    case 0x0501:
+    case 0x0406:
+    case 0x0415:
+    case 0x0438:
+      Serial.print("Got an ack ");
+      Serial.println(cs, HEX);
       break;
     default:
-      Serial.print("Unprocessed message SparkAppIO ");
+      Serial.print("Unprocessed message SparkIO ");
       Serial.print (cs, HEX);
       Serial.print(":");
       for (i = 0; i < len - 4; i++) {
-        app_read_byte(&junk);
+        read_byte(&junk);
         Serial.print(junk, HEX);
         Serial.print(" ");
       }
       Serial.println();
   }
-
   return true;
 }
 
-    
 //
 // Output routines
 //
 
-
-void SparkIO::app_start_message(int cmdsub)
+void MessageOut::start_message(int cmdsub)
 {
-  app_om_cmd = (cmdsub & 0xff00) >> 8;
-  app_om_sub = cmdsub & 0xff;
+  int om_cmd, om_sub;
+  
+  om_cmd = (cmdsub & 0xff00) >> 8;
+  om_sub = cmdsub & 0xff;
 
-  app_out_message.add(app_om_cmd);
-  app_out_message.add(app_om_sub);
-  app_out_message.add(0);      // placeholder for length
-  app_out_message.add(0);      // placeholder for length
+  out_message->add(om_cmd);
+  out_message->add(om_sub);
+  out_message->add(0);      // placeholder for length
+  out_message->add(0);      // placeholder for length
+
+  out_msg_chksum = 0;
 }
 
-
-void SparkIO::app_end_message()
+void MessageOut::end_message()
 {
   unsigned int len;
   uint8_t len_h, len_l;
   
-  len = app_out_message.get_len();
+  len = out_message->get_len();
   uint_to_bytes(len, &len_h, &len_l);
   
-  app_out_message.set_at_index(2, len_h);   
-  app_out_message.set_at_index(3, len_l);
-  app_out_message.commit();
+  out_message->set_at_index(2, len_h);   
+  out_message->set_at_index(3, len_l);
+  out_message->commit();
 }
 
-
-void SparkIO::app_write_byte(byte b)
+void MessageOut::write_byte_no_chksum(byte b)
 {
-  app_out_message.add(b);
+  out_message->add(b);
 }
 
-void SparkIO::app_write_prefixed_string(const char *str)
+void MessageOut::write_byte(byte b)
+{
+  out_message->add(b);
+  out_msg_chksum += int(b);
+}
+
+void MessageOut::write_uint(byte b)
+{
+  if (b > 127) {
+    out_message->add(0xCC);
+    out_msg_chksum += int(0xCC);  
+  }
+  out_message->add(b);
+  out_msg_chksum += int(b);
+}
+
+void MessageOut::write_uint32(uint32_t w)
+{
+  int i;
+  uint8_t b;
+  uint32_t mask;
+
+  mask = 0xFF000000;
+  
+  out_message->add(0xCE);
+  out_msg_chksum += int(0xCE);  
+
+  for (i = 3; i >= 0; i--) {
+    b = (w & mask) >> (8*i);
+    mask >>= 8;
+    write_uint(b);
+//    out_message->add(b);
+//    out_msg_chksum += int(b);
+  }
+}
+
+
+void MessageOut::write_prefixed_string(const char *str)
 {
   int len, i;
 
   len = strnlen(str, STR_LEN);
-  app_write_byte(byte(len));
-  app_write_byte(byte(len + 0xa0));
+  write_byte(byte(len));
+  write_byte(byte(len + 0xa0));
   for (i=0; i<len; i++)
-    app_write_byte(byte(str[i]));
+    write_byte(byte(str[i]));
 }
 
-void SparkIO::app_write_string(const char *str)
+void MessageOut::write_string(const char *str)
 {
   int len, i;
 
   len = strnlen(str, STR_LEN);
-  app_write_byte(byte(len + 0xa0));
+  write_byte(byte(len + 0xa0));
   for (i=0; i<len; i++)
-    app_write_byte(byte(str[i]));
+    write_byte(byte(str[i]));
 }      
   
-void SparkIO::app_write_long_string(const char *str)
+void MessageOut::write_long_string(const char *str)
 {
   int len, i;
 
   len = strnlen(str, STR_LEN);
-  app_write_byte(byte(0xd9));
-  app_write_byte(byte(len));
+  write_byte(byte(0xd9));
+  write_byte(byte(len));
   for (i=0; i<len; i++)
-    app_write_byte(byte(str[i]));
+    write_byte(byte(str[i]));
 }
 
-void SparkIO::app_write_float (float flt)
+void MessageOut::write_float (float flt)
 {
   union {
     float val;
@@ -1508,13 +822,13 @@ void SparkIO::app_write_float (float flt)
   // Seems this creates the most significant byte in the last position, so for example
   // 120.0 = 0x42F00000 is stored as 0000F042  
    
-  app_write_byte(0xca);
+  write_byte(0xca);
   for (i=3; i>=0; i--) {
-    app_write_byte(byte(conv.b[i]));
+    write_byte(byte(conv.b[i]));
   }
 }
 
-void SparkIO::app_write_onoff (bool onoff)
+void MessageOut::write_onoff (bool onoff)
 {
   byte b;
 
@@ -1523,130 +837,209 @@ void SparkIO::app_write_onoff (bool onoff)
     b = 0xc3;
   else
     b = 0xc2;
-  app_write_byte(b);
+  write_byte(b);
 }
 
-//
-//
-//
 
-void SparkIO::app_change_effect_parameter (char *pedal, int param, float val)
+void MessageOut::change_effect_parameter (char *pedal, int param, float val)
 {
-   app_start_message (0x0337);
-   app_write_prefixed_string (pedal);
-   app_write_byte (byte(param));
-   app_write_float(val);
-   app_end_message();
+   if (cmd_base == 0x0100) 
+     start_message (cmd_base + 0x04);
+   else
+     start_message (cmd_base + 0x37);
+   write_prefixed_string (pedal);
+   write_byte (byte(param));
+   write_float(val);
+   end_message();
 }
 
-
-void SparkIO::app_change_effect (char *pedal1, char *pedal2)
+void MessageOut::change_effect (char *pedal1, char *pedal2)
 {
-   app_start_message (0x0306);
-   app_write_prefixed_string (pedal1);
-   app_write_prefixed_string (pedal2);
-   app_end_message();
+   start_message (cmd_base + 0x06);
+   write_prefixed_string (pedal1);
+   write_prefixed_string (pedal2);
+   end_message();
 }
 
-void SparkIO::app_change_hardware_preset (uint8_t preset_num)
+
+
+void MessageOut::change_hardware_preset (uint8_t curr_preset, uint8_t preset_num)
 {
    // preset_num is 0 to 3
 
-   app_start_message (0x0338);
-   app_write_byte (0);
-   app_write_byte (preset_num);     
-   app_end_message();  
+   start_message (cmd_base + 0x38);
+   write_byte (curr_preset);
+   write_byte (preset_num)  ;     
+   end_message();  
 }
 
-void SparkIO::app_turn_effect_onoff (char *pedal, bool onoff)
+
+void MessageOut::turn_effect_onoff (char *pedal, bool onoff)
 {
-   app_start_message (0x0315);
-   app_write_prefixed_string (pedal);
-   app_write_onoff (onoff);
-   app_end_message();
+   start_message (cmd_base + 0x15);
+   write_prefixed_string (pedal);
+   write_onoff (onoff);
+   end_message();
 }
 
-void SparkIO::app_save_hardware_preset(uint8_t preset_num)
+void MessageOut::get_serial()
 {
-   app_start_message (0x0327);
-   app_write_byte (0);
-   app_write_byte (preset_num);  
-   app_end_message();
+   start_message (0x0223);
+   end_message();  
 }
 
-void SparkIO::app_create_preset(SparkPreset *preset)
+void MessageOut::get_name()
+{
+   start_message (0x0211);
+   end_message();  
+}
+
+void MessageOut::get_hardware_preset_number()
+{
+   start_message (0x0210);
+   end_message();  
+}
+
+void MessageOut::save_hardware_preset(uint8_t curr_preset, uint8_t preset_num)
+{
+   start_message (cmd_base + 0x27);
+//   start_message (0x0327);
+   write_byte (curr_preset);
+   write_byte (preset_num);  
+   end_message();
+}
+
+void MessageOut::send_firmware_version(uint32_t firmware)
+{
+   start_message (0x032f);
+   write_uint32(firmware);  
+   end_message();
+}
+
+void MessageOut::send_serial_number(char *serial)
+{
+   start_message (0x0323);
+   write_prefixed_string(serial);
+   end_message();
+}
+
+void MessageOut::send_ack(unsigned int cmdsub) {
+   start_message (cmdsub);
+   end_message();
+}
+
+void MessageOut::send_0x022a_info(byte v1, byte v2, byte v3, byte v4)
+{
+   start_message (0x032a);
+   write_byte(0x94);
+   write_uint(v1);
+   write_uint(v2);
+   write_uint(v3);
+   write_uint(v4);      
+   end_message();
+}
+
+void MessageOut::send_key_ack()
+{
+   start_message (0x0470);
+   write_byte(0x00);
+   end_message();
+}
+
+void MessageOut::send_preset_number(uint8_t preset_h, uint8_t preset_l)
+{
+   start_message (0x0310);
+   write_byte(preset_h);
+   write_byte(preset_l);
+   end_message();
+}
+
+void MessageOut::get_preset_details(unsigned int preset)
+{
+   int i;
+   uint8_t h, l;
+
+   uint_to_bytes(preset, &h, &l);
+   
+   start_message (0x0201);
+   write_byte(h);
+   write_byte(l);
+
+   for (i=0; i<30; i++) {
+     write_byte(0);
+   }
+   
+   end_message(); 
+}
+
+void MessageOut::create_preset(SparkPreset *preset)
 {
   int i, j, siz;
 
-  app_start_message (0x0301);
+  start_message (cmd_base + 0x01);
 
-  app_write_byte (0x00);
-  app_write_byte (preset->preset_num);   
-  app_write_long_string (preset->UUID);
-  app_write_string (preset->Name);
-  app_write_string (preset->Version);
+  write_byte_no_chksum (0x00);
+  write_byte_no_chksum (preset->preset_num);   
+  write_long_string (preset->UUID);
+  write_string (preset->Name);
+  write_string (preset->Version);
   if (strnlen (preset->Description, STR_LEN) > 31)
-    app_write_long_string (preset->Description);
+    write_long_string (preset->Description);
   else
-    app_write_string (preset->Description);
-  app_write_string(preset->Icon);
-  app_write_float (preset->BPM);
-
+    write_string (preset->Description);
+  write_string(preset->Icon);
+  write_float (preset->BPM);
    
-  app_write_byte (byte(0x90 + 7));       // always 7 pedals
-
+  write_byte (byte(0x90 + 7));       // always 7 pedals
   for (i=0; i<7; i++) {
-      
-    app_write_string (preset->effects[i].EffectName);
-    app_write_onoff(preset->effects[i].OnOff);
+    write_string (preset->effects[i].EffectName);
+    write_onoff(preset->effects[i].OnOff);
 
     siz = preset->effects[i].NumParameters;
-    app_write_byte ( 0x90 + siz); 
+    write_byte ( 0x90 + siz); 
       
     for (j=0; j<siz; j++) {
-      app_write_byte (j);
-      app_write_byte (byte(0x91));
-      app_write_float (preset->effects[i].Parameters[j]);
+      write_byte (j);
+      write_byte (byte(0x91));
+      write_float (preset->effects[i].Parameters[j]);
     }
   }
-  app_write_byte (preset->chksum);  
-  app_end_message();
+  write_byte_no_chksum (uint8_t(out_msg_chksum % 256));  
+  end_message();
 }
 
-//
-//
-//
+void SparkMessageOut::set(RingBuffer *messages) {
+  out_message = messages;
+  cmd_base = 0x0100;
+}
 
-void SparkIO::app_out_store(uint8_t b)
+void AppMessageOut::set(RingBuffer *messages) {
+  out_message = messages;
+  cmd_base = 0x0300;
+}
+
+void ChunkOut::out_store(uint8_t b)
 {
   uint8_t bits;
   
-  if (app_oc_bit_mask == 0x80) {
-    app_oc_bit_mask = 1;
-    app_oc_bit_pos = app_out_chunk.get_pos();
-    app_out_chunk.add(0);
+  if (oc_bit_mask == 0x80) {
+    oc_bit_mask = 1;
+    oc_bit_pos = out_chunk->get_pos();
+    out_chunk->add(0);
   }
   
   if (b & 0x80) {
-    app_out_chunk.set_bit_at_index(app_oc_bit_pos, app_oc_bit_mask);
-    app_oc_checksum ^= app_oc_bit_mask;
+    out_chunk->set_bit_at_index(oc_bit_pos, oc_bit_mask);
+    oc_checksum ^= oc_bit_mask;
   }
-  app_out_chunk.add(b & 0x7f);
-  app_oc_checksum ^= (b & 0x7f);
+  out_chunk->add(b & 0x7f);
+  oc_checksum ^= (b & 0x7f);
 
-  app_oc_len++;
-
-  /*
-  if (oc_bit_mask == 0x40) {
-    out_chunk.get_at_index(oc_bit_pos, &bits);
-    oc_checksum ^= bits;    
-  }
-*/  
-  app_oc_bit_mask *= 2;
+  oc_len++;
+  oc_bit_mask *= 2;
 }
 
-
-void SparkIO::app_process_out_chunks() {
+void ChunkOut::process() {
   int i, j, len;
   int checksum_pos;
   uint8_t b;
@@ -1654,115 +1047,195 @@ void SparkIO::app_process_out_chunks() {
 
   uint8_t num_chunks, this_chunk, this_len;
  
-  while (!app_out_message.is_empty()) {
-    app_out_message.get(&app_oc_cmd);
-    app_out_message.get(&app_oc_sub);
-    app_out_message.get(&len_h);
-    app_out_message.get(&len_l);
-    bytes_to_uint(len_h, len_l, &app_oc_len);
-    len = app_oc_len -4;
+  while (!out_message->is_empty()) {
+    out_message->get(&oc_cmd);
+    out_message->get(&oc_sub);
+    out_message->get(&len_h);
+    out_message->get(&len_l);
+    bytes_to_uint(len_h, len_l, &oc_len);
+    len = oc_len -4;
 
-    if (len > 0x19) { //this is a multi-chunk message for amp to app (max 0x19 data)
-      num_chunks = int(len / 0x19) + 1;
-      for (this_chunk=0; this_chunk < num_chunks; this_chunk++) {
+    if (len > chunk_size) { //this is a multi-chunk message
+      num_chunks = int(len / chunk_size) + 1;
+      for (this_chunk = 0; this_chunk < num_chunks; this_chunk++) {
        
         // create chunk header
-        app_out_chunk.add(0xf0);
-        app_out_chunk.add(0x01);
-        if (app_oc_sub == 0x01)        // asked for a preset
-          app_out_chunk.add(app_rc_seq);   // last sequence received
+        out_chunk->add(0xf0);
+        out_chunk->add(0x01);
+
+        // WATCH OUT THIS CODE IS IN TWO PLACES!!! NEED TO CHANGE BOTH IF CHANGING EITHER
+        // Feels clunky to use a 'global' variable but how else to get the sequence number from the input to the output?
+        if (oc_cmd == 0x04 || oc_cmd == 0x05 || oc_cmd == 0x03)  // response, so use other sequence counter
+          out_chunk->add(*rec_seq);
         else {
-          app_out_chunk.add(app_oc_seq);
-          app_oc_seq++;
-          if (app_oc_seq > 0x7f) app_oc_seq = 0x40;
-        }
+          out_chunk->add(oc_seq);
+          oc_seq++;
+          if (oc_seq == 0x7f) oc_seq = 0x40;  // for sending from amp to app
+          if (oc_seq == 0x3f) oc_seq = 0x01;  // for sending from app to amp
+        };
+
         
-        checksum_pos = app_out_chunk.get_pos();
-        app_out_chunk.add(0); // checksum
+        checksum_pos = out_chunk->get_pos();
+        out_chunk->add(0); // checksum
         
-        app_out_chunk.add(app_oc_cmd);
-        app_out_chunk.add(app_oc_sub);
+        out_chunk->add(oc_cmd);
+        out_chunk->add(oc_sub);
 
         if (num_chunks == this_chunk+1) 
-          this_len = len % 0x19;            
+          this_len = len % chunk_size; 
         else 
-          this_len = 0x19;                  
+          this_len = chunk_size;
 
-        app_oc_bit_mask = 0x80;
-        app_oc_checksum = 0;
+        oc_bit_mask = 0x80;
+        oc_checksum = 0;
         
         // create chunk sub-header          
-        app_out_store(num_chunks);
-        app_out_store(this_chunk);
-        app_out_store(this_len);
+        out_store(num_chunks);
+        out_store(this_chunk);
+        out_store(this_len);
         
         for (i = 0; i < this_len; i++) {
-          app_out_message.get(&b);
-          app_out_store(b);
+          out_message->get(&b);
+          out_store(b);
         }
-        app_out_chunk.set_at_index(checksum_pos, app_oc_checksum);        
-        app_out_chunk.add(0xf7);
+        out_chunk->set_at_index(checksum_pos, oc_checksum);        
+        out_chunk->add(0xf7);
       }
     } 
     else { 
     // create chunk header
-      app_out_chunk.add(0xf0);
-      app_out_chunk.add(0x01);
-      app_out_chunk.add(app_oc_seq);
+      out_chunk->add(0xf0);
+      out_chunk->add(0x01);
 
-      checksum_pos = app_out_chunk.get_pos();
-      app_out_chunk.add(0); // checksum
+      // Feels clunky to use a 'global' variable but how else to get the sequence number from the input to the output?
+      if (oc_cmd == 0x04 || oc_cmd == 0x05 || (oc_cmd == 0x03 && (oc_sub != 0x27 && oc_sub != 0x37 && oc_sub != 0x38)))  // response, so use other sequence counter
+        out_chunk->add(*rec_seq);
+      else {
+        out_chunk->add(oc_seq);
+        oc_seq++;
+        if (oc_seq == 0x7f) oc_seq = 0x40;  // for sending from amp to app
+        if (oc_seq == 0x3f) oc_seq = 0x01;  // for sending from app to amp
+      };
 
-      app_out_chunk.add(app_oc_cmd);
-      app_out_chunk.add(app_oc_sub);
+      checksum_pos = out_chunk->get_pos();
+      out_chunk->add(0); // checksum
 
-      app_oc_bit_mask = 0x80;
-      app_oc_checksum = 0;
+      out_chunk->add(oc_cmd);
+      out_chunk->add(oc_sub);
+
+      oc_bit_mask = 0x80;
+      oc_checksum = 0;
       for (i = 0; i < len; i++) {
-        app_out_message.get(&b);
-        app_out_store(b);
+        out_message->get(&b);
+        out_store(b);
       }
-      app_out_chunk.set_at_index(checksum_pos, app_oc_checksum);        
-      app_out_chunk.add(0xf7);
+     out_chunk->set_at_index(checksum_pos, oc_checksum);        
+     out_chunk->add(0xf7);
     }
-    app_out_chunk.commit();
+    out_chunk->commit();
+//    out_chunk->dump3();
   }
 }
 
-void SparkIO::app_process_out_blocks() {
+void SparkChunkOut::set(RingBuffer *chunks, RingBuffer *messages, uint8_t *seq) {
+  out_chunk = chunks;
+  out_message = messages;
+  chunk_size = 0x80;
+  oc_seq = 0x01;
+  rec_seq = seq;
+}
+
+void AppChunkOut::set(RingBuffer *chunks, RingBuffer *messages, uint8_t *seq) {
+  out_chunk = chunks;
+  out_message = messages;
+  chunk_size = 0x19;
+  oc_seq = 0x40;
+  rec_seq = seq;
+}
+
+
+void BlockOut::process() {
   int i;
   int len;
   uint8_t b;  
   uint8_t cmd, sub;
 
-  while (!app_out_chunk.is_empty()) {
-    app_ob_pos = 16;
-  
-    app_out_block[0]= 0x01;
-    app_out_block[1]= 0xfe;  
-    app_out_block[2]= 0x00;    
-    app_out_block[3]= 0x00;
-    app_out_block[4]= 0x41;
-    app_out_block[5]= 0xff;
-    app_out_block[6]= 0x00;
-    for (i=7; i<16;i++) 
-      app_out_block[i]= 0x00;
-    
+  while (!out_chunk->is_empty() && *ok_to_send) {
+    ob_pos = 16;
+
+    for (i=0; i < 16; i++) 
+      out_block[i]= blk_hdr[i];
+      
     b = 0;
-    while (app_ob_pos < 0x6a && !app_out_chunk.is_empty()) {
-      app_out_chunk.get(&b);
-      app_out_block[app_ob_pos++] = b;
+
+    // This condition is complex because sending to the Spark is always a block ending in 0xf7 and chunk aligned
+    // but the Spark sends a slew of data until it runs out, and the block contains multiple and partial
+    // chunks, and with a different block size - inconsistent
+    
+    while (    (!to_spark && (ob_pos < block_size && !out_chunk->is_empty())) 
+            || ( to_spark && (b != 0xf7))   ) {
+      out_chunk->get(&b);
+      
+      // look for cmd and sub in the stream and set blocking to true if 0x0101 found - multi chunk
+      // not sure if that should be here because it means the block send needs to understand the chunks content
+      // perhaps it should be between converting msgpack to chunks and put flow control in there
+      if (ob_pos == 20) 
+        cmd = b;
+      if (ob_pos == 21)
+        sub = b;
+
+      out_block[ob_pos++] = b;
     }
-    app_out_block[6] = app_ob_pos;
+    
+    out_block[6] = ob_pos;
+    data_write(out_block, ob_pos);
 /*
     for (i=0; i<ob_pos;i++) {
-      if (out_block[i]<16) Serial.print("0");
-      Serial.print(out_block[i], HEX);
+      b=out_block[i];
+      if (b<16) Serial.print("0");
+      Serial.print(b, HEX);
       Serial.print(" ");
+      if (i%16 ==15) Serial.println();
     }
     Serial.println();
-*/    
-    app_write(app_out_block, app_ob_pos);
-    delay(50);
+*/
+    if (to_spark) {
+      if (cmd == 0x01 && sub == 0x01) {// need to ensure we are only blocking on send to spark!
+          *ok_to_send = false;
+          last_sent_time = millis();  
+          DEBUG("Blocked");
+      }
+    }
   }
+}
+
+void SparkBlockOut::set(RingBuffer *chunks, uint8_t *hdr, bool *ok) {
+  out_chunk = chunks;
+  blk_hdr = hdr;
+  block_size = 0xad;
+  to_spark = true;
+  
+  ok_to_send = ok;
+  *ok_to_send = true;    
+  last_sent_time = millis();
+}
+
+void SparkBlockOut::data_write(uint8_t *buf, int len){
+  sp_write(buf, len);
+}
+
+void AppBlockOut::set(RingBuffer *chunks, uint8_t *hdr, bool *ok) {
+  out_chunk = chunks;
+  blk_hdr = hdr;
+  block_size = 0x6a;
+  to_spark = false;
+
+  // not sure we need flow control to the app
+  ok_to_send = ok;
+  *ok_to_send = true;
+  last_sent_time = millis();
+}
+
+void AppBlockOut::data_write(uint8_t *buf, int len){
+  app_write(buf, len);
 }
