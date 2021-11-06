@@ -5,260 +5,304 @@
 #include "Spark.h"
 #include "SparkComms.h"
 
-#define MAX_BT_BUFFER 5000
-#define MAX_SER_BUFFER 5000
+#define MAX_IO_BUFFER 5000
 
-class SparkIO
+// BLOCK INPUT CLASS
+class BlockIn
 {
   public:
-    SparkIO(bool passthru);
+    BlockIn() {};
+    void process();
+    virtual bool data_available();
+    virtual uint8_t data_read();
+    virtual void data_write(uint8_t *buf, int len);
 
-    // SPARK MESSAGES
+    // processing received block
+    uint8_t *blk_hdr;
+    RingBuffer *rb;
+    int rb_state = 0;
+    int rb_len = 0;
+    // passthru
+    uint8_t io_buf[MAX_IO_BUFFER];
+    int io_pos = 0;
+    int io_len = -1;
+    int io_state = 0;
+    bool pass_through = true;
+};
 
-    // overall processing
+class SparkBlockIn: public BlockIn
+{
+  public:
+    SparkBlockIn() {};
+    bool data_available();
+    uint8_t data_read();
+    void data_write(uint8_t *buf, int len);
+    void set(bool pass, RingBuffer *ring_buffer, uint8_t *hdr);
+};
 
-    void sp_process();
+class AppBlockIn: public BlockIn
+{
+  public:
+    AppBlockIn() {};
+    bool data_available();
+    uint8_t data_read();
+    void data_write(uint8_t *buf, int len);
+    void set(bool pass, RingBuffer *ring_buffer, uint8_t *hdr);
+};
 
-    //  receiving data   
+// CHUNK INPUT CLASS
+class ChunkIn
+{
+  public:
+    ChunkIn() {};
+    void process();
+    // processing received block
+    RingBuffer *in_chunk;
+    RingBuffer *in_message;
+    bool *ok_to_send;
+
+    int rc_state;
+    bool in_message_bad;
     
-    void sp_process_in_blocks();
-    void sp_process_in_chunks();
+    int rc_seq;
+    int rc_cmd;
+    int rc_sub;
+    int rc_checksum;
+    
+    int rc_calc_checksum;
 
-    void sp_process_out_chunks();
-    void sp_process_out_blocks();
+    bool rc_multi_chunk;
+    int rc_data_pos;
+    uint8_t rc_bitmask;
+    int rc_bits;
+
+    int rc_total_chunks;
+    int rc_this_chunk;
+    int rc_chunk_len;
+    int rc_last_chunk;
+
+    uint8_t *rec_seq;    // last received sequence from app or amp
+};
+
+class SparkChunkIn: public ChunkIn
+{
+  public:
+    SparkChunkIn() {};
+    void set(RingBuffer *chunks, RingBuffer *messages, bool *ok, uint8_t *seq);
+};
+
+class AppChunkIn: public ChunkIn
+{
+  public:
+    AppChunkIn() {};
+    void set(RingBuffer *chunks, RingBuffer *messages, bool *ok, uint8_t *seq);
+};
+
+// MESSAGE INPUT CLASS
+class MessageIn
+{
+  public:
+    MessageIn() {};
+    bool get_message(unsigned int *cmdsub, SparkMessage *msg, SparkPreset *preset);
+    RingBuffer *in_message;
+
+    void read_string(char *str);
+    void read_prefixed_string(char *str);
+    void read_onoff(bool *b);
+    void read_float(float *f);
+    void read_uint(uint8_t *b);
+    void read_byte(uint8_t *b);
+};
+
+class SparkMessageIn: public MessageIn
+{
+  public:
+    SparkMessageIn() {};
+    void set(RingBuffer *messages);
+};
+
+class AppMessageIn: public MessageIn
+{
+  public:
+    AppMessageIn() {};
+    void set(RingBuffer *messages);
+};
+
+// MESSAGE OUTPUT CLASS
+class MessageOut
+{
+  public:
+    MessageOut() {};
+    
+    // creating messages to send
+    void start_message(int cmdsub);
+    void end_message();
+    void write_byte(byte b);
+    void write_byte_no_chksum(byte b);
+    
+    void write_uint(byte b);
+    void write_prefixed_string(const char *str);
+    void write_long_string(const char *str);
+    void write_string(const char *str);
+    void write_float(float flt);
+    void write_onoff(bool onoff);
+    void write_uint32(uint32_t w);
+
+    void create_preset(SparkPreset *preset);
+    void turn_effect_onoff(char *pedal, bool onoff);
+    void change_hardware_preset(uint8_t curr_preset, uint8_t preset_num);
+    void change_effect(char *pedal1, char *pedal2);
+    void change_effect_parameter(char *pedal, int param, float val);
+    void get_serial();
+    void get_name();
+    void get_hardware_preset_number();
+    void get_preset_details(unsigned int preset);
+    void save_hardware_preset(uint8_t curr_preset, uint8_t preset_num);
+    void send_firmware_version(uint32_t firmware);
+    void send_0x022a_info(byte v1, byte v2, byte v3, byte v4);  
+    void send_preset_number(uint8_t preset_h, uint8_t preset_l);
+    void send_key_ack();
+    void send_serial_number(char *serial);
+    void send_ack(unsigned int cmdsub);
+
+    RingBuffer *out_message;
+    int cmd_base;
+    int out_msg_chksum;
+};
+
+class SparkMessageOut: public MessageOut
+{
+  public:
+    SparkMessageOut() {};
+    void set(RingBuffer *messages);
+};
+
+class AppMessageOut: public MessageOut
+{
+  public:
+    AppMessageOut() {};
+    void set(RingBuffer *messages);
+};
+
+// CHUNK INPUT CLASS
+class ChunkOut
+{
+  public:
+    ChunkOut() {};
+    void process();
+
+    void out_store(uint8_t b);
+    // processing received block
+    RingBuffer *out_chunk;
+    RingBuffer *out_message;
+    int chunk_size;
+
+    uint8_t *rec_seq;
+    
+    uint8_t oc_cmd;
+    uint8_t oc_sub;
+    unsigned int oc_len;
+    uint8_t oc_seq;
+
+    uint8_t oc_bit_mask;
+    int oc_bit_pos;
+    uint8_t oc_checksum;
+};
+
+class SparkChunkOut: public ChunkOut
+{
+  public:
+    SparkChunkOut() {};
+    void set(RingBuffer *chunks, RingBuffer *messages, uint8_t *seq);
+};
+
+class AppChunkOut: public ChunkOut
+{
+  public:
+    AppChunkOut() {};
+    void set(RingBuffer *chunks, RingBuffer *messages, uint8_t *seq);
+};
+
+// CHUNK INPUT CLASS
+class BlockOut
+{
+  public:
+    BlockOut() {};
+    void process();
+    virtual void data_write(uint8_t *buf, int len);
+    
+    RingBuffer *out_chunk;
+    bool *ok_to_send;
+    unsigned int last_sent_time;
+    bool to_spark;
+        
+    int block_size;
+    uint8_t *blk_hdr;
+    
+    uint8_t out_block[0xad];
+    int ob_pos;
+};
+
+class SparkBlockOut: public BlockOut
+{
+  public:
+    SparkBlockOut() {};
+    void set(RingBuffer *chunks, uint8_t *hdr, bool *ok);
+    void data_write(uint8_t *buf, int len);
+};
+
+class AppBlockOut: public BlockOut
+{
+  public:
+    AppBlockOut() {};
+    void set(RingBuffer *chunks, uint8_t *hdr, bool *ok);
+    void data_write(uint8_t *buf, int len);
+};
+
+/////////////
+
+
+    void spark_start(bool passthru);
+
+    void spark_process();
 
     // processing received messages    
-    bool sp_get_message(unsigned int *cmdsub, SparkMessage *msg, SparkPreset *preset);
-    // creating messages to send
+//    bool spark_get_message(unsigned int *cmdsub, SparkMessage *msg, SparkPreset *preset);
 
-    void sp_create_preset(SparkPreset *preset);
-
-    void sp_turn_effect_onoff(char *pedal, bool onoff);
-    void sp_change_hardware_preset(uint8_t preset_num);
-    void sp_change_effect(char *pedal1, char *pedal2);
-    void sp_change_effect_parameter(char *pedal, int param, float val);
-
-    void sp_get_serial();
-    void sp_get_name();
-    void sp_get_hardware_preset_number();
-    void sp_get_preset_details(unsigned int preset);
-    
     // sending data
 
-    void sp_out_store(uint8_t b);
-
-    // chunk variables (read from bluetooth into a chunk ring buffer)
-    // in_chunk.is_empty() is false when there is data to read
-
+    SparkBlockIn sp_bin;
     RingBuffer sp_in_chunk;
-    int sp_rb_state;
-    int sp_rb_len;
-
-    // message variables (read from chunk read buffer into in_message store - a single message
-    // in_mesage_ready is true when there is a full message to read
-
+    SparkChunkIn sp_cin;
     RingBuffer sp_in_message;
-    int sp_rc_state;
-    bool sp_in_message_bad;
-    
-    int sp_rc_seq;
-    int sp_rc_cmd;
-    int sp_rc_sub;
-    int sp_rc_checksum;
-    
-    int sp_rc_calc_checksum;
+    SparkMessageIn spark_msg_in;
 
-    bool sp_rc_multi_chunk;
-    int sp_rc_data_pos;
-    uint8_t sp_rc_bitmask;
-    int sp_rc_bits;
-
-    int sp_rc_total_chunks;
-    int sp_rc_this_chunk;
-    int sp_rc_chunk_len;
-    int sp_rc_last_chunk;
-
-    int sp_rd_pos;
-    
-    // message variables for sending
-
-    // out_message
-    
+    SparkMessageOut spark_msg_out;
     RingBuffer sp_out_message;
-    int sp_om_cmd;
-    int sp_om_sub;
-    int sp_out_msg_chksum;
-
-    // out_chunk
-
+    SparkChunkOut sp_cout;
     RingBuffer sp_out_chunk;
-    uint8_t sp_oc_seq;
-    uint8_t sp_oc_cmd;
-    uint8_t sp_oc_sub;
-    unsigned int sp_oc_len;
+    SparkBlockOut sp_bout;
 
-    uint8_t sp_oc_bit_mask;
-    int sp_oc_bit_pos;
-    uint8_t sp_oc_checksum;
+    bool sp_ok_to_send;          
+    bool app_ok_to_send;
 
-    // out_block
-    uint8_t sp_out_block[0xad];
-    int sp_ob_pos;
-    bool sp_ob_ok_to_send;
-    uint8_t sp_ob_last_seq_sent;
-    unsigned int sp_ob_last_sent_time;
-
-    // passthrough
-    uint8_t sp_bt_buf[MAX_BT_BUFFER];
-    int sp_bt_pos;
-    int sp_bt_len;
-    int sp_bt_state;
-    bool sp_pass_through;
+    uint8_t sp_rec_seq;
+    uint8_t app_rec_seq;
     
-  private:
-   
-    // routines to read the msgpack data
-    void sp_read_string(char *str);
-    void sp_read_prefixed_string(char *str);
-    void sp_read_onoff(bool *b);
-    void sp_read_float(float *f);
-    void sp_read_byte(uint8_t *b);
-
-    // routines to write the msgfmt data
-    void sp_start_message(int cmdsub);
-    void sp_end_message();
-    void sp_write_byte(byte b);
-    void sp_write_byte_no_chksum(byte b);
-    void sp_write_prefixed_string(const char *str);
-    void sp_write_long_string(const char *str);
-    void sp_write_string(const char *str);
-    void sp_write_float(float flt);
-    void sp_write_onoff(bool onoff);
-
-
-
-
-    // overall processing
-
-    // APP MESSAGES
-  public:
     void app_process();
 
-    //  receiving data   
-    
-    void app_process_in_blocks();
-    void app_process_in_chunks();
-
-    void app_process_out_chunks();
-    void app_process_out_blocks();
-
-    // processing received messages    
-    bool app_get_message(unsigned int *cmdsub, SparkMessage *msg, SparkPreset *preset);
-    // creating messages to send
-
-    void app_create_preset(SparkPreset *preset);
-
-    void app_turn_effect_onoff(char *pedal, bool onoff);
-    void app_change_hardware_preset(uint8_t preset_num);
-    void app_change_effect(char *pedal1, char *pedal2);
-    void app_change_effect_parameter(char *pedal, int param, float val);
-    void app_save_hardware_preset(uint8_t preset_num);
-
-  
-    // sending data
-
-    void app_out_store(uint8_t b);
-
-    // chunk variables (read from bluetooth into a chunk ring buffer)
-    // in_chunk.is_empty() is false when there is data to read
-
+    AppBlockIn app_bin;
     RingBuffer app_in_chunk;
-    int app_rb_state;
-    int app_rb_len;
-
-    // message variables (read from chunk read buffer into in_message store - a single message
-    // in_mesage_ready is true when there is a full message to read
-
+    AppChunkIn app_cin;
     RingBuffer app_in_message;
-    int app_rc_state;
-    bool app_in_message_bad;
-    
-    int app_rc_seq;
-    int app_rc_cmd;
-    int app_rc_sub;
-    int app_rc_checksum;
-    
-    int app_rc_calc_checksum;
+    AppMessageIn app_msg_in;
 
-    bool app_rc_multi_chunk;
-    int app_rc_data_pos;
-    uint8_t app_rc_bitmask;
-    int app_rc_bits;
-
-    int app_rc_total_chunks;
-    int app_rc_this_chunk;
-    int app_rc_chunk_len;
-    int app_rc_last_chunk;
-
-    int app_rd_pos;
-    
-    // message variables for sending
-
-    // out_message
-    
+    AppMessageOut app_msg_out;
     RingBuffer app_out_message;
-    int app_om_cmd;
-    int app_om_sub;
-
-    // out_chunk
-
+    AppChunkOut app_cout;
     RingBuffer app_out_chunk;
-    uint8_t app_oc_seq;
-    uint8_t app_oc_cmd;
-    uint8_t app_oc_sub;
-    unsigned int app_oc_len;
+    AppBlockOut app_bout;
 
-    uint8_t app_oc_bit_mask;
-    int app_oc_bit_pos;
-    uint8_t app_oc_checksum;
-
-    // out_block
-    uint8_t app_out_block[0xad];
-    int app_ob_pos;
-    bool app_ob_ok_to_send;
-    uint8_t app_ob_last_seq_sent;
-    unsigned int app_ob_last_sent_time;
-
-    // passthrough
-
-    uint8_t app_ser_buf[MAX_SER_BUFFER];
-    int app_ser_pos;
-    int app_ser_len;
-    int app_ser_state;
-    bool app_pass_through;
-
-
-  private:
-   
-    // routines to read the msgpack data
-    void app_read_string(char *str);
-    void app_read_prefixed_string(char *str);
-    void app_read_onoff(bool *b);
-    void app_read_float(float *f);
-    void app_read_byte(uint8_t *b);
-
-    // routines to write the msgfmt data
-    void app_start_message(int cmdsub);
-    void app_end_message();
-    void app_write_byte(byte b);
-    void app_write_prefixed_string(const char *str);
-    void app_write_long_string(const char *str);
-    void app_write_string(const char *str);
-    void app_write_float(float flt);
-    void app_write_onoff(bool onoff);
-
-
-};
 
 #endif
       

@@ -25,10 +25,14 @@
 // Globals
 static int iRSSI = 0;                           // BLE signal strength
 int vbat_ring_count = 0;
-int vbat_result;                                // For battery monitoring
-int temp;   
+int vbat_result = 0;                            // For battery monitoring
+int express_result = 0;                         // For expression pedal monitoring
+int old_exp_result = 0;
+float effect_volume = 0.0;
+int temp = 0;   
 int vbat_ring_sum = 0;
-int chrg_result;                                // For charge state monitoring
+int chrg_result = 0;                             // For charge state monitoring
+
 int sw_val[NUM_SWITCHES];     
 int sw_pin[]{17,5,18,23};                       // Switch gpio numbers
 

@@ -7,9 +7,10 @@
 #include <BLEUtils.h>
 #include <BLE2902.h>
 
+//#define BT_CONTROLLER
 #include "RingBuffer.h"
 
-#define HW_BAUD 1000000
+//#define HW_BAUD 1000000
 #define BLE_BUFSIZE 5000
 
 #define C_SERVICE "ffc0"
@@ -26,6 +27,11 @@
 #define  SPARK_BT_NAME  "Spark 40 Audio"
 
 void connect_to_all();
+void connect_spark();
+#ifdef BT_CONTROLLER
+void connect_pedal();
+#endif
+
 bool sp_available();
 bool app_available();
 uint8_t sp_read();
@@ -36,7 +42,16 @@ int ble_getRSSI();
 
 BluetoothSerial *bt;
 bool is_ble;
-boolean isBTConnected;  
+boolean isBTConnected;   // debug
+
+#ifdef BT_CONTROLLER
+bool connected_pedal
+bool found_pedal;
+#endif
+
+bool connected_sp;
+bool found_sp;
+
 
 BLEServer *pServer;
 BLEService *pService;
@@ -52,13 +67,17 @@ BLEClient *pClient_sp;
 BLERemoteService *pService_sp;
 BLERemoteCharacteristic *pReceiver_sp;
 BLERemoteCharacteristic *pSender_sp;
+BLERemoteDescriptor* p2902_sp;
+BLEAddress *sp_address;
 
+#ifdef BT_CONTROLLER
 BLEClient *pClient_pedal;
 BLERemoteService *pService_pedal;
 BLERemoteCharacteristic *pReceiver_pedal;
 BLERemoteCharacteristic *pSender_pedal;
-
-BLERemoteDescriptor* p2902;
+BLERemoteDescriptor* p2902_pedal;
+BLEAddress *pedal_address;
+#endif
 
 RingBuffer ble_in;
 RingBuffer ble_app_in;

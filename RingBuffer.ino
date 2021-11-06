@@ -152,7 +152,7 @@ void RingBuffer::dump3() {
   int i;
   uint8_t v;
 
-//  Serial.println();
+  Serial.print("               ");
   for (i=0; i<len; i++) {
     v=rb[(st+i) % RB_BUFF_MAX];
     if (v < 16) Serial.print("0");
