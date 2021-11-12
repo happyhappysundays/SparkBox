@@ -25,12 +25,14 @@
 // Globals
 static int iRSSI = 0;                           // BLE signal strength
 int vbat_ring_count = 0;
+int vbat_ring_sum = 0;
 int vbat_result = 0;                            // For battery monitoring
+int express_ring_count = 0;
+int express_ring_sum = 0;
 int express_result = 0;                         // For expression pedal monitoring
 int old_exp_result = 0;
 float effect_volume = 0.0;
 int temp = 0;   
-int vbat_ring_sum = 0;
 int chrg_result = 0;                             // For charge state monitoring
 
 int sw_val[NUM_SWITCHES];     
@@ -53,7 +55,6 @@ boolean AnylongPressActive = false;             // OR of any longPressActive sta
 boolean latchpress;                             // latch to stop repeating the long press state
 
 // Flags
-boolean isStatusReceived;                       // Status received from Spark
 boolean isOLEDUpdate;                           // Flag OLED needs refresh
 boolean isPedalMode;                            // Pedal mode: 0 = preset, 1 = effect
 boolean isHWpresetgot;                          // Flag to show that the hardware preset number has been processed

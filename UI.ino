@@ -32,7 +32,8 @@ void updateIcons() {
     // else no bars 
   }
   // Update drive status icons once data available
-  if(isStatusReceived || isTimeout){  
+  if(isHWpresetgot){ 
+  //if(isHWpresetgot || isTimeout){  
     // Drive icon
     if (presets[5].effects[2].OnOff){
       Heltec.display->drawXbm(drive_pos, 0, icon_width, icon_height, drive_on_bits);
@@ -87,16 +88,7 @@ void updateIcons() {
       vbat_ring_sum += vbat_result;
       vbat_result = vbat_ring_sum / VBAT_NUM;
     }
-    /*
-    Serial.print("Vbat = ");
-    Serial.print(temp);      
-    Serial.print(" Vbat avg = ");
-    Serial.print(vbat_result);
-    Serial.print(" Count = ");
-    Serial.print(vbat_ring_count);
-    Serial.print(" Sum = ");
-    Serial.println(vbat_ring_sum);
-   */ 
+
     chrg_result = analogRead(CHRG_AIN); // Check state of /CHRG output
     //Serial.print(", /CHRG = ");
     //Serial.println(chrg_result);
@@ -166,6 +158,7 @@ void updateIcons() {
     } 
   #endif
 }
+
 // Print out the requested preset data
 void dump_preset(SparkPreset preset) {
   int i,j;
@@ -239,7 +232,6 @@ void dopushbuttons(void)
 
   // OR all the long press flags so any of the four main footswitches can switch modes
   AnylongPressActive = (longPressActive[0] || longPressActive[1] || longPressActive[2] || longPressActive[3]);
- 
   // Has any button been held down
   if (AnylongPressActive && (latchpress == true)){
       Serial.println("Switching pedal mode");
@@ -254,8 +246,8 @@ void dopushbuttons(void)
 void refreshUI(void)
 {
   // if a change has been made or the timer timed out and we have the preset...
-  // if ((isOLEDUpdate || isTimeout) && isHWpresetgot){
-  if (isOLEDUpdate || isTimeout){  
+    if ((isOLEDUpdate || isTimeout) && isHWpresetgot){
+  //if (isOLEDUpdate || isTimeout){  
     isOLEDUpdate = false;  
     Heltec.display->clear();
     Heltec.display->setFont(ArialMT_Plain_16);
@@ -268,7 +260,14 @@ void refreshUI(void)
     }
     Heltec.display->setFont(Roboto_Mono_Bold_52);
     Heltec.display->setTextAlignment(TEXT_ALIGN_CENTER);
-    Heltec.display->drawString(110, 12, String(selected_preset+1));
+    
+    if (flash_GUI || !setting_modified) {
+      // In-joke to the "I saw 5 on the display!" folk
+      if (display_preset_num > 3) {
+        display_preset_num = 3; 
+      }
+      Heltec.display->drawString(110, 12, String(display_preset_num+1));
+    }
     Heltec.display->setFont(ArialMT_Plain_10);
     Heltec.display->setTextAlignment(TEXT_ALIGN_LEFT);
 
