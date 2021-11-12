@@ -17,20 +17,25 @@ This is a Heltec WIFI Kit 32 version of SparkBox. SparkBox is another BT pedal f
 
 Uncomment ONE battery option to match your hardware.
 
-define BATT_CHECK_0
+**define BATT_CHECK_0**
+
 You have no mods to monitor the battery, so it will show empty (default).
 
-define BATT_CHECK_1
+**define BATT_CHECK_1**
+
 You are monitoring the battery via a 2:1 10k/10k resistive divider to GPIO23.
 You can see an accurate representation of the remaining battery charge and a kinda-sorta
 indicator of when the battery is charging. Maybe.
 
-define BATT_CHECK_2
+**define BATT_CHECK_2**
+
 You have the battery monitor mod described above AND you have a connection between the 
 CHRG pin of the charger chip and GPIO 33. Go you! Now you have a guaranteed charge indicator too.
 
+**define EXPRESSION_PEDAL**
+
 Expression pedal define. Comment this out if you DO NOT have the expression pedal mod.
-define EXPRESSION_PEDAL
+
 
 
 ![alt text](https://github.com/happyhappysundays/SparkBoxHeltec/blob/main/Pictures/Dev_board.jpg?raw=true)
