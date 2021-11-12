@@ -681,6 +681,8 @@ bool MessageIn::get_message(unsigned int *cmdsub, SparkMessage *msg, SparkPreset
     case 0x0363:
       read_float(&msg->val);  
       break;
+    case 0x470:
+      read_byte(&junk); //debug
     // acks - no payload to read - no ack sent for an 0x0104
     case 0x0401:
     case 0x0501:
@@ -1108,7 +1110,10 @@ void ChunkOut::process() {
       out_chunk->add(0x01);
 
       // Feels clunky to use a 'global' variable but how else to get the sequence number from the input to the output?
-      if (oc_cmd == 0x04 || oc_cmd == 0x05 || (oc_cmd == 0x03 && (oc_sub != 0x27 && oc_sub != 0x37 && oc_sub != 0x38)))  // response, so use other sequence counter
+//      if (oc_cmd == 0x04 || oc_cmd == 0x05 || (oc_cmd == 0x03 && (oc_sub != 0x27 && oc_sub != 0x37 && oc_sub != 0x38)))  // response, so use other sequence counter
+
+      // Patch from Paul 10/11/2021
+      if (oc_cmd == 0x04 || oc_cmd == 0x05 || (oc_cmd == 0x03 && (oc_sub != 0x27 && oc_sub != 0x37 && oc_sub != 0x38)&& oc_sub != 0x15))  // response, so use other sequence counter
         out_chunk->add(*rec_seq);
       else {
         out_chunk->add(oc_seq);

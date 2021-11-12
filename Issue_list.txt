@@ -30,3 +30,16 @@ v0.49
 - Merged SparkIO2
 - Works with app now
 - No disconnect ability
+
+v0.50
+- Merged SparkIO3
+- Works with app now
+- No disconnect ability
+
+v0.53
+- Fixed bug in SparkIO3
+- Merged with SparkTracker3
+- Smoothed out expression pedal noise nicely
+
+ToDo:
+- Find out why we get bad block messages sometimes
