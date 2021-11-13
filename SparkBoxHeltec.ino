@@ -2,11 +2,11 @@
 // SparkBox - BT pedal board for the Spark 40 amp - David Thompson 2021
 // Supports four-switch pedals. Hold any of the effect buttons down for 1s to switch
 // between Preset mode (1 to 4) and Effect mode (Drive, Mod, Delay, Reverb).
-// Add an expression pedal to modify the cuirrent selected effect or toggle an effect.
+// Add an expression pedal to modify the cuirrent selected effect or toggle an effect. 
 //******************************************************************************************
 #include "heltec.h"                 // Heltec's proprietary library :/
 #include "BluetoothSerial.h"
-#include "Spark.h"                  // Paul Hamshere's SparkIO library https://github.com/paulhamsh/SparkIO
+#include "Spark.h"                  // Paul Hamshere's SparkIO library https://github.com/paulhamsh/SparkIO3
 #include "SparkIO.h"                // "
 #include "SparkComms.h"             // "
 #include "font.h"                   // Custom large font
@@ -17,7 +17,7 @@
 // Battery charge function defines. Please uncomment just one.
 //
 // You have no mods to monitor the battery, so it will show empty
-#define BATT_CHECK_0
+//#define BATT_CHECK_0
 //
 // You are monitoring the battery via a 2:1 10k/10k resistive divider to GPIO23
 // You can see an accurate representation of the remaining battery charge and a kinda-sorta
@@ -26,11 +26,11 @@
 //
 // You have the battery monitor mod described above AND you have a connection between the 
 // CHRG pin of the charger chip and GPIO 33. Go you! Now you have a guaranteed charge indicator too.
-//#define BATT_CHECK_2
+#define BATT_CHECK_2
 //
 //******************************************************************************************
 // Expression pedal define. Comment this out if you DO NOT have the expression pedal mod
-//#define EXPRESSION_PEDAL
+#define EXPRESSION_PEDAL
 //
 //******************************************************************************************
 // Dump preset define. Comment out if you'd prefer to not see so much text output
@@ -38,13 +38,12 @@
 //
 //******************************************************************************************
 #define PGM_NAME "SparkBox"
-#define VERSION "BLE 0.53"
+#define VERSION "BLE 0.54"
 #define MAXNAME 20
 
 char str[STR_LEN];                    // Used for processing Spark commands from amp
 char param_str[50]; //debug
 int param = -1;
-unsigned long last;
 float val = 0.0;
 bool expression_target = false;       // False = parameter change, true = effect on/off
 bool effectstate = false;
@@ -60,8 +59,7 @@ bool got_presets;
 uint8_t current_preset_num;           // Current preset number in Sparkbox
 uint8_t new_preset_num;               // Reported current preset number incoming from App or Spark
 uint8_t display_preset_num;           // Referenced preset number on Spark
-int i, j, p;                          // Makes these local later...
-byte bt_byte;                         // Stay-alive variables
+int i, j, p;
 int count;                            // "
 bool flash_GUI;                       // Flash GUI items if true
 
@@ -217,7 +215,6 @@ bool  update_spark_state() {
         if (selected_preset < 4){
           display_preset_num = selected_preset; 
         }
-        //spark_msg_out.get_preset_details(0x0100);     // Get the current preset details   
         break;
       // store to preset  
       case 0x0327:
@@ -250,8 +247,8 @@ bool  update_spark_state() {
         break;
       // Refresh preset info based on app-requested change
       case 0x0438:
-        spark_msg_out.get_hardware_preset_number();   // Try to use get_hardware_preset_number() to pre-load the correct number
-        spark_msg_out.get_preset_details(0x0100);     // Get the current preset details   
+        //spark_msg_out.get_hardware_preset_number();   // Try to use get_hardware_preset_number() to pre-load the correct number
+        //spark_msg_out.get_preset_details(0x0100);     // Get the current preset details   
         setting_modified = false;
         break;
  
@@ -325,27 +322,18 @@ void setup() {
 
   timer = timerBegin(0, 80, true);            // Setup timer
   timerAttachInterrupt(timer, &onTime, true); // Attach to our handler
-  timerAlarmWrite(timer, 500000, true);       // Once per second, autoreload
+  timerAlarmWrite(timer, 500000, true);       // 500ms, autoreload
   timerAlarmEnable(timer);                    // Start timer
 }
 
-
 void loop() {
+  // just by calling this we update the local stored state which can be used here
+  update_spark_state();   
 
-
-  // do your own checks and processing here
-  if (update_spark_state()) {    // just by calling this we update the local stored state which can be used here
-    switch (cmdsub) {
-      case 0x0115:    // just an example
-        // do something with messages and presets[5]
-        break;
-    }
-  }
-  // do your own checks and processing here
 #ifdef EXPRESSION_PEDAL
   // Read expression pedal
   // It can be sometimes difficult to get to zero, which we need,
-  // so we subtract an offset and expend the scale to cover the full range
+  // so we subtract an offset and expand the scale to cover the full range
   express_result = (analogRead(EXP_AIN)/ 45) - 10;
 
   // Rolling average to remove noise
@@ -380,7 +368,7 @@ void loop() {
        // Send effect ON state to Spark and App only if OFF
        if ((effect_volume > 0.5)&&(!effectstate)) {
           app_msg_out.turn_effect_onoff(msg.str1,true);
-          spark_msg_out.turn_effect_onoff(msg.str1,true);
+          //spark_msg_out.turn_effect_onoff(msg.str1,true);
           Serial.print("Turning effect ");
           Serial.print(msg.str1);
           Serial.println(" ON via pedal");
@@ -390,7 +378,7 @@ void loop() {
        else if ((effect_volume < 0.3)&&(effectstate))
        {
           app_msg_out.turn_effect_onoff(msg.str1,false);
-          spark_msg_out.turn_effect_onoff(msg.str1,false);
+          //spark_msg_out.turn_effect_onoff(msg.str1,false);
           Serial.print("Turning effect ");
           Serial.print(msg.str1);
           Serial.println(" OFF via pedal");
@@ -415,37 +403,50 @@ void loop() {
     new_preset_num = 0;
     spark_msg_out.change_hardware_preset(0x00,new_preset_num);
     app_msg_out.change_hardware_preset(0x00,new_preset_num);         // Relay the same change to the app
-    spark_msg_out.get_preset_details(0x0100);
+    //spark_msg_out.get_preset_details(0x0100);
+    presets[5] = presets[new_preset_num];
+    current_preset_num = new_preset_num;
+    display_preset_num = new_preset_num; 
+
   }
   else if ((sw_val[1] == HIGH)&&(!isPedalMode)) {  
     new_preset_num = 1;
     spark_msg_out.change_hardware_preset(0x00,new_preset_num);
     app_msg_out.change_hardware_preset(0x00,new_preset_num); 
-    spark_msg_out.get_preset_details(0x0100);
+    //spark_msg_out.get_preset_details(0x0100);
+    presets[5] = presets[new_preset_num];
+    current_preset_num = new_preset_num;
+    display_preset_num = new_preset_num; 
   }
   else if ((sw_val[2] == HIGH)&&(!isPedalMode)) {  
     new_preset_num = 2;
     spark_msg_out.change_hardware_preset(0x00,new_preset_num);
     app_msg_out.change_hardware_preset(0x00,new_preset_num); 
-    spark_msg_out.get_preset_details(0x0100);
+    //spark_msg_out.get_preset_details(0x0100);
+    presets[5] = presets[new_preset_num];
+    current_preset_num = new_preset_num;
+    display_preset_num = new_preset_num; 
   }
   else if ((sw_val[3] == HIGH)&&(!isPedalMode)) {  
     new_preset_num = 3;
     spark_msg_out.change_hardware_preset(0x00,new_preset_num);
     app_msg_out.change_hardware_preset(0x00,new_preset_num); 
-    spark_msg_out.get_preset_details(0x0100);
+    //spark_msg_out.get_preset_details(0x0100);
+    presets[5] = presets[new_preset_num];
+    current_preset_num = new_preset_num;
+    display_preset_num = new_preset_num; 
   }
 
   // Effect mode (SW1-4 switch effects on/off)
   // Drive
   else if ((sw_val[0] == HIGH)&&(isPedalMode)) {    
     if (presets[5].effects[2].OnOff == true) {
-      spark_msg_out.turn_effect_onoff(presets[5].effects[2].EffectName,false);
+      //spark_msg_out.turn_effect_onoff(presets[5].effects[2].EffectName,false);
       app_msg_out.turn_effect_onoff(presets[5].effects[2].EffectName,false);
       presets[5].effects[2].OnOff = false;
     }
     else {
-      spark_msg_out.turn_effect_onoff(presets[5].effects[2].EffectName,true);
+      //spark_msg_out.turn_effect_onoff(presets[5].effects[2].EffectName,true);
       app_msg_out.turn_effect_onoff(presets[5].effects[2].EffectName,true);
       presets[5].effects[2].OnOff = true;
     }
@@ -454,13 +455,13 @@ void loop() {
   // Modulation
   else if ((sw_val[1] == HIGH)&&(isPedalMode)) {    
     if (presets[5].effects[4].OnOff == true) {
-      spark_msg_out.turn_effect_onoff(presets[5].effects[4].EffectName,false);
+      //spark_msg_out.turn_effect_onoff(presets[5].effects[4].EffectName,false);
       app_msg_out.turn_effect_onoff(presets[5].effects[4].EffectName,false);
       presets[5].effects[4].OnOff = false;
       setting_modified = true;
     }
     else {
-      spark_msg_out.turn_effect_onoff(presets[5].effects[4].EffectName,true);
+      //spark_msg_out.turn_effect_onoff(presets[5].effects[4].EffectName,true);
       app_msg_out.turn_effect_onoff(presets[5].effects[4].EffectName,true);
       presets[5].effects[4].OnOff = true;
       setting_modified = true;
@@ -470,13 +471,13 @@ void loop() {
   // Delay
   else if ((sw_val[2] == HIGH)&&(isPedalMode)) {   
     if (presets[5].effects[5].OnOff == true) {
-      spark_msg_out.turn_effect_onoff(presets[5].effects[5].EffectName,false);
+      //spark_msg_out.turn_effect_onoff(presets[5].effects[5].EffectName,false);
       app_msg_out.turn_effect_onoff(presets[5].effects[5].EffectName,false);
       presets[5].effects[5].OnOff = false;
       setting_modified = true;
     }
     else {
-      spark_msg_out.turn_effect_onoff(presets[5].effects[5].EffectName,true);
+      //spark_msg_out.turn_effect_onoff(presets[5].effects[5].EffectName,true);
       app_msg_out.turn_effect_onoff(presets[5].effects[5].EffectName,true);
       presets[5].effects[5].OnOff = true;
       setting_modified = true;
@@ -486,13 +487,13 @@ void loop() {
   // Reverb
   else if ((sw_val[3] == HIGH)&&(isPedalMode)) {   
     if (presets[5].effects[6].OnOff == true) {
-      spark_msg_out.turn_effect_onoff(presets[5].effects[6].EffectName,false);
+      //spark_msg_out.turn_effect_onoff(presets[5].effects[6].EffectName,false);
       app_msg_out.turn_effect_onoff(presets[5].effects[6].EffectName,false);
       presets[5].effects[6].OnOff = false;
       setting_modified = true;
     }
     else {
-      spark_msg_out.turn_effect_onoff(presets[5].effects[6].EffectName,true);
+      //spark_msg_out.turn_effect_onoff(presets[5].effects[6].EffectName,true);
       app_msg_out.turn_effect_onoff(presets[5].effects[6].EffectName,true);
       presets[5].effects[6].OnOff = true;
       setting_modified = true;
@@ -505,8 +506,6 @@ void loop() {
   // Request serial number every 10s as a 'stay-alive' function.
   if (millis() - count > 10000) {
     count = millis();
-    //spark_msg_out.get_serial(); // debug
-    //Serial.println("Tick..."); // debug
   }
   
 } // loop()}
