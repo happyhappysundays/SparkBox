@@ -1,11 +1,8 @@
-// Update Icons across top of screen
+// Update Icons across top of screen 
 void updateIcons() {
   
   // Read RSSI from Spark
   iRSSI = ble_getRSSI();
-  
-  //Serial.print("RSSI = ");
-  //Serial.println(iRSSI);
             
   // Show BT icon if connected
   // Use graduated scale based on the following
@@ -33,7 +30,6 @@ void updateIcons() {
   }
   // Update drive status icons once data available
   if(isHWpresetgot){ 
-  //if(isHWpresetgot || isTimeout){  
     // Drive icon
     if (presets[5].effects[2].OnOff){
       Heltec.display->drawXbm(drive_pos, 0, icon_width, icon_height, drive_on_bits);
@@ -247,7 +243,6 @@ void refreshUI(void)
 {
   // if a change has been made or the timer timed out and we have the preset...
     if ((isOLEDUpdate || isTimeout) && isHWpresetgot){
-  //if (isOLEDUpdate || isTimeout){  
     isOLEDUpdate = false;  
     Heltec.display->clear();
     Heltec.display->setFont(ArialMT_Plain_16);
