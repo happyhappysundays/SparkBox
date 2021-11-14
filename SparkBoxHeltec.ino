@@ -30,7 +30,7 @@
 //
 //******************************************************************************************
 // Expression pedal define. Comment this out if you DO NOT have the expression pedal mod
-#define EXPRESSION_PEDAL
+//#define EXPRESSION_PEDAL
 //
 //******************************************************************************************
 // Dump preset define. Comment out if you'd prefer to not see so much text output
@@ -38,7 +38,7 @@
 //
 //******************************************************************************************
 #define PGM_NAME "SparkBox"
-#define VERSION "BLE 0.54"
+#define VERSION "BLE 0.55"
 #define MAXNAME 20
 
 char str[STR_LEN];                    // Used for processing Spark commands from amp
@@ -95,13 +95,13 @@ void  spark_state_tracker_start() {
   got_presets = false;
 
   // Send commands to get preset details for all presets and current state (0x0100)
-  spark_msg_out.get_preset_details(0x0000);
-  spark_msg_out.get_preset_details(0x0001);
-  spark_msg_out.get_preset_details(0x0002);
-  spark_msg_out.get_preset_details(0x0003);
-  spark_msg_out.get_preset_details(0x007f);
-  spark_msg_out.get_preset_details(0x0100);
-  spark_msg_out.get_hardware_preset_number();
+  if (connected_sp) spark_msg_out.get_preset_details(0x0000);
+  if (connected_sp) spark_msg_out.get_preset_details(0x0001);
+  if (connected_sp) spark_msg_out.get_preset_details(0x0002);
+  if (connected_sp) spark_msg_out.get_preset_details(0x0003);
+  if (connected_sp) spark_msg_out.get_preset_details(0x007f);
+  if (connected_sp) spark_msg_out.get_preset_details(0x0100);
+  if (connected_sp) spark_msg_out.get_hardware_preset_number();
 }
 
 // Get changes from app or Spark and update internal state to reflect this
@@ -123,7 +123,7 @@ bool  update_spark_state() {
     switch (cmdsub) {
       // full preset details
       case 0x0101:
-        isAppConnected = true;
+        connected_app = true;
       case 0x0301:  
         p = preset.preset_num;
         j = preset.curr_preset;
@@ -152,20 +152,18 @@ bool  update_spark_state() {
         break;
       // change of effect
       case 0x0106:
+        connected_app = true;
         expression_target = false;
-        isAppConnected = true;
         Serial.printf("Change to new effect %s -> %s\n", msg.str1, msg.str2);
         ind = get_effect_index(msg.str1);
         if (ind >= 0) {
           strcpy(presets[5].effects[ind].EffectName, msg.str2);
         }
-        // Debug - force a get preset here
-        //spark_msg_out.get_preset_details(0x0100);     // Get the current preset details 
         setting_modified = true;
         break;
       // effect on/off  
       case 0x0115:
-        isAppConnected = true;
+        connected_app = true;
       case 0x0315:
         expression_target = true;
         Serial.printf("Turn effect %s %s\n", msg.str1, msg.onoff ? "On " : "Off");
@@ -173,13 +171,11 @@ bool  update_spark_state() {
         if (ind >= 0) {
           presets[5].effects[ind].OnOff = msg.onoff;
         }
-        // Debug - force a get preset here
-        //spark_msg_out.get_preset_details(0x0100);     // Get the current preset details   
-        setting_modified = true;        
+         setting_modified = true;        
         break;
       // change parameter value  
       case 0x0104:
-        isAppConnected = true;
+        connected_app = true;
       case 0x0337:
          expression_target = false;
         Serial.printf("Change model parameter %s %d %0.3f\n", msg.str1, msg.param1, msg.val);
@@ -189,19 +185,18 @@ bool  update_spark_state() {
         }
         strcpy(param_str, msg.str1);
         param = msg.param1;
-         // Debug - force a get preset here
-        //spark_msg_out.get_preset_details(0x0100);     // Get the current preset details   
         setting_modified = true;
         break;  
         
       // Send licence key   
       case 0x0170:
-        isAppConnected = true;
+        connected_app = true;
+        Serial.println("App connected");
         break; 
         
       // change to preset  
       case 0x0138:
-        isAppConnected = true;
+        connected_app = true;
       case 0x0338:
         selected_preset = msg.param2;
         current_preset_num = selected_preset;
@@ -247,8 +242,6 @@ bool  update_spark_state() {
         break;
       // Refresh preset info based on app-requested change
       case 0x0438:
-        //spark_msg_out.get_hardware_preset_number();   // Try to use get_hardware_preset_number() to pre-load the correct number
-        //spark_msg_out.get_preset_details(0x0100);     // Get the current preset details   
         setting_modified = false;
         break;
  
@@ -270,7 +263,6 @@ void setup() {
   current_preset_num = 0;
   new_preset_num = 0;
   display_preset_num = 0;
-  isBTConnected = false;
   
   // Initialize device OLED display, and flip screen, as OLED library starts upside-down
   Heltec.display->init();
@@ -314,9 +306,6 @@ void setup() {
   connect_to_all();             // sort out bluetooth connections
   spark_start(true);            // set up the classes to communicate with Spark and app
   spark_state_tracker_start();  // set up data to track Spark and app state
-
-  isBTConnected = true; 
-  Serial.println("Connected");  
   
   isPedalMode = false;                        // Default to Preset mode
 
@@ -331,66 +320,77 @@ void loop() {
   update_spark_state();   
 
 #ifdef EXPRESSION_PEDAL
-  // Read expression pedal
-  // It can be sometimes difficult to get to zero, which we need,
-  // so we subtract an offset and expand the scale to cover the full range
-  express_result = (analogRead(EXP_AIN)/ 45) - 10;
-
-  // Rolling average to remove noise
-  if (express_ring_count < 10) {
-    express_ring_sum += express_result;
-    express_ring_count++;
-    express_result = express_ring_sum / express_ring_count;
-  }
-  // Once enough is gathered, do a decimating average
-  else {
-    express_ring_sum *= 0.9;
-    express_ring_sum += express_result;
-    express_result = express_ring_sum / 10;
-  }  
-
-  // Reduce noise and only respond to deliberate changes
-  if ((abs(express_result - old_exp_result) > 4))
-  {
-    old_exp_result = express_result;
-    effect_volume = float(express_result);
-    effect_volume = effect_volume / 64;
-    if (effect_volume > 1.0) effect_volume = 1.0;
-    if (effect_volume < 0.0) effect_volume = 0.0;
-#ifdef DUMP_ON
-    Serial.print("Pedal data: ");
-    Serial.print(express_result);
-    Serial.print(" : ");
-    Serial.println(effect_volume);
-#endif
-    // If effect on/off
-    if (expression_target) {
-       // Send effect ON state to Spark and App only if OFF
-       if ((effect_volume > 0.5)&&(!effectstate)) {
-          app_msg_out.turn_effect_onoff(msg.str1,true);
-          //spark_msg_out.turn_effect_onoff(msg.str1,true);
-          Serial.print("Turning effect ");
-          Serial.print(msg.str1);
-          Serial.println(" ON via pedal");
-          effectstate = true;
-       }
-       // Send effect OFF state to Spark and App only if ON, also add hysteresis
-       else if ((effect_volume < 0.3)&&(effectstate))
-       {
-          app_msg_out.turn_effect_onoff(msg.str1,false);
-          //spark_msg_out.turn_effect_onoff(msg.str1,false);
-          Serial.print("Turning effect ");
-          Serial.print(msg.str1);
-          Serial.println(" OFF via pedal");
-          effectstate = false;
-       }
+  // Only handle the pedal if the app is connected
+  if (connected_app){
+    // Read expression pedal
+    // It can be sometimes difficult to get to zero, which we need,
+    // so we subtract an offset and expand the scale to cover the full range
+    express_result = (analogRead(EXP_AIN)/ 45) - 10;
+  
+    // Rolling average to remove noise
+    if (express_ring_count < 10) {
+      express_ring_sum += express_result;
+      express_ring_count++;
+      express_result = express_ring_sum / express_ring_count;
     }
-    // Parameter change
-    else
+    // Once enough is gathered, do a decimating average
+    else {
+      express_ring_sum *= 0.9;
+      express_ring_sum += express_result;
+      express_result = express_ring_sum / 10;
+    }  
+  
+    // Reduce noise and only respond to deliberate changes
+    if ((abs(express_result - old_exp_result) > 4))
     {
-      // Send expression pedal value to Spark and App
-      app_msg_out.change_effect_parameter(msg.str1, msg.param1, effect_volume);
-      spark_msg_out.change_effect_parameter(msg.str1, msg.param1, effect_volume);      
+      old_exp_result = express_result;
+      effect_volume = float(express_result);
+      effect_volume = effect_volume / 64;
+      if (effect_volume > 1.0) effect_volume = 1.0;
+      if (effect_volume < 0.0) effect_volume = 0.0;
+  #ifdef DUMP_ON
+      Serial.print("Pedal data: ");
+      Serial.print(express_result);
+      Serial.print(" : ");
+      Serial.println(effect_volume);
+  #endif
+      // If effect on/off
+      if (expression_target) {
+         // Send effect ON state to Spark and App only if OFF
+         if ((effect_volume > 0.5)&&(!effectstate)) {
+            if (connected_app) {
+              app_msg_out.turn_effect_onoff(msg.str1,true);
+            }
+            else if (connected_sp) {
+              spark_msg_out.turn_effect_onoff(msg.str1,true);
+            }
+            Serial.print("Turning effect ");
+            Serial.print(msg.str1);
+            Serial.println(" ON via pedal");
+            effectstate = true;
+         }
+         // Send effect OFF state to Spark and App only if ON, also add hysteresis
+         else if ((effect_volume < 0.3)&&(effectstate))
+         {
+            if (connected_app) {
+              app_msg_out.turn_effect_onoff(msg.str1,false);
+            }
+            else if (connected_sp) {
+              spark_msg_out.turn_effect_onoff(msg.str1,false);
+            }
+            Serial.print("Turning effect ");
+            Serial.print(msg.str1);
+            Serial.println(" OFF via pedal");
+            effectstate = false;
+         }
+      }
+      // Parameter change
+      else
+      {
+        // Send expression pedal value to Spark and App
+        if (connected_app) app_msg_out.change_effect_parameter(msg.str1, msg.param1, effect_volume);
+        if (connected_sp) spark_msg_out.change_effect_parameter(msg.str1, msg.param1, effect_volume);      
+      }
     }
   }
 #endif
@@ -401,9 +401,8 @@ void loop() {
   // In Preset mode, use the four buttons to select the four HW presets
   if ((sw_val[0] == HIGH)&&(!isPedalMode)) {  
     new_preset_num = 0;
-    spark_msg_out.change_hardware_preset(0x00,new_preset_num);
-    app_msg_out.change_hardware_preset(0x00,new_preset_num);         // Relay the same change to the app
-    //spark_msg_out.get_preset_details(0x0100);
+    if (connected_sp) spark_msg_out.change_hardware_preset(0x00,new_preset_num);
+    if (connected_app) app_msg_out.change_hardware_preset(0x00,new_preset_num);         // Relay the same change to the app
     presets[5] = presets[new_preset_num];
     current_preset_num = new_preset_num;
     display_preset_num = new_preset_num; 
@@ -411,27 +410,24 @@ void loop() {
   }
   else if ((sw_val[1] == HIGH)&&(!isPedalMode)) {  
     new_preset_num = 1;
-    spark_msg_out.change_hardware_preset(0x00,new_preset_num);
-    app_msg_out.change_hardware_preset(0x00,new_preset_num); 
-    //spark_msg_out.get_preset_details(0x0100);
+    if (connected_sp) spark_msg_out.change_hardware_preset(0x00,new_preset_num);
+    if (connected_app) app_msg_out.change_hardware_preset(0x00,new_preset_num); 
     presets[5] = presets[new_preset_num];
     current_preset_num = new_preset_num;
     display_preset_num = new_preset_num; 
   }
   else if ((sw_val[2] == HIGH)&&(!isPedalMode)) {  
     new_preset_num = 2;
-    spark_msg_out.change_hardware_preset(0x00,new_preset_num);
-    app_msg_out.change_hardware_preset(0x00,new_preset_num); 
-    //spark_msg_out.get_preset_details(0x0100);
+    if (connected_sp) spark_msg_out.change_hardware_preset(0x00,new_preset_num);
+    if (connected_app) app_msg_out.change_hardware_preset(0x00,new_preset_num); 
     presets[5] = presets[new_preset_num];
     current_preset_num = new_preset_num;
     display_preset_num = new_preset_num; 
   }
   else if ((sw_val[3] == HIGH)&&(!isPedalMode)) {  
     new_preset_num = 3;
-    spark_msg_out.change_hardware_preset(0x00,new_preset_num);
-    app_msg_out.change_hardware_preset(0x00,new_preset_num); 
-    //spark_msg_out.get_preset_details(0x0100);
+    if (connected_sp) spark_msg_out.change_hardware_preset(0x00,new_preset_num);
+    if (connected_app) app_msg_out.change_hardware_preset(0x00,new_preset_num); 
     presets[5] = presets[new_preset_num];
     current_preset_num = new_preset_num;
     display_preset_num = new_preset_num; 
@@ -441,13 +437,13 @@ void loop() {
   // Drive
   else if ((sw_val[0] == HIGH)&&(isPedalMode)) {    
     if (presets[5].effects[2].OnOff == true) {
-      //spark_msg_out.turn_effect_onoff(presets[5].effects[2].EffectName,false);
-      app_msg_out.turn_effect_onoff(presets[5].effects[2].EffectName,false);
+      if (connected_sp) spark_msg_out.turn_effect_onoff(presets[5].effects[2].EffectName,false);
+      if (connected_app) app_msg_out.turn_effect_onoff(presets[5].effects[2].EffectName,false);
       presets[5].effects[2].OnOff = false;
     }
     else {
-      //spark_msg_out.turn_effect_onoff(presets[5].effects[2].EffectName,true);
-      app_msg_out.turn_effect_onoff(presets[5].effects[2].EffectName,true);
+      if (connected_sp) spark_msg_out.turn_effect_onoff(presets[5].effects[2].EffectName,true);
+      if (connected_app) app_msg_out.turn_effect_onoff(presets[5].effects[2].EffectName,true);
       presets[5].effects[2].OnOff = true;
     }
   } 
@@ -455,14 +451,14 @@ void loop() {
   // Modulation
   else if ((sw_val[1] == HIGH)&&(isPedalMode)) {    
     if (presets[5].effects[4].OnOff == true) {
-      //spark_msg_out.turn_effect_onoff(presets[5].effects[4].EffectName,false);
-      app_msg_out.turn_effect_onoff(presets[5].effects[4].EffectName,false);
+      if (connected_sp) spark_msg_out.turn_effect_onoff(presets[5].effects[4].EffectName,false);
+      if (connected_app) app_msg_out.turn_effect_onoff(presets[5].effects[4].EffectName,false);
       presets[5].effects[4].OnOff = false;
       setting_modified = true;
     }
     else {
-      //spark_msg_out.turn_effect_onoff(presets[5].effects[4].EffectName,true);
-      app_msg_out.turn_effect_onoff(presets[5].effects[4].EffectName,true);
+      if (connected_sp) spark_msg_out.turn_effect_onoff(presets[5].effects[4].EffectName,true);
+      if (connected_app) app_msg_out.turn_effect_onoff(presets[5].effects[4].EffectName,true);
       presets[5].effects[4].OnOff = true;
       setting_modified = true;
     }
@@ -471,14 +467,14 @@ void loop() {
   // Delay
   else if ((sw_val[2] == HIGH)&&(isPedalMode)) {   
     if (presets[5].effects[5].OnOff == true) {
-      //spark_msg_out.turn_effect_onoff(presets[5].effects[5].EffectName,false);
-      app_msg_out.turn_effect_onoff(presets[5].effects[5].EffectName,false);
+      if (connected_sp) spark_msg_out.turn_effect_onoff(presets[5].effects[5].EffectName,false);
+      if (connected_app) app_msg_out.turn_effect_onoff(presets[5].effects[5].EffectName,false);
       presets[5].effects[5].OnOff = false;
       setting_modified = true;
     }
     else {
-      //spark_msg_out.turn_effect_onoff(presets[5].effects[5].EffectName,true);
-      app_msg_out.turn_effect_onoff(presets[5].effects[5].EffectName,true);
+      if (connected_sp) spark_msg_out.turn_effect_onoff(presets[5].effects[5].EffectName,true);
+      if (connected_app) app_msg_out.turn_effect_onoff(presets[5].effects[5].EffectName,true);
       presets[5].effects[5].OnOff = true;
       setting_modified = true;
     }
@@ -487,14 +483,14 @@ void loop() {
   // Reverb
   else if ((sw_val[3] == HIGH)&&(isPedalMode)) {   
     if (presets[5].effects[6].OnOff == true) {
-      //spark_msg_out.turn_effect_onoff(presets[5].effects[6].EffectName,false);
-      app_msg_out.turn_effect_onoff(presets[5].effects[6].EffectName,false);
+      if (connected_sp) spark_msg_out.turn_effect_onoff(presets[5].effects[6].EffectName,false);
+      if (connected_app) app_msg_out.turn_effect_onoff(presets[5].effects[6].EffectName,false);
       presets[5].effects[6].OnOff = false;
       setting_modified = true;
     }
     else {
-      //spark_msg_out.turn_effect_onoff(presets[5].effects[6].EffectName,true);
-      app_msg_out.turn_effect_onoff(presets[5].effects[6].EffectName,true);
+      if (connected_sp) spark_msg_out.turn_effect_onoff(presets[5].effects[6].EffectName,true);
+      if (connected_app) app_msg_out.turn_effect_onoff(presets[5].effects[6].EffectName,true);
       presets[5].effects[6].OnOff = true;
       setting_modified = true;
     }
@@ -502,10 +498,5 @@ void loop() {
  
   // Refresh screen when necessary
   refreshUI();
-
-  // Request serial number every 10s as a 'stay-alive' function.
-  if (millis() - count > 10000) {
-    count = millis();
-  }
   
 } // loop()}

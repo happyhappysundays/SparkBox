@@ -32,6 +32,8 @@ void connect_spark();
 void connect_pedal();
 #endif
 
+bool sp_connected();  // DT
+bool app_connected(); // DT
 bool sp_available();
 bool app_available();
 uint8_t sp_read();
@@ -42,7 +44,6 @@ int ble_getRSSI();
 
 BluetoothSerial *bt;
 bool is_ble;
-boolean isBTConnected;   // debug
 
 #ifdef BT_CONTROLLER
 bool connected_pedal
@@ -50,6 +51,7 @@ bool found_pedal;
 #endif
 
 bool connected_sp;
+bool connected_app;
 bool found_sp;
 
 

@@ -58,4 +58,3 @@ boolean latchpress;                             // latch to stop repeating the l
 boolean isOLEDUpdate;                           // Flag OLED needs refresh
 boolean isPedalMode;                            // Pedal mode: 0 = preset, 1 = effect
 boolean isHWpresetgot;                          // Flag to show that the hardware preset number has been processed
-boolean isAppConnected;                         // Flag to show that the app has connected at least initially

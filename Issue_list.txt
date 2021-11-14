@@ -41,5 +41,11 @@ v0.53
 - Merged with SparkTracker3
 - Smoothed out expression pedal noise nicely
 
+v0.55
+- Now only sends messages to connected devices
+- Sometimes will do a kind of double-disconnect when the app is removed. When this happens the app can not reconnectwithout a reboot.
+- Now shows a reconnect message when Spark is lost
+- No more bad blocks
+
 ToDo:
 - Find out why we get bad block messages sometimes
