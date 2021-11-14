@@ -1,4 +1,4 @@
-# SparkBoxHeltec V0.54
+# SparkBoxHeltec V0.55
 This is a Heltec WIFI Kit 32 version of SparkBox. SparkBox is another BT pedal for the Positive Grid Spark 40.  I only needed the functionality of the simpler BT pedals. However many of them use captured hex chunks to communicate with the Spark, or were Python based. Instead I wanted to use Paul Hamshere's amazing code to create and process real messages. Also I wanted to extend the functionality a bit and make a pretty UI.
 
 # Functions
