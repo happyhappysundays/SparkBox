@@ -11,7 +11,7 @@ void updateIcons() {
   // 2 bars (fair) = -60db to -75db
   // 3 bars (good) = -40db to -60db
   // 4 bars (excellent) = > -40db
-  if(isBTConnected){
+  if(connected_sp){
     Heltec.display->drawXbm(btlogo_pos, 0, bt_width, bt_height, bt_bits);
     // Display BT RSSI icon depending on actual signal
     if (iRSSI > -40) {
@@ -277,13 +277,24 @@ void refreshUI(void)
       flash_GUI = !flash_GUI;
     }
     // Flash "Connect App" message when no app connected
-    if (flash_GUI && !isAppConnected){
+    if (flash_GUI && !connected_app){
       Heltec.display->setFont(ArialMT_Plain_10);
-      Heltec.display->setTextAlignment(TEXT_ALIGN_CENTER);
-      Heltec.display->drawString(64, 37, "Connect App");
+      Heltec.display->setTextAlignment(TEXT_ALIGN_LEFT);
+      Heltec.display->drawString(15, 37, "Connect App");
     }
        
     updateIcons();
+    Heltec.display->display();
+  }
+  if (!connected_sp) {
+    // Show reconnection message
+    Heltec.display->clear();
+    Heltec.display->setFont(ArialMT_Plain_16);
+    Heltec.display->setTextAlignment(TEXT_ALIGN_CENTER);
+    Heltec.display->drawString(64, 10, "Reconnecting");
+    Heltec.display->setFont(ArialMT_Plain_16);
+    Heltec.display->setTextAlignment(TEXT_ALIGN_CENTER);
+    Heltec.display->drawString(64, 35, "Please wait");
     Heltec.display->display();
   }
 }

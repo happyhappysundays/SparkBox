@@ -4,26 +4,35 @@
 
 const uint8_t notifyOn[] = {0x1, 0x0};
 
-
-
-
-
 class MyClientCallback : public BLEClientCallbacks
 {
   void onConnect(BLEClient *pclient)
   {
+    connected_sp = true; 
     Serial.println("callback: Spark connected");
-    isBTConnected = true; // debug
   }
 
   void onDisconnect(BLEClient *pclient)
   {
     connected_sp = false;         
     Serial.println("callback: Spark disconnected");
-    isBTConnected = false; // debug
   }
 };
 
+class MyServerCallback : public BLEServerCallbacks
+{
+  void onConnect(BLEServer *pserver)
+  {
+    //connected_app = true; // This is a lie
+    //Serial.println("callback: App connected");
+  }
+
+  void onDisconnect(BLEServer *pserver)
+  {
+    connected_app = false;         
+    Serial.println("callback: App disconnected");
+  }
+};
 
 void notifyCB_sp(BLERemoteCharacteristic* pRemoteCharacteristic, uint8_t* pData, size_t length, bool isNotify) {
 
@@ -120,7 +129,7 @@ BLEUUID PedalServiceUuid(PEDAL_SERVICE);
 void connect_spark() {
   if (found_sp && !connected_sp) {
     if (pClient_sp->connect(*sp_address, BLE_ADDR_TYPE_RANDOM)) {
-      connected_sp = true;
+      //connected_sp = true;
       pService_sp = pClient_sp->getService(SpServiceUuid);
       if (pService_sp != nullptr) {
         pSender_sp   = pService_sp->getCharacteristic(C_CHAR1);
@@ -175,6 +184,7 @@ void connect_to_all() {
   
   pServer =       BLEDevice::createServer();
   pService =      pServer->createService(S_SERVICE);
+  pServer->setCallbacks(new MyServerCallback()); // DT
   
   pCharacteristic_receive = pService->createCharacteristic(S_CHAR1, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_WRITE_NR);
   pCharacteristic_send = pService->createCharacteristic(S_CHAR2, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
