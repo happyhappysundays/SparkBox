@@ -243,6 +243,7 @@ void refreshUI(void)
 {
   // if a change has been made or the timer timed out and we have the preset...
     if ((isOLEDUpdate || isTimeout) && isHWpresetgot){
+  //  if (isOLEDUpdate || isTimeout){
     isOLEDUpdate = false;  
     Heltec.display->clear();
     Heltec.display->setFont(ArialMT_Plain_16);

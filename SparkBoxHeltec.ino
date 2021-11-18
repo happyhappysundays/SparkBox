@@ -38,7 +38,7 @@
 //
 //******************************************************************************************
 #define PGM_NAME "SparkBox"
-#define VERSION "BLE 0.55"
+#define VERSION "BLE 0.56"
 #define MAXNAME 20
 
 char str[STR_LEN];                    // Used for processing Spark commands from amp
@@ -48,6 +48,7 @@ float val = 0.0;
 bool expression_target = false;       // False = parameter change, true = effect on/off
 bool effectstate = false;
 bool setting_modified = false;
+bool state_tracker_started = false;
 
 // Variables required to track spark state and also for communications generally
 unsigned int cmdsub;
@@ -90,10 +91,12 @@ int get_effect_index(char *str) {
   return ind;
 }
 
-void  spark_state_tracker_start() {
+bool  spark_state_tracker_start() {
+  state_tracker_started = false;
   selected_preset = 0;
   got_presets = false;
 
+  if (connected_sp) Serial.println("Connected: Sending request for presets");
   // Send commands to get preset details for all presets and current state (0x0100)
   if (connected_sp) spark_msg_out.get_preset_details(0x0000);
   if (connected_sp) spark_msg_out.get_preset_details(0x0001);
@@ -102,6 +105,9 @@ void  spark_state_tracker_start() {
   if (connected_sp) spark_msg_out.get_preset_details(0x007f);
   if (connected_sp) spark_msg_out.get_preset_details(0x0100);
   if (connected_sp) spark_msg_out.get_hardware_preset_number();
+  if (connected_sp) state_tracker_started = true;
+
+  return state_tracker_started;
 }
 
 // Get changes from app or Spark and update internal state to reflect this
@@ -243,6 +249,7 @@ bool  update_spark_state() {
       // Refresh preset info based on app-requested change
       case 0x0438:
         setting_modified = false;
+        Serial.println(connected_sp); // debug
         break;
  
       default:
@@ -303,9 +310,9 @@ void setup() {
   Heltec.display->drawString(64, 35, "Please wait");
   Heltec.display->display();
   
-  connect_to_all();             // sort out bluetooth connections
-  spark_start(true);            // set up the classes to communicate with Spark and app
-  spark_state_tracker_start();  // set up data to track Spark and app state
+  connect_to_all();                           // sort out bluetooth connections
+  spark_start(true);                          // set up the classes to communicate with Spark and app
+  while (!spark_state_tracker_start());       // set up data to track Spark and app state
   
   isPedalMode = false;                        // Default to Preset mode
 
