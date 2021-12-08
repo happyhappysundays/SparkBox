@@ -21,10 +21,10 @@ Under Files->Preferences->Additional Boards Manager URLs, enter the following:
 Under Tools->Board->Board manager ensure that you have the following version:
 - Heltec ESP32 Dev-Boards 0.0.5 (SparkBoxHeltec - WiFi Kit 32)
 
-Under Tools->Manage Libraries nsure that you have the following libraries and versions:
+Under Tools->Manage Libraries ensure that you have the following libraries and versions:
 - Heltec ESP32 Dev-Boards 1.1.0 (SparkBoxHeltec - WiFi Kit 32)
 - ThingPulse SSD1306 driver 4.2.1 (SparkBox)
-- NimBLE=Arduino 1.3.1
+- NimBLE-Arduino 1.3.1
 
 # Compile options
 
