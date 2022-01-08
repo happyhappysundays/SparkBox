@@ -1,4 +1,3 @@
-// Update Icons across top of screen 
 void updateIcons() {
   
   // Read RSSI from Spark
@@ -66,10 +65,7 @@ void updateIcons() {
 
     // To speed up the display when a battery is connected from scratch
     // ignore/fudge any readings below the lower threshold
-    if (vbat_result < BATTERY_LOW)
-    {
-      vbat_result = BATTERY_LOW;
-    }
+    if (vbat_result < BATTERY_LOW) vbat_result = BATTERY_LOW;
     temp = vbat_result;
 
     // While collecting data
@@ -86,8 +82,6 @@ void updateIcons() {
     }
 
     chrg_result = analogRead(CHRG_AIN); // Check state of /CHRG output
-    //Serial.print(", /CHRG = ");
-    //Serial.println(chrg_result);
     isTimeout = false;
   }
 
@@ -97,7 +91,7 @@ void updateIcons() {
 
    // No battery monitoring so just show the empty symbol
   #ifdef BATT_CHECK_0
-  Heltec.display->drawXbm(bat_pos, 0, bat_width, bat_height, bat00_bits);
+    Heltec.display->drawXbm(bat_pos, 0, bat_width, bat_height, bat00_bits);
   #endif
   
   // For level-based charge detection (not very reliable)
@@ -241,9 +235,14 @@ void dopushbuttons(void)
 // Refresh UI
 void refreshUI(void)
 {
-  // if a change has been made or the timer timed out and we have the preset...
-    if ((isOLEDUpdate || isTimeout) && isHWpresetgot){
-  //  if (isOLEDUpdate || isTimeout){
+    // Flip GUI flash bool
+    if (isTimeout){
+      flash_GUI = !flash_GUI;
+    }
+  
+    // if a change has been made or the timer timed out, we have the preset and connected...
+//    if ((isOLEDUpdate || isTimeout)){
+    if ((isOLEDUpdate || isTimeout) && !sp_resend_preset_info && isHWpresetgot){
     isOLEDUpdate = false;  
     Heltec.display->clear();
     Heltec.display->setFont(ArialMT_Plain_16);
@@ -273,10 +272,6 @@ void refreshUI(void)
     }
     Heltec.display->drawString(0, 50, presets[5].Name);
 
-    // Flip GUI flash bool
-    if (isTimeout){
-      flash_GUI = !flash_GUI;
-    }
     // Flash "Connect App" message when no app connected
     if (flash_GUI && !connected_app){
       Heltec.display->setFont(ArialMT_Plain_10);

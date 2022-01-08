@@ -1,4 +1,5 @@
 // Defines
+#define MAXNAME 24        // Truncate preset names
 #define NUM_SWITCHES 4
 #define VBAT_AIN 32       // Vbat sense (2:1 divider)
 #define CHRG_AIN 33       // Charge pin sense (10k pull-up)
@@ -58,3 +59,5 @@ boolean latchpress;                             // latch to stop repeating the l
 boolean isOLEDUpdate;                           // Flag OLED needs refresh
 boolean isPedalMode;                            // Pedal mode: 0 = preset, 1 = effect
 boolean isHWpresetgot;                          // Flag to show that the hardware preset number has been processed
+boolean request_preset;                         // Flag to allow one rety of the preset number each time out 
+boolean requested_preset;

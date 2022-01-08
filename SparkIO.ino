@@ -1,4 +1,3 @@
-#include "Spark.h"
 #include "SparkIO.h"
 
 /*  SparkIO
@@ -63,6 +62,28 @@
  * 
  * 
  */
+
+
+void dump_buf(char *hdr, uint8_t *buf, int len) {
+ 
+  Serial.print(hdr);
+  Serial.print(" <");
+  Serial.print(buf[18], HEX);
+  Serial.print("> ");
+  Serial.print(buf[len-2], HEX);
+  Serial.print(" ");
+  Serial.print(buf[len-1], HEX);  
+  
+  int i;
+  for (i=0; i<0 ; i++) {
+    if (buf[i]<16) Serial.print("0");
+    Serial.print(buf[i], HEX);
+    Serial.print(" ");
+    if (i % 16 == 15) Serial.println();
+  };
+  Serial.println(); 
+}
+
 
 // TO FIX
 // *ok_to_send shared across classes, and also checked whilst sending to the app
@@ -141,6 +162,9 @@ void app_process()
 // BLOCK INPUT ROUTINES 
 // Routine to read the block and put into the in_chunk ring buffer
 
+//////////////////// TEMPORARY TO DEBUG BAD BLOCK PROCESSING
+bool in_bad_block = false;
+
 void BlockIn::process() {
   uint8_t b;
   bool boo;
@@ -159,6 +183,10 @@ void BlockIn::process() {
           io_buf[0] = 0x01;
           io_buf[1] = 0xfe;
           io_pos = 2;
+          io_len = MAX_IO_BUFFER;
+        }
+        else if (b == 0x01) {
+          io_state = 1;
         }
         else
           io_state = 0;
@@ -168,10 +196,11 @@ void BlockIn::process() {
           io_len = b;
         }
         io_buf[io_pos++] = b;
-        if (io_pos == io_len) {
+        if (io_pos >= io_len) {         // could only be > if the earlier matching was fooled and len is <= 6
           data_write(io_buf, io_pos);
+
           io_pos = 0;
-          io_len = -1; 
+          io_len = MAX_IO_BUFFER; 
           io_state = 0; 
         }
       }
@@ -182,6 +211,12 @@ void BlockIn::process() {
       }
     }
     // **** END PASSTHROUGH ****
+
+    if (in_bad_block) {
+      Serial.print(" * ");
+      Serial.print(b, HEX);
+      Serial.print(" * ");
+    }
     
     // check the 7th byte which holds the block length
     if (rb_state == 6) {
@@ -199,16 +234,17 @@ void BlockIn::process() {
         Serial.print(b, HEX);
         Serial.print(" ");
         Serial.print(blk_hdr[rb_state], HEX);
-        Serial.print(" ");
-        Serial.print(rb_len);
         Serial.println();
         rb_state = -1;
+        in_bad_block = true;
         DEBUG("SparkIO bad block header");
       }
     } 
     // and once past the header just read the next bytes as defined by rb_len
     // store these to the chunk buffer
     else if (rb_state == 16) {
+      in_bad_block = false;
+  
       rb->add(b);
       rb_len--;
       if (rb_len == 0) {
@@ -544,8 +580,6 @@ bool MessageIn::get_message(unsigned int *cmdsub, SparkMessage *msg, SparkPreset
 
   if (in_message->is_empty()) return false;
   
-//  in_message->dump3();
-
   read_byte(&cmd);
   read_byte(&sub);
   read_byte(&len_h);
@@ -611,8 +645,10 @@ bool MessageIn::get_message(unsigned int *cmdsub, SparkMessage *msg, SparkPreset
       read_string(msg->str1);
       break;
     // enable / disable an effect
+    // and 0x0128 amp info command
     case 0x0315:
     case 0x0115:
+    case 0x0128:
       read_string(msg->str1);
       read_onoff(&msg->onoff);
       break;
@@ -625,6 +661,10 @@ bool MessageIn::get_message(unsigned int *cmdsub, SparkMessage *msg, SparkPreset
       read_byte(&msg->param1);
       read_byte(&msg->param2);
       break;
+    // amp info   
+    case 0x0328:
+      read_float(&msg->val);
+      break;  
     // firmware version number
     case 0x032f:
       // really this is a uint32 but it is just as easy to read into 4 uint8 - a bit of a cheat
@@ -649,7 +689,7 @@ bool MessageIn::get_message(unsigned int *cmdsub, SparkMessage *msg, SparkPreset
     // license key
     case 0x0170:
       for (i = 0; i < 64; i++)
-        read_uint(&junk);
+        read_uint(&license_key[i]);
       break;
     // response to a request for a full preset
     case 0x0301:
@@ -681,16 +721,17 @@ bool MessageIn::get_message(unsigned int *cmdsub, SparkMessage *msg, SparkPreset
     case 0x0363:
       read_float(&msg->val);  
       break;
-    case 0x470:
-      read_byte(&junk); //debug
+    case 0x0470:
+    case 0x0428:
+      read_byte(&junk);
     // acks - no payload to read - no ack sent for an 0x0104
     case 0x0401:
     case 0x0501:
     case 0x0406:
     case 0x0415:
     case 0x0438:
-      Serial.print("Got an ack ");
-      Serial.println(cs, HEX);
+//      Serial.print("Got an ack ");
+//      Serial.println(cs, HEX);
       break;
     default:
       Serial.print("Unprocessed message SparkIO ");
@@ -1067,8 +1108,9 @@ void ChunkOut::process() {
 
         // WATCH OUT THIS CODE IS IN TWO PLACES!!! NEED TO CHANGE BOTH IF CHANGING EITHER
         // Feels clunky to use a 'global' variable but how else to get the sequence number from the input to the output?
-        if (oc_cmd == 0x04 || oc_cmd == 0x05 || oc_cmd == 0x03)  // response, so use other sequence counter
+        if (oc_cmd == 0x04 || oc_cmd == 0x05 || oc_cmd == 0x03) { // response, so use other sequence counter
           out_chunk->add(*rec_seq);
+        }
         else {
           out_chunk->add(oc_seq);
           oc_seq++;
@@ -1110,11 +1152,9 @@ void ChunkOut::process() {
       out_chunk->add(0x01);
 
       // Feels clunky to use a 'global' variable but how else to get the sequence number from the input to the output?
-//      if (oc_cmd == 0x04 || oc_cmd == 0x05 || (oc_cmd == 0x03 && (oc_sub != 0x27 && oc_sub != 0x37 && oc_sub != 0x38)))  // response, so use other sequence counter
-
-      // Patch from Paul 10/11/2021
-      if (oc_cmd == 0x04 || oc_cmd == 0x05 || (oc_cmd == 0x03 && (oc_sub != 0x27 && oc_sub != 0x37 && oc_sub != 0x38)&& oc_sub != 0x15))  // response, so use other sequence counter
+      if (oc_cmd == 0x04 || oc_cmd == 0x05 || (oc_cmd == 0x03 && (oc_sub != 0x27 && oc_sub != 0x37 && oc_sub != 0x38 && oc_sub != 0x15 && oc_sub != 0x06))) { // response, so use other sequence counter
         out_chunk->add(*rec_seq);
+      }
       else {
         out_chunk->add(oc_seq);
         oc_seq++;
@@ -1138,7 +1178,6 @@ void ChunkOut::process() {
      out_chunk->add(0xf7);
     }
     out_chunk->commit();
-//    out_chunk->dump3();
   }
 }
 
@@ -1194,6 +1233,9 @@ void BlockOut::process() {
     
     out_block[6] = ob_pos;
     data_write(out_block, ob_pos);
+
+
+
 /*
     for (i=0; i<ob_pos;i++) {
       b=out_block[i];
@@ -1242,5 +1284,5 @@ void AppBlockOut::set(RingBuffer *chunks, uint8_t *hdr, bool *ok) {
 }
 
 void AppBlockOut::data_write(uint8_t *buf, int len){
-  app_write(buf, len);
+  app_write_timed(buf, len);
 }
