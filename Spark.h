@@ -1,38 +1,55 @@
 #ifndef Spark_h
 #define Spark_h
 
-#define DEBUG(x) Serial.println(x)
-#define STR_LEN 40
+#include "SparkIO.h"
 
-typedef struct  {
-  uint8_t  curr_preset;
-  uint8_t  preset_num;
-  char UUID[STR_LEN];
-  char Name[STR_LEN];
-  char Version[STR_LEN];
-  char Description[STR_LEN];
-  char Icon[STR_LEN];
-  float BPM;
-  struct SparkEffects {
-    char EffectName[STR_LEN];
-    bool OnOff;
-    uint8_t  NumParameters;
-    float Parameters[10];
-  } effects[7];
-  uint8_t chksum;
-} SparkPreset;
+// variables required to track spark state and also for communications generally
+unsigned int cmdsub;
+SparkMessage msg;
+SparkPreset preset;
+SparkPreset presets[6];
 
-typedef struct {
-  uint8_t param1;
-  uint8_t param2;
-  uint8_t param3;
-  uint8_t param4;
-  uint32_t param5;
-  float val;
-  char str1[STR_LEN];
-  char str2[STR_LEN];
-  bool onoff;
-} SparkMessage;
+void spark_state_tracker_start();
+bool update_spark_state();
+void update_ui();
 
+void change_comp_model(char *new_eff);
+void change_drive_model(char *new_eff);
+void change_amp_model(char *new_eff);
+void change_mod_model(char *new_eff);
+void change_delay_model(char *new_eff);
+
+void change_noisegate_onoff(bool onoff);
+void change_comp_onoff(bool onoff);
+void change_drive_onoff(bool onoff);
+void change_amp_onoff(bool onoff);
+void change_mod_onoff(bool onoff);
+void change_delay_onoff(bool onoff);
+void change_reverb_onoff(bool onoff);
+
+void change_noisegate_toggle();
+void change_comp_toggle();
+void change_drive_toggle();
+void change_amp_toggle();
+void change_mod_toggle();
+void change_delay_toggle();
+void change_reverb_toggle();
+
+void change_noisegate_param(int param, float val);
+void change_comp_param(int param, float val);
+void change_drive_param(int param, float val);
+void change_amp_param(int param, float val);
+void change_mod_param(int param, float val);
+void change_delay_param(int param, float val);
+void change_reverb_param(int param, float val);
+
+void change_hardware_preset(int pres_num);
+void change_custom_preset(SparkPreset *preset, int pres_num);
+
+#define AMP_GAIN 0
+#define AMP_TREBLE 1
+#define AMP_MID 2
+#define AMP_BASS 3
+#define AMP_MASTER 4
 
 #endif

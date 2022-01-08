@@ -2,10 +2,12 @@
 #define SparkIO_h
 
 #include "RingBuffer.h"
-#include "Spark.h"
+#include "SparkStructures.h"
 #include "SparkComms.h"
 
 #define MAX_IO_BUFFER 5000
+
+uint8_t license_key[64];
 
 // BLOCK INPUT CLASS
 class BlockIn

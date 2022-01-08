@@ -1,44 +1,67 @@
 #include "Spark.h"
 #include "SparkComms.h"
-#include "BluetoothSerial.h"
 
 const uint8_t notifyOn[] = {0x1, 0x0};
 
+// client callback for connection to Spark
 class MyClientCallback : public BLEClientCallbacks
 {
   void onConnect(BLEClient *pclient)
   {
-    connected_sp = true; 
-    Serial.println("callback: Spark connected");
+    DEBUG("callback: Spark connected");
+    set_conn_status_connected(SPK);
   }
 
   void onDisconnect(BLEClient *pclient)
   {
     connected_sp = false;         
-    Serial.println("callback: Spark disconnected");
+    DEBUG("callback: Spark disconnected");   
+    set_conn_status_disconnected(SPK);   
+    sp_disconnected = true; // DT flag when Spark disconnects so we can request preset info on reconnect
+    //isHWpresetgot = false;
   }
 };
+
+// server callback for connection to BLE app
 
 class MyServerCallback : public BLEServerCallbacks
 {
   void onConnect(BLEServer *pserver)
   {
-    //connected_app = true; // This is a lie
-    //Serial.println("callback: App connected");
+    set_conn_status_connected(APP);
+    DEBUG("callback: BLE app connected");
   }
 
   void onDisconnect(BLEServer *pserver)
   {
-    connected_app = false;         
-    Serial.println("callback: App disconnected");
+    DEBUG("callback: BLE app disconnected");
+    set_conn_status_disconnected(APP);
+    connected_app = false; // DT
   }
 };
+
+
+#ifdef CLASSIC
+// server callback for connection to BT classic app
+void bt_callback(esp_spp_cb_event_t event, esp_spp_cb_param_t *param){
+  if(event == ESP_SPP_SRV_OPEN_EVT){
+    DEBUG("callback: Classic BT app connected");
+    //set_conn_status_connected(APP);
+  }
+ 
+  if(event == ESP_SPP_CLOSE_EVT ){
+    DEBUG("callback: Classic BT app disconnected");
+    set_conn_status_disconnected(APP);
+    connected_app = false; // DT
+  }
+}
+#endif
 
 void notifyCB_sp(BLERemoteCharacteristic* pRemoteCharacteristic, uint8_t* pData, size_t length, bool isNotify) {
 
   int i;
   byte b;
-
+  
   for (i = 0; i < length; i++) {
     b = pData[i];
     ble_in.add(b);
@@ -51,55 +74,15 @@ void notifyCB_sp(BLERemoteCharacteristic* pRemoteCharacteristic, uint8_t* pData,
 void notifyCB_pedal(BLERemoteCharacteristic* pRemoteCharacteristic, uint8_t* pData, size_t length, bool isNotify){
 
   int i;
+  byte b;
 
-  // LPD8 gives 0xab 0xcd 0x90 0xNN 0xef or 0xab 0xcd 0x80 0xNN 0x00 for on and off
-  // NN is 1f 21 23 24
-  // NN is 18 1a 1c 1d
-
-  // Blueboard does this:
-  // In mode B the BB gives 0x80 0x80 0x90 0xNN 0x64 or 0x80 0x80 0x80 0xNN 0x00 for on and off
-  // In mode C the BB gives 0x80 0x80 0xB0 0xNN 0x7F or 0x80 0x80 0xB0 0xNN 0x00 for on and off
-
-  if (pData[2] == 0x90 || (pData[2] == 0xB0 && pData[4] == 0x7F)) {
-    switch (pData[3]) {
-      case 0x3C:
-      case 0x14:
-      case 0x1f:
-      case 0x18:
-      case 0x00:
-      case 0x04:
-        curr_preset = 0;
-        break;
- 
-      case 0x3E:
-      case 0x15:
-      case 0x21:
-      case 0x1a:
-      case 0x01:
-      case 0x05:
-        curr_preset = 1;
-        break;
-
-      case 0x40:
-      case 0x16:
-      case 0x23:
-      case 0x1c:
-      case 0x02:
-      case 0x06:
-        curr_preset = 2;
-        break;
-
-      case 0x41:   // Blueboard B
-      case 0x17:   // Blueboard C
-      case 0x24:   // LPD 8 pad
-      case 0x1d:   
-      case 0x03:   // LPD8 dial
-      case 0x07:
-        curr_preset = 3;
-        break;
-    }
-  triggered_pedal = true;
+  for (i = 0; i < length; i++) {
+    b = pData[i];
+    midi_in.add(b);
   }
+  midi_in.commit();
+
+  set_conn_received(BLE_MIDI);  
 }
 #endif
 
@@ -128,20 +111,44 @@ BLEUUID PedalServiceUuid(PEDAL_SERVICE);
 
 void connect_spark() {
   if (found_sp && !connected_sp) {
+
+    if (pClient_sp != nullptr && pClient_sp->isConnected())
+       DEBUG("HMMMM - connect_spark() SAYS I WAS CONNECTED ANYWAY");
+    
+#ifdef CLASSIC
     if (pClient_sp->connect(*sp_address, BLE_ADDR_TYPE_RANDOM)) {
-      //connected_sp = true;
+      pClient_sp->setMTU(517);
+#else
+    if (pClient_sp->connect(*sp_address)) {
+#endif
+      connected_sp = true;
       pService_sp = pClient_sp->getService(SpServiceUuid);
       if (pService_sp != nullptr) {
         pSender_sp   = pService_sp->getCharacteristic(C_CHAR1);
         pReceiver_sp = pService_sp->getCharacteristic(C_CHAR2);
         if (pReceiver_sp && pReceiver_sp->canNotify()) {
           pReceiver_sp->registerForNotify(notifyCB_sp);
+#ifdef CLASSIC
           p2902_sp = pReceiver_sp->getDescriptor(BLEUUID((uint16_t)0x2902));
           if (p2902_sp != nullptr)
              p2902_sp->writeValue((uint8_t*)notifyOn, 2, true);
-        }  
+#else
+          if (!pReceiver_sp->subscribe(true, notifyCB_sp, true)) {
+            connected_sp = false;
+            DEBUG("Spark disconnected");
+            NimBLEDevice::deleteClient(pClient_sp);
+          }   
+#endif
+        } 
       }
       DEBUG("connect_spark(): Spark connected");
+      
+      // Do magic
+      if (sp_disconnected){
+        Serial.println("Triggering sp_resend_preset_info.");     
+        sp_resend_preset_info = true;
+        sp_disconnected = false;
+      }
     }
   }
 }
@@ -150,50 +157,87 @@ void connect_spark() {
 #ifdef BT_CONTROLLER
 void connect_pedal() {
   if (found_pedal && !connected_pedal) {
-    if (pClient_pedal->connect(*pedal_address, BLE_ADDR_TYPE_RANDOM)) {
+    //if (pClient_pedal->connect(*pedal_address, BLE_ADDR_TYPE_RANDOM)) {  // BLUEBOARD IS RANDOM
+#ifdef CLASSIC
+    if (pClient_pedal->connect(*pedal_address, BLE_ADDR_TYPE_PUBLIC)) {  // LPD8 SEEMS TO BE PUBLIC
+#else
+    if (pClient_pedal->connect(*pedal_address)) { 
+#endif
       connected_pedal = true;
       pService_pedal = pClient_pedal->getService(PedalServiceUuid);
       if (pService_pedal != nullptr) {
         pReceiver_pedal = pService_pedal->getCharacteristic(PEDAL_CHAR);
+
         if (pReceiver_pedal && pReceiver_pedal->canNotify()) {
+#ifdef CLASSIC
           pReceiver_pedal->registerForNotify(notifyCB_pedal);
           p2902_pedal = pReceiver_pedal->getDescriptor(BLEUUID((uint16_t)0x2902));
           if(p2902_pedal != nullptr)
             p2902_pedal->writeValue((uint8_t*)notifyOn, 2, true);
+#else
+          if (!pReceiver_pedal->subscribe(true, notifyCB_pedal, true)) {
+            connected_pedal = false;
+            DEBUG("Pedal disconnected");
+            NimBLEDevice::deleteClient(pClient_pedal);
+          } 
+#endif
         }
       }
+      DEBUG("connect_pedal(): pedal connected");
+      set_conn_status_connected(BLE_MIDI);
     }
   }
 }
 #endif
 
 void connect_to_all() {
-  int i;
+  int i, j;
   uint8_t b;
+  unsigned long t;
+
+  // set up connection status tracking array
+  t = millis();
+  for (i = 0; i < NUM_CONNS; i++) {
+    conn_status[i] = false;
+    for (j = 0; j < 3; j++)
+      conn_last_changed[j][i] = t;
+  }
 
   is_ble = true;
 
   BLEDevice::init("Spark 40 BLE");
-  pClient_sp =    BLEDevice::createClient();
+  pClient_sp = BLEDevice::createClient();
   pClient_sp->setClientCallbacks(new MyClientCallback());
   
 #ifdef BT_CONTROLLER  
   pClient_pedal = BLEDevice::createClient();
 #endif
-  pScan  =        BLEDevice::getScan();
+  pScan = BLEDevice::getScan();
   
-  pServer =       BLEDevice::createServer();
-  pService =      pServer->createService(S_SERVICE);
-  pServer->setCallbacks(new MyServerCallback()); // DT
-  
+  pServer = BLEDevice::createServer();
+  pServer->setCallbacks(new MyServerCallback());  
+  pService = pServer->createService(S_SERVICE);
+
+#ifdef CLASSIC  
   pCharacteristic_receive = pService->createCharacteristic(S_CHAR1, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_WRITE_NR);
   pCharacteristic_send = pService->createCharacteristic(S_CHAR2, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
+#else
+  pCharacteristic_receive = pService->createCharacteristic(S_CHAR1, NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::WRITE_NR);
+  pCharacteristic_send = pService->createCharacteristic(S_CHAR2, NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::NOTIFY); 
+#endif
+
   pCharacteristic_receive->setCallbacks(&chrCallbacks_r);
   pCharacteristic_send->setCallbacks(&chrCallbacks_s);
+#ifdef CLASSIC
   pCharacteristic_send->addDescriptor(new BLE2902());
-  
+#endif
+
   pService->start();
 
+#ifndef CLASSIC
+  pServer->start(); 
+#endif
+  
   pAdvertising = BLEDevice::getAdvertising(); // create advertising instance
   pAdvertising->addServiceUUID(pService->getUUID()); // tell advertising the UUID of our service
   pAdvertising->setScanResponse(true);  
@@ -207,18 +251,10 @@ void connect_to_all() {
   found_pedal = false;
 #endif
 
-#ifdef BT_CONTROLLER  
-  while (!connected_sp || !connected_pedal) {
-#else
-  while (!connected_sp) {
-#endif
+  while (!found_sp) {   // assume we only use a pedal if on already and hopefully found at same time as Spark, don't wait for it
     pResults = pScan->start(4);
     
-#if BT_CONTROLLER
-    for(i = 0; i < pResults.getCount()  && (!found_sp  || !found_pedal); i++) {
-#else
     for(i = 0; i < pResults.getCount()  && !found_sp; i++) {
-#endif
       device = pResults.getDevice(i);
 
       if (device.isAdvertisingService(SpServiceUuid)) {
@@ -234,22 +270,22 @@ void connect_to_all() {
         found_pedal = true;
         connected_pedal = false;
         pedal_address = new BLEAddress(device.getAddress());
-        }
       }
 #endif
     }
-
-    // Set up client
-    connect_spark();
-#ifdef BT_CONTROLLER
-    connect_pedal();
-#endif    
   }
 
-  
-  Serial.println("Starting classic bluetooth");
+    // Set up client
+  connect_spark();
+#ifdef BT_CONTROLLER
+  connect_pedal();
+#endif    
+
+#ifdef CLASSIC
+  DEBUG("Starting classic bluetooth");
   // now advertise Serial Bluetooth
   bt = new BluetoothSerial();
+  bt->register_callback(bt_callback);
   if (!bt->begin (SPARK_BT_NAME)) {
     DEBUG("Classic bluetooth init fail");
     while (true);
@@ -258,12 +294,11 @@ void connect_to_all() {
   // flush anything read from App - just in case
   while (bt->available())
     b = bt->read(); 
-
   DEBUG("Spark 40 Audio set up");
-  
+#endif
+
   DEBUG("Available for app to connect...");  
   pAdvertising->start(); 
-
 }
 
 
@@ -274,33 +309,55 @@ bool app_available() {
     is_ble = true;
     return true;
   }
-    
+#ifdef CLASSIC    
   if (bt->available()) {
     is_ble = false;
     return true;
   }
-
+#endif
   // if neither have input, then there definitely is no input
   return false;
 }
 
 uint8_t app_read() {
-   if (is_ble) {
+  set_conn_received(APP);
+  if (is_ble) {
      uint8_t b;
      ble_app_in.get(&b);
      return b;
   }
+#ifdef CLASSIC  
   else
     return bt->read();
+#endif
 }
 
 void app_write(byte *buf, int len) {
+  set_conn_sent(APP);
   if (is_ble) {
     pCharacteristic_send->setValue(buf, len);
     pCharacteristic_send->notify(true);
   }
-  else  
+#ifdef CLASSIC 
+  else {
     bt->write(buf, len);
+  }
+#endif
+}
+
+
+void app_write_timed(byte *buf, int len) {               // same as app_write but with a slight delay for classic bluetooth - it seems to need it
+  set_conn_sent(APP);
+  if (is_ble) {
+    pCharacteristic_send->setValue(buf, len);
+    pCharacteristic_send->notify(true);
+  }
+#ifdef CLASSIC 
+  else {
+    bt->write(buf, len);
+    delay(50);                // this helps the timing of a 'fake' store hardware preset
+  }
+#endif
 }
 
 bool sp_available() {
@@ -309,11 +366,14 @@ bool sp_available() {
 
 uint8_t sp_read() {
   uint8_t b;
+  
+  set_conn_received(SPK);
   ble_in.get(&b);
   return b;
 }
 
 void sp_write(byte *buf, int len) {
+  set_conn_sent(SPK);  
   pSender_sp->writeValue(buf, len, false);
 }
 
@@ -324,4 +384,29 @@ int ble_getRSSI() {
 #else
   return pClient_sp->getRssi();
 #endif
+}
+
+
+// Code to enable UI changes
+
+void set_conn_received(int connection) {
+  conn_last_changed[FROM][connection] = millis();
+}
+
+void set_conn_sent(int connection) {
+  conn_last_changed[TO][connection] = millis();
+}
+
+void set_conn_status_connected(int connection) {
+  if (conn_status[connection] == false) {
+    conn_status[connection] = true;
+    conn_last_changed[STATUS][connection] = millis();
+  }
+}
+
+void set_conn_status_disconnected(int connection) {
+  if (conn_status[connection] == true) {
+    conn_status[connection] = false;
+    conn_last_changed[STATUS][connection] = millis();
+  }
 }
