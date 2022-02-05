@@ -27,7 +27,9 @@ Under Tools->Manage Libraries ensure that you have the following libraries and v
 
 # Compile options
 
-Uncomment ONE battery option to match your hardware.
+**define CLASSIC**
+
+Uncomment this to use with Android devices that are happier with classic BT code.
 
 **define BATT_CHECK_0**
 
