@@ -16,20 +16,14 @@ int get_effect_index(char *str) {
 }
 
 void  spark_state_tracker_start() {
-  connect_to_all();             // sort out bluetooth connections
-  spark_start(true);            // set up the classes to communicate with Spark and app
-  
+  spark_state = SPARK_DISCONNECTED;
+  connect_to_all();                   // sort out bluetooth connections
+  spark_start(true);                  // set up the classes to communicate with Spark and app
+  spark_state = SPARK_CONNECTED;     // it has to be to have reached here
+
+  spark_ping_timer = millis();
   selected_preset = 0;
   ui_update_in_progress = false;
-
-  // send commands to get preset details for all presets and current state (0x0100)
-  spark_msg_out.get_preset_details(0x0000);
-  spark_msg_out.get_preset_details(0x0001);
-  spark_msg_out.get_preset_details(0x0002);
-  spark_msg_out.get_preset_details(0x0003);
-  spark_msg_out.get_preset_details(0x0100);
-  spark_msg_out.get_hardware_preset_number(); // DT
-  requested_preset = true; // DT
 }
 
 // get changes from app or Spark and update internal state to reflect this
@@ -38,7 +32,38 @@ void  spark_state_tracker_start() {
 bool  update_spark_state() {
   int pres, ind;
 
-  connect_spark();  // reconnects if any disconnects happen
+  // sort out connection and sync progress
+  if (conn_status[SPK] == false) {
+    spark_state = SPARK_DISCONNECTED;
+    DEBUG("SPARK DISCONNECTED, TRY TO CONNECT");
+    connect_spark();  // reconnects if any disconnects happen
+  }
+
+  if (conn_status[SPK] == true && spark_state == SPARK_DISCONNECTED) {
+    spark_state = SPARK_CONNECTED;
+    DEBUG("SPARK CONNECTED");
+  }
+
+  if (spark_state == SPARK_CONNECTED) {
+    if (millis() - spark_ping_timer > 500) {
+      // every 0.5s ping the Spark amp to see if it will respond
+      spark_ping_timer = millis();
+      spark_msg_out.get_serial();
+      DEBUG("PINGING SPARK");  
+    }  
+  }
+  
+  if (spark_state == SPARK_COMMUNICATING) {
+    spark_msg_out.get_preset_details(0x0000);
+    spark_msg_out.get_preset_details(0x0001);
+    spark_msg_out.get_preset_details(0x0002);
+    spark_msg_out.get_preset_details(0x0003);
+    spark_msg_out.get_preset_details(0x0100);
+    spark_msg_out.get_hardware_preset_number();
+    spark_state = SPARK_SYNCING;
+    DEBUG("REQUESTED PRESETS");
+  }
+  
   spark_process();
   app_process();
   
@@ -53,12 +78,25 @@ bool  update_spark_state() {
     
     // all the processing for sync
     switch (cmdsub) {
+      // if serial number response then we know the connection is good
+      case 0x0323:
+        if (spark_state == SPARK_CONNECTED) {
+          spark_state = SPARK_COMMUNICATING;
+          DEBUG("RECEIVED SERIAL NUMBER - GOT CONNECTION");
+        }
+        break;
       // full preset details
       case 0x0101:
-        connected_app = true;
       case 0x0301:  
         pres = (preset.preset_num == 0x7f) ? 4 : preset.preset_num;
-        if (preset.curr_preset == 0x01) pres = 5;
+        if (preset.curr_preset == 0x01) {
+          pres = 5;
+          // if we receive preset data for 0x0100 then we are fully synced
+          if (spark_state == SPARK_SYNCING) {
+            spark_state = SPARK_SYNCED;
+            DEBUG("FULLY SYNCED NOW");
+          }
+        }
         presets[pres] = preset;
         // Only update the displayed preset number for HW presets
         if (pres < 4){
@@ -75,7 +113,6 @@ bool  update_spark_state() {
         break;
       // change of effect
       case 0x0106:
-        connected_app = true;
         expression_target = false;
         ind = get_effect_index(msg.str1);
         if (ind >= 0) strcpy(presets[5].effects[ind].EffectName, msg.str2);
@@ -83,7 +120,6 @@ bool  update_spark_state() {
         break;
       // effect on/off  
       case 0x0115:
-        connected_app = true; 
       case 0x0315:
         expression_target = true;
         ind = get_effect_index(msg.str1);
@@ -92,7 +128,6 @@ bool  update_spark_state() {
         break;
       // change parameter value  
       case 0x0104:
-        connected_app = true;
       case 0x0337:
         expression_target = false;
         ind = get_effect_index(msg.str1);
@@ -104,13 +139,10 @@ bool  update_spark_state() {
 
       // Send licence key   
       case 0x0170:
-        connected_app = true;
-        Serial.println("App connected");
         break; 
           
       // change to preset  
       case 0x0138:
-        connected_app = true;
       case 0x0338:
         selected_preset = (msg.param2 == 0x7f) ? 4 : msg.param2;
         presets[5] = presets[selected_preset];
@@ -140,9 +172,6 @@ bool  update_spark_state() {
         if (selected_preset < 4){
           display_preset_num = selected_preset; 
         }
-        isHWpresetgot = true;
-        requested_preset = false;
-        sp_resend_preset_info = false; // Stop asking
         break;
        // Refresh preset info based on app-requested change
       case 0x0438:

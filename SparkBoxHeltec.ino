@@ -4,6 +4,9 @@
 // between Preset mode (1 to 4) and Effect mode (Drive, Mod, Delay, Reverb).
 // Added an expression pedal to modify the cuirrent selected effect or toggle an effect. 
 //******************************************************************************************
+//
+//#define CLASSIC                     // Uncomment for Android compatibility
+//
 #include "heltec.h"                 // Heltec's proprietary library :/
 #include "BluetoothSerial.h"
 #include "Spark.h"                  // Paul Hamshere's SparkIO library https://github.com/paulhamsh/Spark/tree/main/Spark
@@ -38,7 +41,7 @@
 //
 //******************************************************************************************
 #define PGM_NAME "SparkBox"
-#define VERSION "V0.58"
+#define VERSION "V0.60"
 
 char str[STR_LEN];                    // Used for processing Spark commands from amp
 char param_str[50]; //debug
@@ -46,9 +49,7 @@ int param = -1;
 float val = 0.0;
 bool expression_target = false;       // False = parameter change, true = effect on/off
 bool effectstate = false;             // Current state of the effect controller by the expression pedal
-bool setting_modified = false;
-bool sp_disconnected = false;
-bool sp_resend_preset_info = false;
+bool setting_modified = false;        // Flag that user has modifed a setting
 
 // Variables required to track spark state and also for communications generally
 bool got_presets;
@@ -61,7 +62,6 @@ hw_timer_t * timer = NULL;            // Timer variables
 portMUX_TYPE timerMux = portMUX_INITIALIZER_UNLOCKED;
 volatile boolean isTimeout = false;   // Update battery icon flag
 volatile boolean isRSSIupdate = false;// Update RSSI display flag
-volatile int isResendPresets = 0;     // Timer for resending preset info after a reconnect
 
 //******************************************************************************************
 
@@ -70,7 +70,6 @@ void IRAM_ATTR onTime() {
    portENTER_CRITICAL_ISR(&timerMux);
    isTimeout = true;
    isRSSIupdate = true;
-   isResendPresets++;
    portEXIT_CRITICAL_ISR(&timerMux);
 }
 
@@ -104,7 +103,6 @@ void setup() {
   while (!Serial);
 
   Serial.println("Connecting...");
-  isHWpresetgot = false;
 
   // Show connection message
   Heltec.display->clear();
@@ -130,7 +128,7 @@ void loop() {
 
 #ifdef EXPRESSION_PEDAL
   // Only handle the pedal if the app is connected
-  if (connected_app){
+  if (conn_status[APP]){
     // Read expression pedal
     // It can be sometimes difficult to get to zero, which we need,
     // so we subtract an offset and expand the scale to cover the full range
@@ -249,24 +247,12 @@ void loop() {
         Serial.print(license_key[i], HEX);
       }
     Serial.println();
-    spark_msg_out.get_hardware_preset_number(); // DT
+    change_hardware_preset(display_preset_num); // Refresh app preset when first connected
     }
     // do your own checks and processing here    
   }
 
-  // Debug
-  if (!sp_resend_preset_info){
-    isResendPresets = 0;
-  }
-
-  // Try to get preset number when spark reconnects
-  if (sp_resend_preset_info && (isResendPresets >= 2)) {
-      Serial.println("Attempting to reaquire preset info.");
-      spark_msg_out.get_hardware_preset_number();
-      isResendPresets = 0;
-  }
-  
-  // Refresh screen when necessary
+  // Refresh screen
   refreshUI();
   
 } // loop()}
