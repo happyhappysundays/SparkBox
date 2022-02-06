@@ -10,7 +10,7 @@ void updateIcons() {
   // 2 bars (fair) = -60db to -75db
   // 3 bars (good) = -40db to -60db
   // 4 bars (excellent) = > -40db
-  if(connected_sp){
+  if(spark_state == SPARK_SYNCED){
     Heltec.display->drawXbm(btlogo_pos, 0, bt_width, bt_height, bt_bits);
     // Display BT RSSI icon depending on actual signal
     if (iRSSI > -40) {
@@ -26,9 +26,8 @@ void updateIcons() {
       Heltec.display->drawXbm(rssi_pos, 0, rssi_width, rssi_height, rssi_1);
     }
     // else no bars 
-  }
-  // Update drive status icons once data available
-  if(isHWpresetgot){ 
+    
+    // Update drive status icons once data available
     // Drive icon
     if (presets[5].effects[2].OnOff){
       Heltec.display->drawXbm(drive_pos, 0, icon_width, icon_height, drive_on_bits);
@@ -240,9 +239,8 @@ void refreshUI(void)
       flash_GUI = !flash_GUI;
     }
   
-    // if a change has been made or the timer timed out, we have the preset and connected...
-//    if ((isOLEDUpdate || isTimeout)){
-    if ((isOLEDUpdate || isTimeout) && !sp_resend_preset_info && isHWpresetgot){
+    // if a change has been made or the timer timed out and fully synched...
+    if ((isOLEDUpdate || isTimeout) && (spark_state == SPARK_SYNCED)){
     isOLEDUpdate = false;  
     Heltec.display->clear();
     Heltec.display->setFont(ArialMT_Plain_16);
@@ -273,7 +271,7 @@ void refreshUI(void)
     Heltec.display->drawString(0, 50, presets[5].Name);
 
     // Flash "Connect App" message when no app connected
-    if (flash_GUI && !connected_app){
+    if (flash_GUI && !conn_status[APP]){
       Heltec.display->setFont(ArialMT_Plain_10);
       Heltec.display->setTextAlignment(TEXT_ALIGN_LEFT);
       Heltec.display->drawString(15, 37, "Connect App");

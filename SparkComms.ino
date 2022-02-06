@@ -4,6 +4,7 @@
 const uint8_t notifyOn[] = {0x1, 0x0};
 
 // client callback for connection to Spark
+
 class MyClientCallback : public BLEClientCallbacks
 {
   void onConnect(BLEClient *pclient)
@@ -14,11 +15,11 @@ class MyClientCallback : public BLEClientCallbacks
 
   void onDisconnect(BLEClient *pclient)
   {
+//    if (pclient->isConnected()) {
+
     connected_sp = false;         
     DEBUG("callback: Spark disconnected");   
     set_conn_status_disconnected(SPK);   
-    sp_disconnected = true; // DT flag when Spark disconnects so we can request preset info on reconnect
-    //isHWpresetgot = false;
   }
 };
 
@@ -34,15 +35,36 @@ class MyServerCallback : public BLEServerCallbacks
 
   void onDisconnect(BLEServer *pserver)
   {
+
+//    if (pserver->getConnectedCount() == 1) {
     DEBUG("callback: BLE app disconnected");
     set_conn_status_disconnected(APP);
-    connected_app = false; // DT
   }
 };
 
+// BLE MIDI
+#ifdef BLE_APP_MIDI
+class MyMIDIServerCallback : public BLEServerCallbacks
+{
+  void onConnect(BLEServer *pserver)
+  {
+    //set_conn_status_connected(APP);
+    DEBUG("callback: BLE MIDI connected");
+  }
+
+  void onDisconnect(BLEServer *pserver)
+  {
+
+//    if (pserver->getConnectedCount() == 1) {
+    DEBUG("callback: BLE MIDI disconnected");
+    //set_conn_status_disconnected(APP);
+  }
+};
+#endif
 
 #ifdef CLASSIC
 // server callback for connection to BT classic app
+
 void bt_callback(esp_spp_cb_event_t event, esp_spp_cb_param_t *param){
   if(event == ESP_SPP_SRV_OPEN_EVT){
     DEBUG("callback: Classic BT app connected");
@@ -52,7 +74,6 @@ void bt_callback(esp_spp_cb_event_t event, esp_spp_cb_param_t *param){
   if(event == ESP_SPP_CLOSE_EVT ){
     DEBUG("callback: Classic BT app disconnected");
     set_conn_status_disconnected(APP);
-    connected_app = false; // DT
   }
 }
 #endif
@@ -69,7 +90,7 @@ void notifyCB_sp(BLERemoteCharacteristic* pRemoteCharacteristic, uint8_t* pData,
   ble_in.commit();
 }
 
-#ifdef BT_CONTROLLER
+#ifdef BLE_CONTROLLER
 // This works with IK Multimedia iRig Blueboard and the Akai LPD8 wireless - interestingly they have the same UUIDs
 void notifyCB_pedal(BLERemoteCharacteristic* pRemoteCharacteristic, uint8_t* pData, size_t length, bool isNotify){
 
@@ -103,23 +124,41 @@ class CharacteristicCallbacks: public BLECharacteristicCallbacks {
 
 static CharacteristicCallbacks chrCallbacks_s, chrCallbacks_r;
 
+
+// BLE apP MIDI
+#ifdef BLE_APP_MIDI
+class MIDICharacteristicCallbacks: public BLECharacteristicCallbacks {
+  void onWrite(BLECharacteristic* pCharacteristic) {
+        int j, l;
+        const char *p;
+        byte b;
+        l = pCharacteristic->getValue().length();
+        p = pCharacteristic->getValue().c_str();
+        for (j=0; j < l; j++) {
+          b = p[j];
+          ble_midi_in.add(b);
+        }
+        ble_midi_in.commit();
+  };
+};
+
+static MIDICharacteristicCallbacks chrCallbacksMIDI;
+#endif
+
 BLEUUID SpServiceUuid(C_SERVICE);
-#ifdef BT_CONTROLLER  
+#ifdef BLE_CONTROLLER  
 BLEUUID PedalServiceUuid(PEDAL_SERVICE);
 #endif
 
 
 void connect_spark() {
   if (found_sp && !connected_sp) {
-
     if (pClient_sp != nullptr && pClient_sp->isConnected())
        DEBUG("HMMMM - connect_spark() SAYS I WAS CONNECTED ANYWAY");
     
-#ifdef CLASSIC
-    if (pClient_sp->connect(*sp_address, BLE_ADDR_TYPE_RANDOM)) {
-      pClient_sp->setMTU(517);
-#else
-    if (pClient_sp->connect(*sp_address)) {
+    if (pClient_sp->connect(sp_device)) {
+#ifdef CLASSIC  
+      pClient_sp->setMTU(517);  
 #endif
       connected_sp = true;
       pService_sp = pClient_sp->getService(SpServiceUuid);
@@ -142,26 +181,17 @@ void connect_spark() {
         } 
       }
       DEBUG("connect_spark(): Spark connected");
-      
-      // Do magic
-      if (sp_disconnected){
-        Serial.println("Triggering sp_resend_preset_info.");     
-        sp_resend_preset_info = true;
-        sp_disconnected = false;
-      }
     }
   }
 }
 
 
-#ifdef BT_CONTROLLER
+#ifdef BLE_CONTROLLER
 void connect_pedal() {
   if (found_pedal && !connected_pedal) {
-    //if (pClient_pedal->connect(*pedal_address, BLE_ADDR_TYPE_RANDOM)) {  // BLUEBOARD IS RANDOM
+    if (pClient_pedal->connect(pedal_device)) {  
 #ifdef CLASSIC
-    if (pClient_pedal->connect(*pedal_address, BLE_ADDR_TYPE_PUBLIC)) {  // LPD8 SEEMS TO BE PUBLIC
-#else
-    if (pClient_pedal->connect(*pedal_address)) { 
+      pClient_sp->setMTU(517);
 #endif
       connected_pedal = true;
       pService_pedal = pClient_pedal->getService(PedalServiceUuid);
@@ -205,11 +235,11 @@ void connect_to_all() {
 
   is_ble = true;
 
-  BLEDevice::init("Spark 40 BLE");
+  BLEDevice::init("Spark 40 MIDI BLE");
   pClient_sp = BLEDevice::createClient();
   pClient_sp->setClientCallbacks(new MyClientCallback());
   
-#ifdef BT_CONTROLLER  
+#ifdef BLE_CONTROLLER  
   pClient_pedal = BLEDevice::createClient();
 #endif
   pScan = BLEDevice::getScan();
@@ -232,24 +262,51 @@ void connect_to_all() {
   pCharacteristic_send->addDescriptor(new BLE2902());
 #endif
 
+
+#ifdef BLE_APP_MIDI
+//  pServerMIDI = BLEDevice::createServer();
+//  pServerMIDI->setCallbacks(new MyMIDIServerCallback());  
+  pServiceMIDI = pServer->createService(MIDI_SERVICE);
+
+#ifdef CLASSIC  
+  pCharacteristicMIDI = pServiceMIDI->createCharacteristic(MIDI_CHAR, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_WRITE_NR | BLECharacteristic::PROPERTY_NOTIFY);
+#else
+  pCharacteristicMIDI = pServiceMIDI->createCharacteristic(MIDI_CHAR, NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::WRITE_NR | NIMBLE_PROPERTY::NOTIFY);
+#endif
+
+  pCharacteristicMIDI->setCallbacks(&chrCallbacksMIDI);
+#ifdef CLASSIC
+  pCharacteristicMIDI->addDescriptor(new BLE2902()); 
+#endif
+#endif
+
+
   pService->start();
+#ifdef BLE_APP_MIDI
+  pServiceMIDI->start();
+#endif
 
 #ifndef CLASSIC
   pServer->start(); 
 #endif
-  
+
   pAdvertising = BLEDevice::getAdvertising(); // create advertising instance
   pAdvertising->addServiceUUID(pService->getUUID()); // tell advertising the UUID of our service
+#ifdef BLE_APP_MIDI
+  pAdvertising->addServiceUUID(pServiceMIDI->getUUID()); // tell advertising the UUID of our service
+#endif
   pAdvertising->setScanResponse(true);  
-  
+
   // Connect to Spark
   connected_sp = false;
   found_sp = false;
  
-#ifdef BT_CONTROLLER
+#ifdef BLE_CONTROLLER
   connected_pedal = false;
   found_pedal = false;
 #endif
+
+DEBUG("Scanning...");
 
   while (!found_sp) {   // assume we only use a pedal if on already and hopefully found at same time as Spark, don't wait for it
     pResults = pScan->start(4);
@@ -261,15 +318,15 @@ void connect_to_all() {
         DEBUG("Found Spark");
         found_sp = true;
         connected_sp = false;
-        sp_address = new BLEAddress(device.getAddress());
+        sp_device = new BLEAdvertisedDevice(device);
       }
       
-#ifdef BT_CONTROLLER
-      if (device.isAdvertisingService(PedalServiceUuid)) {
+#ifdef BLE_CONTROLLER
+      if (device.isAdvertisingService(PedalServiceUuid) || strcmp(device.getName().c_str(),"iRig BlueBoard") == 0) {
         DEBUG("Found pedal");
         found_pedal = true;
         connected_pedal = false;
-        pedal_address = new BLEAddress(device.getAddress());
+        pedal_device = new BLEAdvertisedDevice(device);
       }
 #endif
     }
@@ -277,7 +334,7 @@ void connect_to_all() {
 
     // Set up client
   connect_spark();
-#ifdef BT_CONTROLLER
+#ifdef BLE_CONTROLLER
   connect_pedal();
 #endif    
 
@@ -379,7 +436,7 @@ void sp_write(byte *buf, int len) {
 
 // for some reason getRssi() crashes with two clients!
 int ble_getRSSI() { 
-#ifdef BT_CONTROLLER  
+#ifdef BLE_CONTROLLER  
   return 0;
 #else
   return pClient_sp->getRssi();
@@ -388,6 +445,7 @@ int ble_getRSSI() {
 
 
 // Code to enable UI changes
+
 
 void set_conn_received(int connection) {
   conn_last_changed[FROM][connection] = millis();
