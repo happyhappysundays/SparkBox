@@ -20,7 +20,7 @@
 // Battery charge function defines. Please uncomment just one.
 //
 // You have no mods to monitor the battery, so it will show empty
-//#define BATT_CHECK_0
+#define BATT_CHECK_0
 //
 // You are monitoring the battery via a 2:1 10k/10k resistive divider to GPIO23
 // You can see an accurate representation of the remaining battery charge and a kinda-sorta
@@ -29,7 +29,7 @@
 //
 // You have the battery monitor mod described above AND you have a connection between the 
 // CHRG pin of the charger chip and GPIO 33. Go you! Now you have a guaranteed charge indicator too.
-#define BATT_CHECK_2
+//#define BATT_CHECK_2
 //
 //******************************************************************************************
 // Expression pedal define. Comment this out if you DO NOT have the expression pedal mod
@@ -41,7 +41,7 @@
 //
 //******************************************************************************************
 #define PGM_NAME "SparkBox"
-#define VERSION "V0.61"
+#define VERSION "V0.61" 
 
 char str[STR_LEN];                    // Used for processing Spark commands from amp
 char param_str[50]; //debug
