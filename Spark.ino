@@ -33,10 +33,18 @@ bool  update_spark_state() {
   int pres, ind;
 
   // sort out connection and sync progress
-  if (conn_status[SPK] == false) {
+  if (conn_status[SPK] == false && spark_state != SPARK_DISCONNECTED) {
     spark_state = SPARK_DISCONNECTED;
+    spark_ping_timer = millis();
     DEBUG("SPARK DISCONNECTED, TRY TO CONNECT");
-    connect_spark();  // reconnects if any disconnects happen
+  }
+
+
+  if (spark_state == SPARK_DISCONNECTED) {
+    if (millis() - spark_ping_timer > 100) {
+      spark_ping_timer = millis();
+      connect_spark();  // reconnects if any disconnects happen    
+    }
   }
 
   if (conn_status[SPK] == true && spark_state == SPARK_DISCONNECTED) {
@@ -74,7 +82,7 @@ bool  update_spark_state() {
     Serial.print("Message: ");
     Serial.println(cmdsub, HEX);
 
-    isOLEDUpdate = true;        // Flag screen update
+    //isOLEDUpdate = true;        // Flag screen update
     
     // all the processing for sync
     switch (cmdsub) {
@@ -113,7 +121,7 @@ bool  update_spark_state() {
         break;
       // change of effect
       case 0x0106:
-        expression_target = false;
+        //expression_target = false;
         ind = get_effect_index(msg.str1);
         if (ind >= 0) strcpy(presets[5].effects[ind].EffectName, msg.str2);
         setting_modified = true;
@@ -121,7 +129,7 @@ bool  update_spark_state() {
       // effect on/off  
       case 0x0115:
       case 0x0315:
-        expression_target = true;
+        //expression_target = true;
         ind = get_effect_index(msg.str1);
         if (ind >= 0) presets[5].effects[ind].OnOff = msg.onoff;
         setting_modified = true;  
@@ -129,7 +137,7 @@ bool  update_spark_state() {
       // change parameter value  
       case 0x0104:
       case 0x0337:
-        expression_target = false;
+        //expression_target = false;
         ind = get_effect_index(msg.str1);
         if (ind >= 0) presets[5].effects[ind].Parameters[msg.param1] = msg.val;
         strcpy(param_str, msg.str1);
@@ -174,6 +182,20 @@ bool  update_spark_state() {
         }
         break;
        // Refresh preset info based on app-requested change
+
+      case 0x0364:
+        Serial.print("Tuner: "); 
+        Serial.print(msg.param1); 
+        Serial.print(" "); 
+        Serial.println(msg.val); 
+        isTunerMode = true;
+        break;    
+         
+      case 0x0365:
+        isTunerMode = false;
+        Serial.println("Tuner mode OFF."); 
+        break;       
+      
       case 0x0438:
         setting_modified = false;
         break;

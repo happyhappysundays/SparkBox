@@ -243,43 +243,194 @@ void refreshUI(void)
     if ((isOLEDUpdate || isTimeout) && (spark_state == SPARK_SYNCED)){
     isOLEDUpdate = false;  
     Heltec.display->clear();
-    Heltec.display->setFont(ArialMT_Plain_16);
-    Heltec.display->setTextAlignment(TEXT_ALIGN_LEFT);
-    if (!isPedalMode) {
-      Heltec.display->drawString(0, 20, "Preset mode");
+
+    // Show tuner screen when requested by Spark
+    if (isTunerMode) {
+      // If something to show
+      if (msg.val > -1.0) {
+
+        // Draw meter bitmap
+        Heltec.display->drawXbm(0, 0, tuner_width, tuner_height, tuner_bits);        
+
+        // Work out start and end-points of meter needle
+        metervalue = int16_t(msg.val * 128);            // Span tuner's 0-1.0, to 0-127
+        if (metervalue > 127) metervalue = 127;
+        if (metervalue < 0) metervalue = 0;
+        hubvalue = metervalue / 4;                      // Hub is 1/4 the size, so spans 0-32
+        hub_x = hubvalue;
+
+        // Work out the Y-values of the needle (both start and end points)
+        // Righ-side calculations
+        if (metervalue > 64)
+        {
+          hub_x = hub_x - 16;                           // Scale hub RHS
+          hub_y = sqrt(256 - (hub_x * hub_x));          // Work out Y-value based on 16 pixel radius
+          meter_x = metervalue - 64;                    // Scale meter RHS
+          meter_y = sqrt(4096 - (meter_x * meter_x));   // Work out Y-value based on 64 pixel radius
+          Heltec.display->drawLine(hubvalue + 48, 64-hub_y, metervalue, 64-meter_y); // Draw line from hub to meter edge
+        }
+        // Left-side calculations
+        else
+        {
+          hub_x = 16 - hub_x;
+          hub_y = sqrt(256 - (hub_x * hub_x));
+          meter_x = 64 - metervalue;
+          meter_y = sqrt(4096 - (meter_x * meter_x));        
+          Heltec.display->drawLine(hubvalue + 48, 64-hub_y, metervalue, 64-meter_y);
+        }
+
+        meter_target = msg.param1; // Get note data
+
+        // Show note names
+        Heltec.display->setFont(ArialMT_Plain_16);
+        switch (meter_target) {
+        case 0:
+          Heltec.display->setTextAlignment(TEXT_ALIGN_LEFT);
+          Heltec.display->drawString(16, 49, "B");
+          Heltec.display->setTextAlignment(TEXT_ALIGN_CENTER);
+          Heltec.display->drawString(64, 49, "C");
+          Heltec.display->setTextAlignment(TEXT_ALIGN_RIGHT);
+          Heltec.display->drawString(112, 49, "C#");
+          break;
+        case 1:
+          Heltec.display->setTextAlignment(TEXT_ALIGN_LEFT);
+          Heltec.display->drawString(16, 49, "C");
+          Heltec.display->setTextAlignment(TEXT_ALIGN_CENTER);
+          Heltec.display->drawString(64, 49, "C#");
+          Heltec.display->setTextAlignment(TEXT_ALIGN_RIGHT);
+          Heltec.display->drawString(112, 49, "D");
+          break;    
+        case 2:
+          Heltec.display->setTextAlignment(TEXT_ALIGN_LEFT);
+          Heltec.display->drawString(16, 49, "C#");
+          Heltec.display->setTextAlignment(TEXT_ALIGN_CENTER);
+          Heltec.display->drawString(64, 49, "D");
+          Heltec.display->setTextAlignment(TEXT_ALIGN_RIGHT);
+          Heltec.display->drawString(112, 49, "D#");
+          break;
+        case 3:
+          Heltec.display->setTextAlignment(TEXT_ALIGN_LEFT);
+          Heltec.display->drawString(16, 49, "D");
+          Heltec.display->setTextAlignment(TEXT_ALIGN_CENTER);
+          Heltec.display->drawString(64, 49, "D#");
+          Heltec.display->setTextAlignment(TEXT_ALIGN_RIGHT);
+          Heltec.display->drawString(112, 49, "E");
+          break;
+        case 4:
+          Heltec.display->setTextAlignment(TEXT_ALIGN_LEFT);
+          Heltec.display->drawString(16, 49, "D#");
+          Heltec.display->setTextAlignment(TEXT_ALIGN_CENTER);
+          Heltec.display->drawString(64, 49, "E");
+          Heltec.display->setTextAlignment(TEXT_ALIGN_RIGHT);
+          Heltec.display->drawString(112, 49, "F");
+          break;
+        case 5:
+          Heltec.display->setTextAlignment(TEXT_ALIGN_LEFT);
+          Heltec.display->drawString(16, 49, "E");
+          Heltec.display->setTextAlignment(TEXT_ALIGN_CENTER);
+          Heltec.display->drawString(64, 49, "F");
+          Heltec.display->setTextAlignment(TEXT_ALIGN_RIGHT);
+          Heltec.display->drawString(112, 49, "F#");
+          break;
+        case 6:
+          Heltec.display->setTextAlignment(TEXT_ALIGN_LEFT);
+          Heltec.display->drawString(16, 49, "F");
+          Heltec.display->setTextAlignment(TEXT_ALIGN_CENTER);
+          Heltec.display->drawString(64, 49, "F#");
+          Heltec.display->setTextAlignment(TEXT_ALIGN_RIGHT);
+          Heltec.display->drawString(112, 49, "G");
+          break;         
+        case 7:
+          Heltec.display->setTextAlignment(TEXT_ALIGN_LEFT);
+          Heltec.display->drawString(16, 49, "F#");
+          Heltec.display->setTextAlignment(TEXT_ALIGN_CENTER);
+          Heltec.display->drawString(64, 49, "G");
+          Heltec.display->setTextAlignment(TEXT_ALIGN_RIGHT);
+          Heltec.display->drawString(112, 49, "G#");
+          break;
+        case 8:
+          Heltec.display->setTextAlignment(TEXT_ALIGN_LEFT);
+          Heltec.display->drawString(16, 49, "G");
+          Heltec.display->setTextAlignment(TEXT_ALIGN_CENTER);
+          Heltec.display->drawString(64, 49, "G#");
+          Heltec.display->setTextAlignment(TEXT_ALIGN_RIGHT);
+          Heltec.display->drawString(112, 49, "A");
+          break;
+        case 9:
+          Heltec.display->setTextAlignment(TEXT_ALIGN_LEFT);
+          Heltec.display->drawString(16, 49, "G#");
+          Heltec.display->setTextAlignment(TEXT_ALIGN_CENTER);
+          Heltec.display->drawString(64, 49, "A");
+          Heltec.display->setTextAlignment(TEXT_ALIGN_RIGHT);
+          Heltec.display->drawString(112, 49, "A#");
+          break;
+        case 10:
+          Heltec.display->setTextAlignment(TEXT_ALIGN_LEFT);
+          Heltec.display->drawString(16, 49, "A");
+          Heltec.display->setTextAlignment(TEXT_ALIGN_CENTER);
+          Heltec.display->drawString(64, 49, "A#");
+          Heltec.display->setTextAlignment(TEXT_ALIGN_RIGHT);
+          Heltec.display->drawString(112, 49, "B");
+          break;
+        case 11:
+          Heltec.display->setTextAlignment(TEXT_ALIGN_LEFT);
+          Heltec.display->drawString(16, 49, "A#");
+          Heltec.display->setTextAlignment(TEXT_ALIGN_CENTER);
+          Heltec.display->drawString(64, 49, "B");
+          Heltec.display->setTextAlignment(TEXT_ALIGN_RIGHT);
+          Heltec.display->drawString(112, 49, "C");
+          break;
+        default:
+          break;
+        }
+      }     
     }
-    else {
-      Heltec.display->drawString(0, 20, "Effect mode");    
-    }
-    Heltec.display->setFont(Roboto_Mono_Bold_52);
-    Heltec.display->setTextAlignment(TEXT_ALIGN_CENTER);
     
-    if (flash_GUI || !setting_modified) {
-      // In-joke to the "I saw 5 on the display!" folk
-      if (display_preset_num > 3) {
-        display_preset_num = 3; 
+    // Otherwise normal display
+    else {
+      Heltec.display->setFont(ArialMT_Plain_16);
+      Heltec.display->setTextAlignment(TEXT_ALIGN_LEFT);
+      if (!isPedalMode) {
+        Heltec.display->drawString(0, 20, "Preset mode");
       }
-      Heltec.display->drawString(110, 12, String(display_preset_num+1));
-    }
-    Heltec.display->setFont(ArialMT_Plain_10);
-    Heltec.display->setTextAlignment(TEXT_ALIGN_LEFT);
-
-    // Sanity length check on name string
-    if (strlen(presets[5].Name) > MAXNAME){
-       presets[5].Name[MAXNAME - 1]  = '\0';  // Rudely truncate
-    }
-    Heltec.display->drawString(0, 50, presets[5].Name);
-
-    // Flash "Connect App" message when no app connected
-    if (flash_GUI && !conn_status[APP]){
+      else {
+        Heltec.display->drawString(0, 20, "Effect mode");    
+      }
+      Heltec.display->setFont(Roboto_Mono_Bold_52);
+      Heltec.display->setTextAlignment(TEXT_ALIGN_CENTER);
+      
+      if (flash_GUI || !setting_modified) {
+        // In-joke to the "I saw 5 on the display!" folk
+        if (display_preset_num > 3) {
+          display_preset_num = 3; 
+        }
+        Heltec.display->drawString(110, 12, String(display_preset_num+1));
+      }
       Heltec.display->setFont(ArialMT_Plain_10);
       Heltec.display->setTextAlignment(TEXT_ALIGN_LEFT);
-      Heltec.display->drawString(15, 37, "Connect App");
+
+      // Truncate string so that it never extends into preset number
+      strcpy(TempString, presets[5].Name);
+      i = STR_LEN;
+      while (Heltec.display->getStringWidth(TempString) > 90) {
+        TempString[i-1]= '\0';  // Rudely truncate
+        i--;
+      }
+
+      Heltec.display->drawString(0, 50, TempString);
+  
+      // Flash "Connect App" message when no app connected
+      if (flash_GUI && !conn_status[APP]){
+        Heltec.display->setFont(ArialMT_Plain_10);
+        Heltec.display->setTextAlignment(TEXT_ALIGN_LEFT);
+        Heltec.display->drawString(15, 37, "Connect App");
+      }
+    
+      updateIcons();
     }
-       
-    updateIcons();
     Heltec.display->display();
   }
+  
   if (!connected_sp) {
     // Show reconnection message
     Heltec.display->clear();

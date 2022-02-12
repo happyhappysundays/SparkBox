@@ -41,7 +41,7 @@
 //
 //******************************************************************************************
 #define PGM_NAME "SparkBox"
-#define VERSION "V0.60"
+#define VERSION "V0.61" 
 
 char str[STR_LEN];                    // Used for processing Spark commands from amp
 char param_str[50]; //debug
@@ -57,6 +57,7 @@ uint8_t display_preset_num;           // Referenced preset number on Spark
 int i, j, p;
 int count;                            // "
 bool flash_GUI;                       // Flash GUI items if true
+bool isTunerMode;                     // Tuner mode flag
 
 hw_timer_t * timer = NULL;            // Timer variables
 portMUX_TYPE timerMux = portMUX_INITIALIZER_UNLOCKED;
@@ -249,7 +250,18 @@ void loop() {
     Serial.println();
     change_hardware_preset(display_preset_num); // Refresh app preset when first connected
     }
+    if (cmdsub == 0x0115 || cmdsub == 0x0315){
+      expression_target = true;
+    }
+    else if (cmdsub == 0x0104 || cmdsub == 0x0337 || cmdsub == 0x0106){
+      expression_target = false;
+    }
+    else {
+      expression_target = true; 
+    }
+    
     // do your own checks and processing here    
+    isOLEDUpdate = true;        // Flag screen update
   }
 
   // Refresh screen
