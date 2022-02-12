@@ -20,7 +20,7 @@
 // Battery charge function defines. Please uncomment just one.
 //
 // You have no mods to monitor the battery, so it will show empty
-#define BATT_CHECK_0
+//#define BATT_CHECK_0
 //
 // You are monitoring the battery via a 2:1 10k/10k resistive divider to GPIO23
 // You can see an accurate representation of the remaining battery charge and a kinda-sorta
@@ -29,7 +29,7 @@
 //
 // You have the battery monitor mod described above AND you have a connection between the 
 // CHRG pin of the charger chip and GPIO 33. Go you! Now you have a guaranteed charge indicator too.
-//#define BATT_CHECK_2
+#define BATT_CHECK_2
 //
 //******************************************************************************************
 // Expression pedal define. Comment this out if you DO NOT have the expression pedal mod
@@ -41,7 +41,7 @@
 //
 //******************************************************************************************
 #define PGM_NAME "SparkBox"
-#define VERSION "V0.60"
+#define VERSION "V0.61"
 
 char str[STR_LEN];                    // Used for processing Spark commands from amp
 char param_str[50]; //debug
@@ -57,6 +57,7 @@ uint8_t display_preset_num;           // Referenced preset number on Spark
 int i, j, p;
 int count;                            // "
 bool flash_GUI;                       // Flash GUI items if true
+bool isTunerMode;                     // Tuner mode flag
 
 hw_timer_t * timer = NULL;            // Timer variables
 portMUX_TYPE timerMux = portMUX_INITIALIZER_UNLOCKED;
@@ -249,7 +250,18 @@ void loop() {
     Serial.println();
     change_hardware_preset(display_preset_num); // Refresh app preset when first connected
     }
+    if (cmdsub == 0x0115 || cmdsub == 0x0315){
+      expression_target = true;
+    }
+    else if (cmdsub == 0x0104 || cmdsub == 0x0337 || cmdsub == 0x0106){
+      expression_target = false;
+    }
+    else {
+      expression_target = true; 
+    }
+    
     // do your own checks and processing here    
+    isOLEDUpdate = true;        // Flag screen update
   }
 
   // Refresh screen

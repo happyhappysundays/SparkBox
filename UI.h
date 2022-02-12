@@ -54,6 +54,16 @@ boolean buttonActive[NUM_SWITCHES];             // indicates if the button is ac
 boolean longPressActive[NUM_SWITCHES];          // indicate if the button has been long-pressed
 boolean AnylongPressActive = false;             // OR of any longPressActive states
 boolean latchpress;                             // latch to stop repeating the long press state
+char TempString[STR_LEN];
+int16_t metervalue = 0;
+int16_t meter_target = 0;
+int16_t hubvalue = 0;
+int16_t meter_x = 0;
+int16_t meter_y = 0;
+int16_t hub_x = 0;
+int16_t hub_y = 0;
+
+
 
 // Flags
 boolean isOLEDUpdate;                           // Flag OLED needs refresh
