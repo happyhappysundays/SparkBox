@@ -166,6 +166,7 @@ class MessageOut
     void send_key_ack();
     void send_serial_number(char *serial);
     void send_ack(unsigned int cmdsub);
+    void tuner_on_off(bool onoff);
 
     RingBuffer *out_message;
     int cmd_base;

@@ -221,6 +221,24 @@ void dopushbuttons(void)
 
   // OR all the long press flags so any of the four main footswitches can switch modes
   AnylongPressActive = (longPressActive[0] || longPressActive[1] || longPressActive[2] || longPressActive[3]);
+  AllPressActive = (longPressActive[0] && longPressActive[1] && longPressActive[2] && longPressActive[3]);
+
+  // Have all buttons been held down? - toggle tuner mode
+  if (AllPressActive && (latchpress == true)){
+      Serial.println("Tuner mode");
+      if (isTunerMode) {
+        spark_msg_out.tuner_on_off(false);
+      }
+      else {
+        spark_msg_out.tuner_on_off(true);
+      }/*
+      longPressActive[0] = false;
+      longPressActive[1] = false;
+      longPressActive[2] = false;
+      longPressActive[3] = false;*/
+      latchpress = false;
+  }
+   
   // Has any button been held down
   if (AnylongPressActive && (latchpress == true)){
       Serial.println("Switching pedal mode");
