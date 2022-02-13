@@ -194,6 +194,7 @@ bool  update_spark_state() {
         break;    
          
       case 0x0365:
+      case 0x0465:
         isTunerMode = false;
         //Serial.println("Tuner mode OFF."); 
         break;       
@@ -423,4 +424,9 @@ void change_custom_preset(SparkPreset *preset, int pres_num) {
     spark_msg_out.create_preset(preset);
     spark_msg_out.change_hardware_preset(0, preset->preset_num);
   }
+}
+
+void tuner_on_off(bool on_off) {
+  spark_msg_out.tuner_on_off(on_off);
+  spark_process();
 }

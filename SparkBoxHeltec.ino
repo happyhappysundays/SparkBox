@@ -41,7 +41,7 @@
 //
 //******************************************************************************************
 #define PGM_NAME "SparkBox"
-#define VERSION "V0.62" 
+#define VERSION "V0.63" 
 
 char str[STR_LEN];                    // Used for processing Spark commands from amp
 char param_str[50]; //debug

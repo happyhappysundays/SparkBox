@@ -739,6 +739,7 @@ bool MessageIn::get_message(unsigned int *cmdsub, SparkMessage *msg, SparkPreset
     case 0x0406:
     case 0x0415:
     case 0x0438:
+    case 0x0465:
 //      Serial.print("Got an ack ");
 //      Serial.println(cs, HEX);
       break;
@@ -1068,6 +1069,13 @@ void SparkMessageOut::set(RingBuffer *messages) {
 void AppMessageOut::set(RingBuffer *messages) {
   out_message = messages;
   cmd_base = 0x0300;
+}
+
+void MessageOut::tuner_on_off(bool onoff)
+{
+  start_message (0x0165);
+  write_onoff (onoff);
+  end_message();
 }
 
 void ChunkOut::out_store(uint8_t b)

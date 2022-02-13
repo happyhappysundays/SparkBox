@@ -53,6 +53,7 @@ unsigned long buttonPressDuration[NUM_SWITCHES];// stores the duration (in milli
 boolean buttonActive[NUM_SWITCHES];             // indicates if the button is active/pressed
 boolean longPressActive[NUM_SWITCHES];          // indicate if the button has been long-pressed
 boolean AnylongPressActive = false;             // OR of any longPressActive states
+boolean AllPressActive = false;                 // AND of any longPressActive states
 boolean latchpress;                             // latch to stop repeating the long press state
 char TempString[STR_LEN];
 int16_t metervalue = 0;
