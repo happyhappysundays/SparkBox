@@ -184,16 +184,18 @@ bool  update_spark_state() {
        // Refresh preset info based on app-requested change
 
       case 0x0364:
+        /*
         Serial.print("Tuner: "); 
         Serial.print(msg.param1); 
         Serial.print(" "); 
         Serial.println(msg.val); 
+        */
         isTunerMode = true;
         break;    
          
       case 0x0365:
         isTunerMode = false;
-        Serial.println("Tuner mode OFF."); 
+        //Serial.println("Tuner mode OFF."); 
         break;       
       
       case 0x0438:

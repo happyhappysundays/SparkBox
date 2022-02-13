@@ -246,12 +246,20 @@ void refreshUI(void)
 
     // Show tuner screen when requested by Spark
     if (isTunerMode) {
+      
+      // Default display - draw meter bitmap and label
+      Heltec.display->drawXbm(0, 0, tuner_width, tuner_height, tuner_bits); 
+      Heltec.display->setFont(ArialMT_Plain_10);
+      Heltec.display->setTextAlignment(TEXT_ALIGN_LEFT);
+      Heltec.display->drawString(0,0,"Tuner");
+      
+      // If nothing to show
+      if (msg.val == -1.0) {
+        Heltec.display->setTextAlignment(TEXT_ALIGN_RIGHT);
+        Heltec.display->drawString(127,0,"...");
+      }
       // If something to show
-      if (msg.val > -1.0) {
-
-        // Draw meter bitmap
-        Heltec.display->drawXbm(0, 0, tuner_width, tuner_height, tuner_bits);        
-
+      else {
         // Work out start and end-points of meter needle
         metervalue = int16_t(msg.val * 128);            // Span tuner's 0-1.0, to 0-127
         if (metervalue > 127) metervalue = 127;
@@ -286,99 +294,99 @@ void refreshUI(void)
         switch (meter_target) {
         case 0:
           Heltec.display->setTextAlignment(TEXT_ALIGN_LEFT);
-          Heltec.display->drawString(16, 49, "B");
-          Heltec.display->setTextAlignment(TEXT_ALIGN_CENTER);
-          Heltec.display->drawString(64, 49, "C");
+          //Heltec.display->drawString(16, 49, "B");
           Heltec.display->setTextAlignment(TEXT_ALIGN_RIGHT);
-          Heltec.display->drawString(112, 49, "C#");
+          Heltec.display->drawString(127, 0, "C");
+          Heltec.display->setTextAlignment(TEXT_ALIGN_RIGHT);
+          //Heltec.display->drawString(112, 49, "C#");
           break;
         case 1:
           Heltec.display->setTextAlignment(TEXT_ALIGN_LEFT);
-          Heltec.display->drawString(16, 49, "C");
-          Heltec.display->setTextAlignment(TEXT_ALIGN_CENTER);
-          Heltec.display->drawString(64, 49, "C#");
+          //Heltec.display->drawString(16, 49, "C");
           Heltec.display->setTextAlignment(TEXT_ALIGN_RIGHT);
-          Heltec.display->drawString(112, 49, "D");
+          Heltec.display->drawString(127, 0, "C#");
+          Heltec.display->setTextAlignment(TEXT_ALIGN_RIGHT);
+          //Heltec.display->drawString(112, 49, "D");
           break;    
         case 2:
           Heltec.display->setTextAlignment(TEXT_ALIGN_LEFT);
-          Heltec.display->drawString(16, 49, "C#");
-          Heltec.display->setTextAlignment(TEXT_ALIGN_CENTER);
-          Heltec.display->drawString(64, 49, "D");
+          //Heltec.display->drawString(16, 49, "C#");
           Heltec.display->setTextAlignment(TEXT_ALIGN_RIGHT);
-          Heltec.display->drawString(112, 49, "D#");
+          Heltec.display->drawString(127, 0, "D");
+          Heltec.display->setTextAlignment(TEXT_ALIGN_RIGHT);
+          //Heltec.display->drawString(112, 49, "D#");
           break;
         case 3:
           Heltec.display->setTextAlignment(TEXT_ALIGN_LEFT);
-          Heltec.display->drawString(16, 49, "D");
-          Heltec.display->setTextAlignment(TEXT_ALIGN_CENTER);
-          Heltec.display->drawString(64, 49, "D#");
+          //Heltec.display->drawString(16, 49, "D");
           Heltec.display->setTextAlignment(TEXT_ALIGN_RIGHT);
-          Heltec.display->drawString(112, 49, "E");
+          Heltec.display->drawString(127, 0, "D#");
+          Heltec.display->setTextAlignment(TEXT_ALIGN_RIGHT);
+          //Heltec.display->drawString(112, 49, "E");
           break;
         case 4:
           Heltec.display->setTextAlignment(TEXT_ALIGN_LEFT);
-          Heltec.display->drawString(16, 49, "D#");
-          Heltec.display->setTextAlignment(TEXT_ALIGN_CENTER);
-          Heltec.display->drawString(64, 49, "E");
+          //Heltec.display->drawString(16, 49, "D#");
           Heltec.display->setTextAlignment(TEXT_ALIGN_RIGHT);
-          Heltec.display->drawString(112, 49, "F");
+          Heltec.display->drawString(127, 0, "E");
+          Heltec.display->setTextAlignment(TEXT_ALIGN_RIGHT);
+          //Heltec.display->drawString(112, 49, "F");
           break;
         case 5:
           Heltec.display->setTextAlignment(TEXT_ALIGN_LEFT);
-          Heltec.display->drawString(16, 49, "E");
-          Heltec.display->setTextAlignment(TEXT_ALIGN_CENTER);
-          Heltec.display->drawString(64, 49, "F");
+          //Heltec.display->drawString(16, 49, "E");
           Heltec.display->setTextAlignment(TEXT_ALIGN_RIGHT);
-          Heltec.display->drawString(112, 49, "F#");
+          Heltec.display->drawString(127, 0, "F");
+          Heltec.display->setTextAlignment(TEXT_ALIGN_RIGHT);
+          //Heltec.display->drawString(112, 49, "F#");
           break;
         case 6:
           Heltec.display->setTextAlignment(TEXT_ALIGN_LEFT);
-          Heltec.display->drawString(16, 49, "F");
-          Heltec.display->setTextAlignment(TEXT_ALIGN_CENTER);
-          Heltec.display->drawString(64, 49, "F#");
+          //Heltec.display->drawString(16, 49, "F");
           Heltec.display->setTextAlignment(TEXT_ALIGN_RIGHT);
-          Heltec.display->drawString(112, 49, "G");
+          Heltec.display->drawString(127, 0, "F#");
+          Heltec.display->setTextAlignment(TEXT_ALIGN_RIGHT);
+          //Heltec.display->drawString(112, 49, "G");
           break;         
         case 7:
           Heltec.display->setTextAlignment(TEXT_ALIGN_LEFT);
-          Heltec.display->drawString(16, 49, "F#");
-          Heltec.display->setTextAlignment(TEXT_ALIGN_CENTER);
-          Heltec.display->drawString(64, 49, "G");
+          //Heltec.display->drawString(16, 49, "F#");
           Heltec.display->setTextAlignment(TEXT_ALIGN_RIGHT);
-          Heltec.display->drawString(112, 49, "G#");
+          Heltec.display->drawString(127, 0, "G");
+          Heltec.display->setTextAlignment(TEXT_ALIGN_RIGHT);
+          //Heltec.display->drawString(112, 49, "G#");
           break;
         case 8:
           Heltec.display->setTextAlignment(TEXT_ALIGN_LEFT);
-          Heltec.display->drawString(16, 49, "G");
-          Heltec.display->setTextAlignment(TEXT_ALIGN_CENTER);
-          Heltec.display->drawString(64, 49, "G#");
+          //Heltec.display->drawString(16, 49, "G");
           Heltec.display->setTextAlignment(TEXT_ALIGN_RIGHT);
-          Heltec.display->drawString(112, 49, "A");
+          Heltec.display->drawString(127, 0, "G#");
+          Heltec.display->setTextAlignment(TEXT_ALIGN_RIGHT);
+          //Heltec.display->drawString(112, 49, "A");
           break;
         case 9:
           Heltec.display->setTextAlignment(TEXT_ALIGN_LEFT);
-          Heltec.display->drawString(16, 49, "G#");
-          Heltec.display->setTextAlignment(TEXT_ALIGN_CENTER);
-          Heltec.display->drawString(64, 49, "A");
+          //Heltec.display->drawString(16, 49, "G#");
           Heltec.display->setTextAlignment(TEXT_ALIGN_RIGHT);
-          Heltec.display->drawString(112, 49, "A#");
+          Heltec.display->drawString(127, 0, "A");
+          Heltec.display->setTextAlignment(TEXT_ALIGN_RIGHT);
+          //Heltec.display->drawString(112, 49, "A#");
           break;
         case 10:
           Heltec.display->setTextAlignment(TEXT_ALIGN_LEFT);
-          Heltec.display->drawString(16, 49, "A");
-          Heltec.display->setTextAlignment(TEXT_ALIGN_CENTER);
-          Heltec.display->drawString(64, 49, "A#");
+          //Heltec.display->drawString(16, 49, "A");
           Heltec.display->setTextAlignment(TEXT_ALIGN_RIGHT);
-          Heltec.display->drawString(112, 49, "B");
+          Heltec.display->drawString(127, 0, "A#");
+          Heltec.display->setTextAlignment(TEXT_ALIGN_RIGHT);
+          //Heltec.display->drawString(112, 49, "B");
           break;
         case 11:
           Heltec.display->setTextAlignment(TEXT_ALIGN_LEFT);
-          Heltec.display->drawString(16, 49, "A#");
-          Heltec.display->setTextAlignment(TEXT_ALIGN_CENTER);
-          Heltec.display->drawString(64, 49, "B");
+          //Heltec.display->drawString(16, 49, "A#");
           Heltec.display->setTextAlignment(TEXT_ALIGN_RIGHT);
-          Heltec.display->drawString(112, 49, "C");
+          Heltec.display->drawString(127, 0, "B");
+          Heltec.display->setTextAlignment(TEXT_ALIGN_RIGHT);
+          //Heltec.display->drawString(112, 49, "C");
           break;
         default:
           break;

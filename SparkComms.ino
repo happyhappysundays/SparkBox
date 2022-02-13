@@ -158,7 +158,7 @@ void connect_spark() {
     
     if (pClient_sp->connect(sp_device)) {
 #ifdef CLASSIC  
-      pClient_sp->setMTU(517);  
+      //pClient_sp->setMTU(517);  
 #endif
       connected_sp = true;
       pService_sp = pClient_sp->getService(SpServiceUuid);
@@ -191,7 +191,7 @@ void connect_pedal() {
   if (found_pedal && !connected_pedal) {
     if (pClient_pedal->connect(pedal_device)) {  
 #ifdef CLASSIC
-      pClient_sp->setMTU(517);
+      //pClient_sp->setMTU(517);
 #endif
       connected_pedal = true;
       pService_pedal = pClient_pedal->getService(PedalServiceUuid);
