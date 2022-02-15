@@ -56,5 +56,6 @@ Dump preset define. Comment out if you'd prefer to not see so much text output
 
 ![alt text](https://github.com/happyhappysundays/SparkBoxHeltec/blob/main/Pictures/Dev_board.jpg?raw=true)
 ![alt text](https://github.com/happyhappysundays/SparkBoxHeltec/blob/main/Pictures/Charge_detect.jpg?raw=true)
+![alt text](https://github.com/happyhappysundays/SparkBoxHeltec/blob/main/Pictures/meter_during.jpg?raw=true)
 ![alt text](https://github.com/happyhappysundays/SparkBoxHeltec/blob/main/Pictures/SparkBox_Heltec_Exp_2.png?raw=true)
 
