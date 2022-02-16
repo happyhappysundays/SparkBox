@@ -1,4 +1,4 @@
-# SparkBox V0.63
+# SparkBox V0.64
 SparkBox is a BT pedal for the Positive Grid Spark 40.  I only needed the functionality of the simpler BT pedals. However many of them use captured hex chunks to communicate with the Spark, or were Python based. Instead I wanted to use Paul Hamshere's amazing code to create and process real messages. Also I wanted to extend the functionality a bit and make an attractive UI.
 
 # Functions
@@ -13,7 +13,7 @@ SparkBox is a BT pedal for the Positive Grid Spark 40.  I only needed the functi
 - Battery level indicator on UI
 - BLE RSSI indicator
 - Now with remote guitar tuner display! Select from Spark, or hold all four buttons down to enter/exit.
-- Soon to be inter-operable with both conventional and Heltec ESP32 modules.
+- Inter-operable with both conventional and Heltec ESP32 modules.
 
 # Arduino libraries and board versions
 Under Files->Preferences->Additional Boards Manager URLs, enter the following:
@@ -25,7 +25,6 @@ Under Tools->Board->Board manager ensure that you have the following version:
 - ESP32 by Espressif 1.0.4 (ESP32)
 
 Under Tools->Manage Libraries ensure that you have the following libraries and versions:
-- Heltec ESP32 Dev-Boards 1.1.0 (Heltec - WiFi Kit 32) **OR**
 - ThingPulse SSD1306 driver 4.2.1 (ESP32)
 - NimBLE-Arduino 1.3.6
 
@@ -56,6 +55,9 @@ Expression pedal define. Comment this out if you DO NOT have the expression peda
 
 **define DUMP_ON**
 Dump preset define. Comment out if you'd prefer to not see so much text output
+
+**define TWOCOLOUR**
+Uncomment if two-colour OLED screens are used. Offsets some text and shows an alternate tuner.
 
 # Heltec module version
 ![alt text](https://github.com/happyhappysundays/SparkBox/blob/main/Pictures/Dev_board.jpg?raw=true)
