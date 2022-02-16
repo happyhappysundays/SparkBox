@@ -23,6 +23,29 @@
 #define BATTERY_CHRG 2451 // Totally empirical, adjust as required. Currently 4.25V-ish
 #define VBAT_NUM 10       // Number of vbat readings to average
 
+// Text offsets for different types of display
+
+#ifdef TWOCOLOUR
+// Two-colour displays
+#define X1 64 // Please wait, Version, Connecting, SparkBox, Reconnecting
+#define Y1 22
+#define Y2 47
+#define Y3 16
+#define Y4 41
+#define Y5 16
+#define tuner_scale 2304
+#else
+
+// Single colour displays
+#define X1 64 // Please wait, Version, Connecting, SparkBox, Reconnecting
+#define Y1 16
+#define Y2 42
+#define Y3 10
+#define Y4 35
+#define Y5 0
+#define tuner_scale 4096
+#endif
+
 // Globals
 static int iRSSI = 0;                           // BLE signal strength
 int vbat_ring_count = 0;
