@@ -11,8 +11,9 @@ SparkBox is a BT pedal for the Positive Grid Spark 40.  I only needed the functi
 - Supports 4-button pedals
 - Hold down any switch for 1s to switch between Effect mode and Preset mode
 - Battery level indicator on UI
-- BLE RSSI inidcator
+- BLE RSSI indicator
 - Now with remote guitar tuner display! Select from Spark, or hold all four buttons down to enter/exit.
+- Soon to be inter-operable with both conventional and Heltec ESP32 modules.
 
 # Arduino libraries and board versions
 Under Files->Preferences->Additional Boards Manager URLs, enter the following:
@@ -20,10 +21,12 @@ Under Files->Preferences->Additional Boards Manager URLs, enter the following:
 - https://github.com/Heltec-Aaron-Lee/WiFi_Kit_series/releases/download/0.0.5/package_heltec_esp32_index.json
 
 Under Tools->Board->Board manager ensure that you have the following version:
-- Heltec ESP32 Dev-Boards 0.0.5 (SparkBoxHeltec - WiFi Kit 32)
+- Heltec ESP32 Dev-Boards 0.0.5 (Heltec - WiFi Kit 32) **OR**
+- ESP32 by Espressif 1.0.4 (ESP32)
 
 Under Tools->Manage Libraries ensure that you have the following libraries and versions:
-- Heltec ESP32 Dev-Boards 1.1.0 (SparkBoxHeltec - WiFi Kit 32)
+- Heltec ESP32 Dev-Boards 1.1.0 (Heltec - WiFi Kit 32) **OR**
+- ThingPulse SSD1306 driver 4.2.1 (ESP32)
 - NimBLE-Arduino 1.3.6
 
 # Compile options
@@ -54,8 +57,37 @@ Expression pedal define. Comment this out if you DO NOT have the expression peda
 **define DUMP_ON**
 Dump preset define. Comment out if you'd prefer to not see so much text output
 
-![alt text](https://github.com/happyhappysundays/SparkBoxHeltec/blob/main/Pictures/Dev_board.jpg?raw=true)
-![alt text](https://github.com/happyhappysundays/SparkBoxHeltec/blob/main/Pictures/Charge_detect.jpg?raw=true)
-![alt text](https://github.com/happyhappysundays/SparkBoxHeltec/blob/main/Pictures/meter_during.jpg?raw=true)
-![alt text](https://github.com/happyhappysundays/SparkBoxHeltec/blob/main/Pictures/SparkBox_Heltec_Exp_2.png?raw=true)
+# Heltec module version
+![alt text](https://github.com/happyhappysundays/SparkBox/blob/main/Pictures/Dev_board.jpg?raw=true)
+![alt text](https://github.com/happyhappysundays/SparkBox/blob/main/Pictures/Charge_detect.jpg?raw=true)
+![alt text](https://github.com/happyhappysundays/SparkBox/blob/main/Pictures/meter_during.jpg?raw=true)
+![alt text](https://github.com/happyhappysundays/SparkBox/blob/main/Pictures/SparkBox_Heltec_Exp_2.png?raw=true)
 
+# ESP32 version
+![alt text](https://github.com/happyhappysundays/SparkBox_old/blob/main/Pictures/thumbnail_IMG_6791.jpg?raw=true)
+![alt text](https://github.com/happyhappysundays/SparkBox_old/blob/main/Pictures/SparkBox.jpg?raw=true)
+![alt text](https://github.com/happyhappysundays/SparkBox_old/blob/main/Pictures/thumbnail_IMG_6785.jpg?raw=true)
+![alt text](https://github.com/happyhappysundays/SparkBox_old/blob/main/Pictures/thumbnail_IMG_6786.jpg?raw=true)
+![alt text](https://github.com/happyhappysundays/SparkBox_old/blob/main/Pictures/thumbnail_IMG_6994.jpg?raw=true)
+![alt text](https://github.com/happyhappysundays/SparkBox_old/blob/main/Pictures/V0_4.jpg?raw=true)
+![alt text](https://github.com/happyhappysundays/SparkBox_old/blob/main/Pictures/SparkBox_Heltec_Exp.png?raw=true)
+![alt text](https://github.com/happyhappysundays/SparkBox_old/blob/main/Pictures/SparkBox_Battery.png?raw=true)
+
+# ESP32 pedal parts list
+
+| Item | Description           | Link               |
+| -----| ----------------------|--------------------|
+|   1  | Box                   |https://www.aliexpress.com/item/32693268669.html?spm=a2g0s.9042311.0.0.27424c4dlzGiUH
+|   2  | Stomp switch          |https://www.aliexpress.com/item/32918205335.html?spm=a2g0s.9042311.0.0.27424c4dszp4Ie
+|   3  | ESP-WROOM-32U module  |https://www.aliexpress.com/item/32864722159.html?spm=a2g0s.9042311.0.0.27424c4dlzGiUH
+|   4  | LCD screen            |https://www.ebay.com.au/itm/333085424031
+|   5  | BT antenna            |https://www.aliexpress.com/item/4001054693109.html?spm=a2g0s.9042311.0.0.27424c4dlzGiUH and https://www.ebay.com.au/itm/233962468558
+|   6  | USB extension         |https://www.aliexpress.com/item/32808991941.html?spm=a2g0s.9042311.0.0.27424c4dlzGiUH
+|   7  | Power switch          |https://www.jaycar.com.au/dpdt-miniature-toggle-switch-solder-tag/p/ST0355
+|   8  | DC input jack         |https://www.jaycar.com.au/2-5mm-bulkhead-male-dc-power-connector/p/PS0524
+|   9  | Pedal jack            |https://www.jaycar.com.au/6-5mm-stereo-enclosed-insulated-switched-socket/p/PS0184
+|  10  | LiPo battery          |https://www.ebay.com.au/itm/133708965813
+|  11  | LiPo charger          |https://www.ebay.com.au/itm/161821599467
+|  12  | LiPo booster          |https://www.jaycar.com.au/arduino-compatible-5v-dc-to-dc-converter-module/p/XC4512
+|  13  | 9V to 5V converter    |https://www.ebay.com.au/itm/303839459634
+|  14  | Glass window (opt)    |https://www.aliexpress.com/item/4000377316108.html?spm=a2g0s.12269583.0.0.1a1e62440DlgU2
