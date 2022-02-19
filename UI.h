@@ -33,7 +33,7 @@
 #define Y3 16
 #define Y4 41
 #define Y5 16
-#define tuner_scale 2304
+#define tuner_scale 2304 // 48 * 48
 #else
 
 // Single colour displays

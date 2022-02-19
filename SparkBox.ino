@@ -43,7 +43,7 @@
 //******************************************************************************************
 
 #define PGM_NAME "SparkBox"
-#define VERSION "V0.64" 
+#define VERSION "V0.65" 
 
 SSD1306Wire oled(0x3c, 4, 15);        // Default OLED Screen Definitions - ADDRESS, SDA, SCL 
 

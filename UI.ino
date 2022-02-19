@@ -284,133 +284,74 @@ void refreshUI(void)
       else {
         // Work out start and end-points of meter needle
         metervalue = int16_t(msg.val * 128);            // Span tuner's 0-1.0, to 0-127
-        if (metervalue > 127) metervalue = 127;
+        if (metervalue > 127) metervalue = 127;         // Bounds check
         if (metervalue < 0) metervalue = 0;
         hubvalue = metervalue / 4;                      // Hub is 1/4 the size, so spans 0-32
-        hub_x = hubvalue;
 
         // Work out the Y-values of the needle (both start and end points)
-        // Righ-side calculations
+        // Right-side calculations
         if (metervalue > 64)
         {
-          hub_x = hub_x - 16;                           // Scale hub RHS
-          hub_y = sqrt(256 - (hub_x * hub_x));          // Work out Y-value based on 16 pixel radius
-          meter_x = metervalue - 64;                    // Scale meter RHS
-          meter_y = sqrt(tuner_scale - (meter_x * meter_x));   // Work out Y-value based on 64 pixel radius
-          oled.drawLine(hubvalue + 48, 64-hub_y, metervalue, 64-meter_y); // Draw line from hub to meter edge
+          hubvalue = hubvalue - 16;                     // Scale hub RHS from 16-0 to 0-16 
+          hub_y = sqrt(256 - (hubvalue * hubvalue));    // Work out Y-value based on 16 pixel radius
+          meter_x = metervalue - 64;                    // Scale meter RHS from 64-128 to 0-64
+          meter_y = sqrt(tuner_scale - (meter_x * meter_x)); // Work out Y-value based on 64 (or 48) pixel radius
+          oled.drawLine((hubvalue + 64), (64-hub_y), metervalue, (64-meter_y)); // Draw line from hub to meter edge
         }
         // Left-side calculations
         else
         {
-          hub_x = 16 - hub_x;
-          hub_y = sqrt(256 - (hub_x * hub_x));
-          meter_x = 64 - metervalue;
-          meter_y = sqrt(tuner_scale - (meter_x * meter_x));        
-          oled.drawLine(hubvalue + 48, 64-hub_y, metervalue, 64-meter_y);
+          hubvalue = 16 - hubvalue;                     // Scale hub from 0-16 to 16-0
+          hub_y = sqrt(256 - (hubvalue * hubvalue));    // Work out Y-value based on 16 pixel radius (0-16)
+          meter_x = 64 - metervalue;                    // Scale meter RHS from 0-64 to 64-0
+          meter_y = sqrt(tuner_scale - (meter_x * meter_x)); // Work out Y-value based on 64 (or 48) pixel radius (0-64)
+          oled.drawLine(((16-hubvalue) + 48), (64-hub_y), metervalue, (64-meter_y)); // Draw line from hub to meter edge
         }
 
         meter_target = msg.param1; // Get note data
 
         // Show note names
         oled.setFont(ArialMT_Plain_16);
+        oled.setTextAlignment(TEXT_ALIGN_RIGHT);
         switch (meter_target) {
         case 0:
-          oled.setTextAlignment(TEXT_ALIGN_LEFT);
-          //oled.drawString(16, 49, "B");
-          oled.setTextAlignment(TEXT_ALIGN_RIGHT);
           oled.drawString(127, 0, "C");
-          oled.setTextAlignment(TEXT_ALIGN_RIGHT);
-          //oled.drawString(112, 49, "C#");
           break;
         case 1:
-          oled.setTextAlignment(TEXT_ALIGN_LEFT);
-          //oled.drawString(16, 49, "C");
-          oled.setTextAlignment(TEXT_ALIGN_RIGHT);
           oled.drawString(127, 0, "C#");
-          oled.setTextAlignment(TEXT_ALIGN_RIGHT);
-          //oled.drawString(112, 49, "D");
           break;    
         case 2:
-          oled.setTextAlignment(TEXT_ALIGN_LEFT);
-          //oled.drawString(16, 49, "C#");
-          oled.setTextAlignment(TEXT_ALIGN_RIGHT);
           oled.drawString(127, 0, "D");
-          oled.setTextAlignment(TEXT_ALIGN_RIGHT);
-          //oled.drawString(112, 49, "D#");
           break;
         case 3:
-          oled.setTextAlignment(TEXT_ALIGN_LEFT);
-          //oled.drawString(16, 49, "D");
-          oled.setTextAlignment(TEXT_ALIGN_RIGHT);
           oled.drawString(127, 0, "D#");
-          oled.setTextAlignment(TEXT_ALIGN_RIGHT);
-          //oled.drawString(112, 49, "E");
           break;
         case 4:
-          oled.setTextAlignment(TEXT_ALIGN_LEFT);
-          //oled.drawString(16, 49, "D#");
-          oled.setTextAlignment(TEXT_ALIGN_RIGHT);
           oled.drawString(127, 0, "E");
-          oled.setTextAlignment(TEXT_ALIGN_RIGHT);
-          //oled.drawString(112, 49, "F");
           break;
         case 5:
-          oled.setTextAlignment(TEXT_ALIGN_LEFT);
-          //oled.drawString(16, 49, "E");
-          oled.setTextAlignment(TEXT_ALIGN_RIGHT);
           oled.drawString(127, 0, "F");
-          oled.setTextAlignment(TEXT_ALIGN_RIGHT);
-          //oled.drawString(112, 49, "F#");
           break;
         case 6:
-          oled.setTextAlignment(TEXT_ALIGN_LEFT);
-          //oled.drawString(16, 49, "F");
-          oled.setTextAlignment(TEXT_ALIGN_RIGHT);
           oled.drawString(127, 0, "F#");
-          oled.setTextAlignment(TEXT_ALIGN_RIGHT);
-          //oled.drawString(112, 49, "G");
           break;         
         case 7:
-          oled.setTextAlignment(TEXT_ALIGN_LEFT);
-          //oled.drawString(16, 49, "F#");
-          oled.setTextAlignment(TEXT_ALIGN_RIGHT);
           oled.drawString(127, 0, "G");
-          oled.setTextAlignment(TEXT_ALIGN_RIGHT);
-          //oled.drawString(112, 49, "G#");
           break;
         case 8:
-          oled.setTextAlignment(TEXT_ALIGN_LEFT);
-          //oled.drawString(16, 49, "G");
-          oled.setTextAlignment(TEXT_ALIGN_RIGHT);
           oled.drawString(127, 0, "G#");
-          oled.setTextAlignment(TEXT_ALIGN_RIGHT);
-          //oled.drawString(112, 49, "A");
           break;
         case 9:
-          oled.setTextAlignment(TEXT_ALIGN_LEFT);
-          //oled.drawString(16, 49, "G#");
-          oled.setTextAlignment(TEXT_ALIGN_RIGHT);
           oled.drawString(127, 0, "A");
-          oled.setTextAlignment(TEXT_ALIGN_RIGHT);
-          //oled.drawString(112, 49, "A#");
           break;
         case 10:
-          oled.setTextAlignment(TEXT_ALIGN_LEFT);
-          //oled.drawString(16, 49, "A");
-          oled.setTextAlignment(TEXT_ALIGN_RIGHT);
           oled.drawString(127, 0, "A#");
-          oled.setTextAlignment(TEXT_ALIGN_RIGHT);
-          //oled.drawString(112, 49, "B");
           break;
         case 11:
-          oled.setTextAlignment(TEXT_ALIGN_LEFT);
-          //oled.drawString(16, 49, "A#");
-          oled.setTextAlignment(TEXT_ALIGN_RIGHT);
           oled.drawString(127, 0, "B");
-          oled.setTextAlignment(TEXT_ALIGN_RIGHT);
-          //oled.drawString(112, 49, "C");
           break;
         default:
+          oled.drawString(127,0,"...");
           break;
         }
       }     
