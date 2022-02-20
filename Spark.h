@@ -13,7 +13,7 @@ enum spark_status_values {SPARK_DISCONNECTED, SPARK_CONNECTED, SPARK_COMMUNICATI
 spark_status_values spark_state;
 unsigned long spark_ping_timer;
 
-void spark_state_tracker_start();
+bool spark_state_tracker_start();
 bool update_spark_state();
 void update_ui();
 
@@ -49,6 +49,7 @@ void change_reverb_param(int param, float val);
 
 void change_hardware_preset(int pres_num);
 void change_custom_preset(SparkPreset *preset, int pres_num);
+
 void tuner_on_off(bool on_off);
 
 #define AMP_GAIN 0

@@ -414,3 +414,54 @@ void refreshUI(void)
     oled.display();
   }
 }
+
+
+void textAnimation(const String &s, ulong msDelay, int yShift=0, bool show=true) {  
+    oled.clear();
+    oled.drawString(oled.width()/2, oled.height()/2-6 + yShift, s);
+    if (show) {
+      oled.display();
+      delay(msDelay);
+    }
+}
+
+void ESP_off(){
+  //  CRT-off effect =) or something
+  String s = "_________________";
+  oled.clear();
+  oled.display();
+  oled.setFont(MEDIUM_FONT);
+  oled.setTextAlignment(TEXT_ALIGN_CENTER);
+  for (int i=0; i<8; i++) {
+    s = s.substring(i);
+    textAnimation(s,70,-6);
+  }
+  for (int i=0; i<10; i++) {
+    textAnimation("\\",30);
+    textAnimation("|",30);
+    textAnimation("/",30);
+    textAnimation("--",30);
+  }
+  textAnimation("...z-Z-Z",5000);
+  // hopefully displayOff() saves energy, or more realistic it's just me lazy to RTFM
+  oled.displayOff();
+  oled.display();
+  DEBUG("deep sleep");
+  //  Only GPIOs which have RTC functionality can be used: 0,2,4,12-15,25-27,32-39
+  oled.displayOff(); // turn it off, otherwise oled remains active
+  esp_sleep_enable_ext0_wakeup(static_cast <gpio_num_t> (sw_pin[0]), HIGH); // wake up if BUTTON 1 pressed
+  esp_deep_sleep_start();
+};
+
+void ESP_on () {
+  oled.setFont(MEDIUM_FONT);
+  oled.setTextAlignment(TEXT_ALIGN_CENTER);
+  //oled.setContrast(100);
+  textAnimation(".",200,-4);
+  textAnimation("*",100,5);
+  textAnimation("X",100,2);
+  textAnimation("-}|{-",100);
+  textAnimation("- -X- -",100,2);
+  textAnimation("x",100,0);
+  textAnimation(".",200,-4);
+}
