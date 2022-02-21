@@ -68,9 +68,7 @@ int chrg_result = 0;                             // For charge state monitoring
 int attempt_count = 0;                         // Connection attempts counter
 
 int sw_val[NUM_SWITCHES];     
-//int sw_pin[]{17,5,18,23};                       // Switch gpio numbers
-int sw_pin[]{25,26,27,14};                       // Switch gpio numbers
-
+int sw_pin[]{17,5,18,23};                       // Switch gpio numbers
                                                 // SW1 Toggle Drive 
                                                 // SW2 Toggle Modulation
                                                 // SW3 Toggle Delay

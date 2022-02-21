@@ -739,6 +739,7 @@ bool MessageIn::get_message(unsigned int *cmdsub, SparkMessage *msg, SparkPreset
     case 0x0406:
     case 0x0415:
     case 0x0438:
+    case 0x0465:
 //      Serial.print("Got an ack ");
 //      Serial.println(cs, HEX);
       break;
