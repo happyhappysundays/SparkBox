@@ -15,11 +15,19 @@
 
 
 // Functions for logging changes for any UI updates
-#define SPK 0
+// Spark amp
+#define SPK 0  
+// Spark app                 
 #define APP 1
+// Buetooth MIDI controller  
 #define BLE_MIDI 2
+// USB Host MIDI
 #define USB_MIDI 3
+// Serial / DIN MIDI
 #define SER_MIDI 4
+// Bluetooth app MIDI
+//#define NOTHING
+
 
 #define NUM_CONNS 5
 
@@ -54,8 +62,9 @@ void set_conn_sent(int connection);
 
 #define SPARK_BT_NAME  "Spark 40"
 
+#define MAX_SCAN_COUNT 2
 
-void connect_to_all();
+bool connect_to_all();
 void connect_spark();
 #ifdef BLE_CONTROLLER
 void connect_pedal();

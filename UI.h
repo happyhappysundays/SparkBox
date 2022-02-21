@@ -4,6 +4,7 @@
 #define VBAT_AIN 32       // Vbat sense (2:1 divider)
 #define CHRG_AIN 33       // Charge pin sense (10k pull-up)
 #define EXP_AIN 34        // Expression pedal input (3V3)
+#define MAX_ATTEMPTS 5    // Connection attempts before deep sleep
 #define CHRG_LOW 2000
 //
 #define BATTERY_LOW 2082  // Noise floor of 3.61V (<5%)
@@ -46,6 +47,12 @@
 #define tuner_scale 4096
 #endif
 
+// font aliases for quick modding
+#define SMALL_FONT ArialMT_Plain_10
+#define MEDIUM_FONT ArialMT_Plain_16
+#define BIG_FONT ArialMT_Plain_24
+#define HUGE_FONT Roboto_Mono_Bold_52
+
 // Globals
 static int iRSSI = 0;                           // BLE signal strength
 int vbat_ring_count = 0;
@@ -58,9 +65,11 @@ int old_exp_result = 0;
 float effect_volume = 0.0;
 int temp = 0;   
 int chrg_result = 0;                             // For charge state monitoring
+int attempt_count = 0;                         // Connection attempts counter
 
 int sw_val[NUM_SWITCHES];     
-int sw_pin[]{17,5,18,23};                       // Switch gpio numbers
+//int sw_pin[]{17,5,18,23};                       // Switch gpio numbers
+int sw_pin[]{25,26,27,14};                       // Switch gpio numbers
 
                                                 // SW1 Toggle Drive 
                                                 // SW2 Toggle Modulation

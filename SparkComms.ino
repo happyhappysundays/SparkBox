@@ -30,14 +30,14 @@ class MyServerCallback : public BLEServerCallbacks
   void onConnect(BLEServer *pserver)
   {
     set_conn_status_connected(APP);
-    DEBUG("callback: BLE app connected");
+    DEBUG("callback: BLE Spark app connected");
   }
 
   void onDisconnect(BLEServer *pserver)
   {
 
 //    if (pserver->getConnectedCount() == 1) {
-    DEBUG("callback: BLE app disconnected");
+    DEBUG("callback: BLE Spark app disconnected");
     set_conn_status_disconnected(APP);
   }
 };
@@ -54,8 +54,6 @@ class MyMIDIServerCallback : public BLEServerCallbacks
 
   void onDisconnect(BLEServer *pserver)
   {
-
-//    if (pserver->getConnectedCount() == 1) {
     DEBUG("callback: BLE MIDI disconnected");
     //set_conn_status_disconnected(APP);
   }
@@ -67,12 +65,12 @@ class MyMIDIServerCallback : public BLEServerCallbacks
 
 void bt_callback(esp_spp_cb_event_t event, esp_spp_cb_param_t *param){
   if(event == ESP_SPP_SRV_OPEN_EVT){
-    DEBUG("callback: Classic BT app connected");
-    //set_conn_status_connected(APP);
+    DEBUG("callback: Classic BT Spark app connected");
+    set_conn_status_connected(APP);
   }
  
   if(event == ESP_SPP_CLOSE_EVT ){
-    DEBUG("callback: Classic BT app disconnected");
+    DEBUG("callback: Classic BT Spark app disconnected");
     set_conn_status_disconnected(APP);
   }
 }
@@ -125,7 +123,7 @@ class CharacteristicCallbacks: public BLECharacteristicCallbacks {
 static CharacteristicCallbacks chrCallbacks_s, chrCallbacks_r;
 
 
-// BLE apP MIDI
+// BLE APP MIDI
 #ifdef BLE_APP_MIDI
 class MIDICharacteristicCallbacks: public BLECharacteristicCallbacks {
   void onWrite(BLECharacteristic* pCharacteristic) {
@@ -157,8 +155,8 @@ void connect_spark() {
        DEBUG("HMMMM - connect_spark() SAYS I WAS CONNECTED ANYWAY");
     
     if (pClient_sp->connect(sp_device)) {
-#ifdef CLASSIC  
-      //pClient_sp->setMTU(517);  
+#if defined CLASSIC  && !defined HELTEC_WIFI
+ //     pClient_sp->setMTU(517);  
 #endif
       connected_sp = true;
       pService_sp = pClient_sp->getService(SpServiceUuid);
@@ -166,8 +164,8 @@ void connect_spark() {
         pSender_sp   = pService_sp->getCharacteristic(C_CHAR1);
         pReceiver_sp = pService_sp->getCharacteristic(C_CHAR2);
         if (pReceiver_sp && pReceiver_sp->canNotify()) {
-          pReceiver_sp->registerForNotify(notifyCB_sp);
 #ifdef CLASSIC
+          pReceiver_sp->registerForNotify(notifyCB_sp);
           p2902_sp = pReceiver_sp->getDescriptor(BLEUUID((uint16_t)0x2902));
           if (p2902_sp != nullptr)
              p2902_sp->writeValue((uint8_t*)notifyOn, 2, true);
@@ -190,8 +188,8 @@ void connect_spark() {
 void connect_pedal() {
   if (found_pedal && !connected_pedal) {
     if (pClient_pedal->connect(pedal_device)) {  
-#ifdef CLASSIC
-      //pClient_sp->setMTU(517);
+#if defined CLASSIC && !defined HELTEC_WIFI
+      pClient_sp->setMTU(517);
 #endif
       connected_pedal = true;
       pService_pedal = pClient_pedal->getService(PedalServiceUuid);
@@ -220,8 +218,9 @@ void connect_pedal() {
 }
 #endif
 
-void connect_to_all() {
+bool connect_to_all() {
   int i, j;
+  int counts;
   uint8_t b;
   unsigned long t;
 
@@ -308,7 +307,9 @@ void connect_to_all() {
 
 DEBUG("Scanning...");
 
-  while (!found_sp) {   // assume we only use a pedal if on already and hopefully found at same time as Spark, don't wait for it
+  counts = 0;
+  while (!found_sp && counts < MAX_SCAN_COUNT) {   // assume we only use a pedal if on already and hopefully found at same time as Spark, don't wait for it
+    counts++;
     pResults = pScan->start(4);
     
     for(i = 0; i < pResults.getCount()  && !found_sp; i++) {
@@ -332,6 +333,8 @@ DEBUG("Scanning...");
     }
   }
 
+  if (!found_sp) return false;   // failed to find the Spark within the number of counts allowed (MAX_SCAN_COUNT)
+  
     // Set up client
   connect_spark();
 #ifdef BLE_CONTROLLER
@@ -356,6 +359,7 @@ DEBUG("Scanning...");
 
   DEBUG("Available for app to connect...");  
   pAdvertising->start(); 
+  return true;
 }
 
 
