@@ -2,7 +2,8 @@
 // SparkBox - BT pedal board for the Spark 40 amp - David Thompson 2022
 // Supports four-switch pedals. Hold any of the effect buttons down for 1s to switch
 // between Preset mode (1 to 4) and Effect mode (Drive, Mod, Delay, Reverb).
-// Added an expression pedal to modify the cuirrent selected effect or toggle an effect. 
+// Hold down all four buttons to activate/deactivate the tuner.
+// Added an expression pedal to modify the current selected effect or toggle an effect. 
 //******************************************************************************************
 //
 // Battery charge function defines. Please uncomment just one.
@@ -16,7 +17,7 @@
 //
 // You have the battery monitor mod described above AND you have a connection between the 
 // CHRG pin of the charger chip and GPIO 33. Go you! Now you have a guaranteed charge indicator too.
-#define BATT_CHECK_2
+//#define BATT_CHECK_2
 //
 // Expression pedal define. Comment this out if you DO NOT have the expression pedal mod
 //#define EXPRESSION_PEDAL
@@ -25,10 +26,10 @@
 //#define DUMP_ON
 //
 // Uncomment for better Bluetooth compatibility with Android devices
-#define CLASSIC
+//#define CLASSIC
 //
 // Uncomment if two-colour OLED screens are used. Offsets some text and alternate tuner
-#define TWOCOLOUR
+//#define TWOCOLOUR
 //
 //******************************************************************************************
 #include "SSD1306Wire.h"            // https://github.com/ThingPulse/esp8266-oled-ssd1306
@@ -134,16 +135,25 @@ void setup() {
   timerAttachInterrupt(timer, &onTime, true); // Attach to our handler
   timerAlarmWrite(timer, 500000, true);       // 500ms, autoreload
   timerAlarmEnable(timer);                    // Start timer
+
+  while (!spark_state_tracker_start()) {  // set up data to track Spark and app state, if it fails to find the Spark it will return false
+    DEBUG("No Spark found - perhaps sleep?");// think about a deep sleep here if needed
+  }
+  DEBUG("Spark found and connected - starting");
+
+/*  
   while (!scan_result && attempt_count < MAX_ATTEMPTS) {     // Trying to connect
     attempt_count++;
     DEBUG("Scanning and connecting");
     scan_result = spark_state_tracker_start();
   }
+  // Deep sleep not yet functional
   if (!scan_result) {
-    ESP_off();
+    //ESP_off();
     // we never get here
   }
   // proceed if connected
+*/
 }
 
 void loop() {
