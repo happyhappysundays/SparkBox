@@ -271,7 +271,7 @@ void refreshUI(void)
       
       // Default display - draw meter bitmap and label
       oled.drawXbm(0, Y5, tuner_width, tuner_height, tuner_bits); 
-      oled.setFont(ArialMT_Plain_10);
+      oled.setFont(SMALL_FONT);
       oled.setTextAlignment(TEXT_ALIGN_LEFT);
       oled.drawString(0,0,"Tuner");
       
@@ -311,7 +311,7 @@ void refreshUI(void)
         meter_target = msg.param1; // Get note data
 
         // Show note names
-        oled.setFont(ArialMT_Plain_16);
+        oled.setFont(MEDIUM_FONT);
         oled.setTextAlignment(TEXT_ALIGN_RIGHT);
         switch (meter_target) {
         case 0:
@@ -359,7 +359,7 @@ void refreshUI(void)
     
     // Otherwise normal display
     else {
-      oled.setFont(ArialMT_Plain_16);
+      oled.setFont(MEDIUM_FONT);
       oled.setTextAlignment(TEXT_ALIGN_LEFT);
       if (!isPedalMode) {
         oled.drawString(0, 20, "Preset mode");
@@ -367,7 +367,7 @@ void refreshUI(void)
       else {
         oled.drawString(0, 20, "Effect mode");    
       }
-      oled.setFont(Roboto_Mono_Bold_52);
+      oled.setFont(HUGE_FONT);
       oled.setTextAlignment(TEXT_ALIGN_CENTER);
       
       if (flash_GUI || !setting_modified) {
@@ -377,7 +377,7 @@ void refreshUI(void)
         }
         oled.drawString(110, 12, String(display_preset_num+1));
       }
-      oled.setFont(ArialMT_Plain_10);
+      oled.setFont(SMALL_FONT);
       oled.setTextAlignment(TEXT_ALIGN_LEFT);
 
       // Truncate string so that it never extends into preset number
@@ -392,7 +392,7 @@ void refreshUI(void)
   
       // Flash "Connect App" message when no app connected
       if (flash_GUI && !conn_status[APP]){
-        oled.setFont(ArialMT_Plain_10);
+        oled.setFont(SMALL_FONT);
         oled.setTextAlignment(TEXT_ALIGN_LEFT);
         oled.drawString(15, 37, "Connect App");
       }
@@ -405,13 +405,19 @@ void refreshUI(void)
   if (!connected_sp) {
     // Show reconnection message
     oled.clear();
-    oled.setFont(ArialMT_Plain_16);
+    oled.setFont(MEDIUM_FONT);
     oled.setTextAlignment(TEXT_ALIGN_CENTER);
     oled.drawString(X1, Y3, "Reconnecting");
-    oled.setFont(ArialMT_Plain_16);
+    oled.setFont(MEDIUM_FONT);
     oled.setTextAlignment(TEXT_ALIGN_CENTER);
     oled.drawString(X1, Y4, "Please wait");
     oled.display();
+    if (attempt_count > MAX_ATTEMPTS) {
+      ESP_off();
+    }
+    attempt_count++;
+  } else {
+    attempt_count = 0;
   }
 }
 
@@ -426,31 +432,57 @@ void textAnimation(const String &s, ulong msDelay, int yShift=0, bool show=true)
 }
 
 void ESP_off(){
+  bool can_deep_sleep;
+  can_deep_sleep = Check_RTC(); // Find out if we have RTC pins assigned to buttons allowing deep sleep, otherwise we use light sleep
   //  CRT-off effect =) or something
   String s = "_________________";
   oled.clear();
   oled.display();
   oled.setFont(MEDIUM_FONT);
   oled.setTextAlignment(TEXT_ALIGN_CENTER);
-  for (int i=0; i<8; i++) {
-    s = s.substring(i);
-    textAnimation(s,70,-6);
-  }
-  for (int i=0; i<10; i++) {
-    textAnimation("\\",30);
-    textAnimation("|",30);
-    textAnimation("/",30);
-    textAnimation("--",30);
-  }
-  textAnimation("...z-Z-Z",5000);
-  // hopefully displayOff() saves energy, or more realistic it's just me lazy to RTFM
-  oled.displayOff();
-  oled.display();
-  DEBUG("deep sleep");
+  if (can_deep_sleep) {
   //  Only GPIOs which have RTC functionality can be used: 0,2,4,12-15,25-27,32-39
-  oled.displayOff(); // turn it off, otherwise oled remains active
-  esp_sleep_enable_ext0_wakeup(static_cast <gpio_num_t> (sw_pin[0]), HIGH); // wake up if BUTTON 1 pressed
-  esp_deep_sleep_start();
+    int k;
+    for (k = 0; k < NUM_SWITCHES; ++k) {
+      if (sw_RTC[k]) {
+        break;        
+      }
+    }
+    textAnimation("Button" + String(k+1) + " wakes up",5000);
+    textAnimation("... z-z-Z-Z",1000);
+    for (int i=0; i<8; i++) {
+      s = s.substring(i);
+      textAnimation(s,70,-6);
+    }
+    for (int i=0; i<10; i++) {
+      textAnimation("\\",30);
+      textAnimation("|",30);
+      textAnimation("/",30);
+      textAnimation("--",30);
+    }
+    DEBUG("deep sleep");
+    oled.displayOff();                // turn it off, otherwise oled remains active
+    esp_sleep_enable_ext0_wakeup(static_cast <gpio_num_t> (sw_pin[0]), HIGH); // wake up if BUTTON 1 pressed
+    esp_deep_sleep_start();
+  } else {
+    textAnimation("Button1 wakes up",5000);
+    textAnimation("..z-Z-Z",1000);
+    for (int i=0; i<8; i++) {
+      s = s.substring(i);
+      textAnimation(s,70,-6);
+    }
+    for (int i=0; i<10; i++) {
+      textAnimation("\\",30);
+      textAnimation("|",30);
+      textAnimation("/",30);
+      textAnimation("--",30);
+    }
+    DEBUG("light sleep");
+    oled.displayOff();                // turn it off, otherwise oled remains active
+    esp_sleep_enable_gpio_wakeup();
+    gpio_wakeup_enable(static_cast <gpio_num_t> (sw_pin[0]), GPIO_INTR_HIGH_LEVEL );
+    esp_light_sleep_start();
+  }
 };
 
 void ESP_on () {
@@ -464,4 +496,21 @@ void ESP_on () {
   textAnimation("- -X- -",100,2);
   textAnimation("x",100,0);
   textAnimation(".",200,-4);
+}
+
+bool Check_RTC() {
+  bool RTC_present = false;
+  for(int i = 0; i < NUM_SWITCHES; ++i) {
+    sw_RTC[i] = false;
+    for(int j = 0; j < (sizeof(RTC_pins)/sizeof(RTC_pins[0])); ++j) {
+      if(sw_pin[i] == RTC_pins[j]) {
+        sw_RTC[i] = true;
+        RTC_present = true;
+        DEBUG("RTC pin: " + String(sw_pin[i]));
+        break;
+      }
+    }    
+  }
+  DEBUG ("RTC pin present: " + String(RTC_present));
+  return RTC_present;
 }

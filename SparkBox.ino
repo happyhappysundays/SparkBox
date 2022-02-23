@@ -17,7 +17,7 @@
 //
 // You have the battery monitor mod described above AND you have a connection between the 
 // CHRG pin of the charger chip and GPIO 33. Go you! Now you have a guaranteed charge indicator too.
-//#define BATT_CHECK_2
+// #define BATT_CHECK_2
 //
 // Expression pedal define. Comment this out if you DO NOT have the expression pedal mod
 //#define EXPRESSION_PEDAL
@@ -26,10 +26,10 @@
 //#define DUMP_ON
 //
 // Uncomment for better Bluetooth compatibility with Android devices
-//#define CLASSIC
+// #define CLASSIC
 //
 // Uncomment if two-colour OLED screens are used. Offsets some text and alternate tuner
-//#define TWOCOLOUR
+// #define TWOCOLOUR
 //
 //******************************************************************************************
 #include "SSD1306Wire.h"            // https://github.com/ThingPulse/esp8266-oled-ssd1306
@@ -44,7 +44,7 @@
 //******************************************************************************************
 
 #define PGM_NAME "SparkBox"
-#define VERSION "V0.66" 
+#define VERSION "V0.67" 
 
 SSD1306Wire oled(0x3c, 4, 15);        // Default OLED Screen Definitions - ADDRESS, SDA, SCL 
 
@@ -93,7 +93,7 @@ void setup() {
   // Initialize device OLED display, and flip screen, as OLED library starts upside-down
   oled.init();
   oled.flipScreenVertically();
-
+  
   ESP_on();
   // Set pushbutton inputs to pull-downs
   for (i = 0; i < NUM_SWITCHES; i++) {
@@ -105,10 +105,10 @@ void setup() {
 
   // Show welcome message
   oled.clear();
-  oled.setFont(ArialMT_Plain_24);
+  oled.setFont(BIG_FONT);
   oled.setTextAlignment(TEXT_ALIGN_CENTER);
   oled.drawString(X1, Y3, PGM_NAME);
-  oled.setFont(ArialMT_Plain_16);
+  oled.setFont(MEDIUM_FONT);
   oled.setTextAlignment(TEXT_ALIGN_CENTER);
   oled.drawString(X1, Y4, VERSION);
   oled.display();
@@ -121,10 +121,10 @@ void setup() {
 
   // Show connection message
   oled.clear();
-  oled.setFont(ArialMT_Plain_24);
+  oled.setFont(BIG_FONT);
   oled.setTextAlignment(TEXT_ALIGN_CENTER);
   oled.drawString(X1, Y3, "Connecting");
-  oled.setFont(ArialMT_Plain_16);
+  oled.setFont(MEDIUM_FONT);
   oled.setTextAlignment(TEXT_ALIGN_CENTER);
   oled.drawString(X1, Y4, "Please wait");
   oled.display();
@@ -136,12 +136,6 @@ void setup() {
   timerAlarmWrite(timer, 500000, true);       // 500ms, autoreload
   timerAlarmEnable(timer);                    // Start timer
 
-  while (!spark_state_tracker_start()) {  // set up data to track Spark and app state, if it fails to find the Spark it will return false
-    DEBUG("No Spark found - perhaps sleep?");// think about a deep sleep here if needed
-  }
-  DEBUG("Spark found and connected - starting");
-
-/*  
   while (!scan_result && attempt_count < MAX_ATTEMPTS) {     // Trying to connect
     attempt_count++;
     DEBUG("Scanning and connecting");
@@ -149,11 +143,11 @@ void setup() {
   }
   // Deep sleep not yet functional
   if (!scan_result) {
-    //ESP_off();
+    ESP_off();
     // we never get here
   }
+  
   // proceed if connected
-*/
 }
 
 void loop() {
