@@ -456,12 +456,18 @@ void ESP_off(){
 void ESP_on () {
   oled.setFont(MEDIUM_FONT);
   oled.setTextAlignment(TEXT_ALIGN_CENTER);
-  //oled.setContrast(100);
-  textAnimation(".",200,-4);
-  textAnimation("*",100,5);
-  textAnimation("X",100,2);
-  textAnimation("-}|{-",100);
-  textAnimation("- -X- -",100,2);
-  textAnimation("x",100,0);
-  textAnimation(".",200,-4);
+  textAnimation(".",200,-5);
+  textAnimation("*",100,3);
+  textAnimation("x",100,-3);
+  textAnimation("X",100,-1);
+  textAnimation("x",100,-3);
+  textAnimation(".",100,-5);
+  textAnimation("-",50,-3);
+  textAnimation("---",50,-3);
+  textAnimation("-----",50,-3);
+  textAnimation("-------",50,-3);
+  textAnimation("----------",40,-3);
+  textAnimation("-------------",30,-3);
+  textAnimation("----------------",20,-3);
+  textAnimation("-------------------",10,-3);
 }

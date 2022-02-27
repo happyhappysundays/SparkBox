@@ -156,7 +156,7 @@ void connect_spark() {
     
     if (pClient_sp->connect(sp_device)) {
 #if defined CLASSIC  && !defined HELTEC_WIFI
- //     pClient_sp->setMTU(517);  
+      pClient_sp->setMTU(517);  
 #endif
       connected_sp = true;
       pService_sp = pClient_sp->getService(SpServiceUuid);
