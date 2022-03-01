@@ -29,8 +29,10 @@ class MyServerCallback : public BLEServerCallbacks
 {
   void onConnect(BLEServer *pserver)
   {
-    set_conn_status_connected(APP);
-    DEBUG("callback: BLE Spark app connected");
+    if (pserver->getConnectedCount() == 1) {   // FIX
+      set_conn_status_connected(APP);
+      DEBUG("callback: BLE Spark app connected");
+    }
   }
 
   void onDisconnect(BLEServer *pserver)
