@@ -82,7 +82,7 @@ void IRAM_ATTR onTime() {
 
 void setup() {
   display_preset_num = 0;
-
+  int tmp_batt;
   // Manually toggle the /RST pin to add Heltec module functionality
   // but without the Heltec library
   pinMode(16,OUTPUT);
@@ -101,7 +101,13 @@ void setup() {
   }
   
   // Read Vbat input
-  vbat_result = analogRead(VBAT_AIN);
+  //vbat_result = analogRead(VBAT_AIN);
+
+  // Avg battery voltage
+  for(i=0; i<VBAT_NUM; ++i) {
+    readBattery();
+    delay(10);
+  }
 
   // Show welcome message
   oled.clear();
@@ -111,23 +117,19 @@ void setup() {
   oled.setFont(MEDIUM_FONT);
   oled.setTextAlignment(TEXT_ALIGN_CENTER);
   oled.drawString(X1, Y4, VERSION);
+  if (batteryCharging()!=1) {
+    oled.drawString(X1, 0, "batt. " + String(batteryPercent(vbat_result))+"%");
+  } else {
+    oled.setFont(SMALL_FONT);
+    oled.drawString(X1, 1, "BATT. CHARGING");  
+  }
   oled.display();
   delay(1000);                                // Wait for splash screen
 
   Serial.begin(115200);                       // Start serial debug console monitoring via ESP32
   while (!Serial);
 
-  Serial.println("Connecting...");
-
-  // Show connection message
-  oled.clear();
-  oled.setFont(BIG_FONT);
-  oled.setTextAlignment(TEXT_ALIGN_CENTER);
-  oled.drawString(X1, Y3, "Connecting");
-  oled.setFont(MEDIUM_FONT);
-  oled.setTextAlignment(TEXT_ALIGN_CENTER);
-  oled.drawString(X1, Y4, "Please wait");
-  oled.display();
+  Serial.println("Connecting...");  
 
   isPedalMode = false;                        // Default to Preset mode
 
@@ -138,15 +140,34 @@ void setup() {
 
   while (!scan_result && attempt_count < MAX_ATTEMPTS) {     // Trying to connect
     attempt_count++;
+    // Read battery voltage
+    for(i=0; i<VBAT_NUM; ++i) {
+      readBattery();
+      delay(10);
+    }      
+    // Show connection message
+    oled.clear();
+    oled.setFont(BIG_FONT);
+    oled.setTextAlignment(TEXT_ALIGN_CENTER);
+    oled.drawString(X1, Y3, "Connecting ");
+    oled.setFont(MEDIUM_FONT);
+    oled.setTextAlignment(TEXT_ALIGN_CENTER);
+    oled.drawString(X1, Y4, "Please wait " + String(MAX_ATTEMPTS - attempt_count + 1) + "...");
+    if (batteryCharging()!=1) {
+      oled.drawString(X1, 0, "batt. " + String(batteryPercent(vbat_result))+"%");
+    } else {
+      oled.setFont(SMALL_FONT);
+      oled.drawString(X1, 1, "BATT. CHARGING");  
+    }
+    oled.display();    
     DEBUG("Scanning and connecting");
     scan_result = spark_state_tracker_start();
   }
-  // Deep sleep not yet functional
+  attempt_count = 0;
   if (!scan_result) {
     ESP_off();
     // we never get here
   }
-  
   // proceed if connected
 }
 

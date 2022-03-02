@@ -60,27 +60,7 @@ void updateIcons() {
   // Battery icon control - measured periodically via a 1s timer
   // Average readings to reduce noise
   if (isTimeout) {
-    vbat_result = analogRead(VBAT_AIN); // Read battery voltage
-
-    // To speed up the display when a battery is connected from scratch
-    // ignore/fudge any readings below the lower threshold
-    if (vbat_result < BATTERY_LOW) vbat_result = BATTERY_LOW;
-    temp = vbat_result;
-
-    // While collecting data
-    if (vbat_ring_count < VBAT_NUM) {
-      vbat_ring_sum += vbat_result;
-      vbat_ring_count++;
-      vbat_result = vbat_ring_sum / vbat_ring_count;
-    }
-    // Once enough is gathered, do a decimating average
-    else {
-      vbat_ring_sum *= 0.9;
-      vbat_ring_sum += vbat_result;
-      vbat_result = vbat_ring_sum / VBAT_NUM;
-    }
-
-    chrg_result = analogRead(CHRG_AIN); // Check state of /CHRG output
+    readBattery();
     isTimeout = false;
   }
 
@@ -89,23 +69,14 @@ void updateIcons() {
   // battery full but not charging is the last in the chain.
 
    // No battery monitoring so just show the empty symbol
-  #ifdef BATT_CHECK_0
+  if (batteryCharging()==-1) {
     oled.drawXbm(bat_pos, 0, bat_width, bat_height, bat00_bits);
-  #endif
+  }
   
-  // For level-based charge detection (not very reliable)
-  #ifdef BATT_CHECK_1
-    if (vbat_result >= BATTERY_CHRG) {
+  if (batteryCharging()==1) {
       oled.drawXbm(bat_pos, 0, bat_width, bat_height, batcharging_bits);
-    }
-  #endif
-      
-  // If advanced charge detection available, and charge detected
-  #ifdef BATT_CHECK_2
-    if (chrg_result < CHRG_LOW) {
-      oled.drawXbm(bat_pos, 0, bat_width, bat_height, batcharging_bits);
-    }
-  #endif
+  }
+  
   
   // Basic battery detection available. Coarse cut-offs for visual 
   // guide to remaining capacity. Surprisingly complex feedback to user.
@@ -395,7 +366,7 @@ void refreshUI(void)
         oled.setFont(SMALL_FONT);
         oled.setTextAlignment(TEXT_ALIGN_LEFT);
         oled.drawString(15, 37, "Connect App");
-      }
+      } 
     
       updateIcons();
     }
@@ -421,6 +392,57 @@ void refreshUI(void)
   }
 }
 
+void readBattery(){
+vbat_result = analogRead(VBAT_AIN); // Read battery voltage
+
+    // To speed up the display when a battery is connected from scratch
+    // ignore/fudge any readings below the lower threshold
+    if (vbat_result < BATTERY_LOW) vbat_result = BATTERY_LOW;
+    temp = vbat_result;
+
+    // While collecting data
+    if (vbat_ring_count < VBAT_NUM) {
+      vbat_ring_sum += vbat_result;
+      vbat_ring_count++;
+      vbat_result = vbat_ring_sum / vbat_ring_count;
+    }
+    // Once enough is gathered, do a decimating average
+    else {
+      vbat_ring_sum *= 0.9;
+      vbat_ring_sum += vbat_result;
+      vbat_result = vbat_ring_sum / VBAT_NUM;
+    }
+
+    chrg_result = analogRead(CHRG_AIN); // Check state of /CHRG output  
+}
+
+int batteryPercent(int vbat_value) {
+  return constrain(map(vbat_value, BATTERY_LOW, BATTERY_100, 0, 100), 0, 100);  
+}
+
+int batteryCharging() {
+  #ifdef BATT_CHECK_0
+    return -1; //unsupported
+  #endif
+  
+  // For level-based charge detection (not very reliable)
+  #ifdef BATT_CHECK_1
+    if (vbat_result >= BATTERY_CHRG) {
+      return 1;
+    } else {
+      return 0;
+    }
+  #endif
+  
+  // If advanced charge detection available, and charge detected
+  #ifdef BATT_CHECK_2
+    if (chrg_result < CHRG_LOW) {
+      return 1;
+    } else {
+      return 0;
+    }
+  #endif  
+}
 
 void textAnimation(const String &s, ulong msDelay, int yShift=0, bool show=true) {  
     oled.clear();
