@@ -29,8 +29,10 @@ class MyServerCallback : public BLEServerCallbacks
 {
   void onConnect(BLEServer *pserver)
   {
-    set_conn_status_connected(APP);
-    DEBUG("callback: BLE Spark app connected");
+    if (pserver->getConnectedCount() == 1) {   // FIX
+      set_conn_status_connected(APP);
+      DEBUG("callback: BLE Spark app connected");
+    }
   }
 
   void onDisconnect(BLEServer *pserver)
@@ -156,7 +158,7 @@ void connect_spark() {
     
     if (pClient_sp->connect(sp_device)) {
 #if defined CLASSIC  && !defined HELTEC_WIFI
- //     pClient_sp->setMTU(517);  
+      pClient_sp->setMTU(517);  
 #endif
       connected_sp = true;
       pService_sp = pClient_sp->getService(SpServiceUuid);
