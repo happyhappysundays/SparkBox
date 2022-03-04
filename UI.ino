@@ -454,22 +454,26 @@ void textAnimation(const String &s, ulong msDelay, int yShift=0, bool show=true)
 }
 
 void ESP_off(){
-  bool can_deep_sleep;
-  can_deep_sleep = Check_RTC(); // Find out if we have RTC pins assigned to buttons allowing deep sleep, otherwise we use light sleep
+  int deep_sleep_pins;
+  deep_sleep_pins = Check_RTC(); // Find out if we have RTC pins assigned to buttons allowing deep sleep, otherwise we use light sleep
   //  CRT-off effect =) or something
   String s = "_________________";
   oled.clear();
   oled.display();
   oled.setFont(MEDIUM_FONT);
   oled.setTextAlignment(TEXT_ALIGN_CENTER);
-  if (can_deep_sleep) {
-  //  Only GPIOs which have RTC functionality can be used: 0,2,4,12-15,25-27,32-39
+  if (deep_sleep_pins>0) {
+  //  Only GPIOs which have RTC functionality can be used for deep sleep: 0,2,4,12-15,25-27,32-39
     int k;
-    for (k = 0; k < NUM_SWITCHES; ++k) {
+    for (k = 0; k < NUM_SWITCHES; ++k) { // let's find the first RTC pin
       if (sw_RTC[k]) {
         break;        
       }
     }
+  //  esp_bluedroid_disable(); //gracefully shutdoun BT (and WiFi)
+  //  esp_bt_controller_disable();
+  //  esp_wifi_stop();
+
     textAnimation("Button" + String(k+1) + " wakes up",5000);
     textAnimation("... z-z-Z-Z",1000);
     for (int i=0; i<8; i++) {
@@ -484,7 +488,14 @@ void ESP_off(){
     }
     DEBUG("deep sleep");
     oled.displayOff();                // turn it off, otherwise oled remains active
-    esp_sleep_enable_ext0_wakeup(static_cast <gpio_num_t> (sw_pin[0]), HIGH); // wake up if BUTTON 1 pressed
+    // esp_sleep_enable_ext0_wakeup(static_cast <gpio_num_t> (sw_pin[0]), HIGH); // wake up if BUTTON 1 pressed
+    esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_ALL);
+    esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_ON);
+    for (i = 0; i < NUM_SWITCHES; i++) {
+      gpio_pullup_dis(static_cast <gpio_num_t> (sw_pin[i]));
+      gpio_pulldown_en(static_cast <gpio_num_t> (sw_pin[i]));
+    }
+    esp_sleep_enable_ext1_wakeup( (1<<sw_pin[0]) + (1<<sw_pin[1]) + (1<<sw_pin[2]) + (1<<sw_pin[3]), ESP_EXT1_WAKEUP_ANY_HIGH); // wake up if BUTTON 1 pressed
     esp_deep_sleep_start();
   } else {
     textAnimation("Button1 wakes up",5000);
@@ -508,6 +519,22 @@ void ESP_off(){
 };
 
 void ESP_on () {
+  uint8_t GPIO;  
+  esp_sleep_wakeup_cause_t wakeup_cause;
+  wakeup_cause = esp_sleep_get_wakeup_cause();
+  switch(wakeup_cause)
+  {
+    case ESP_SLEEP_WAKEUP_EXT0 : DEBUG("Wakeup caused by ext0 signal using RTC_IO"); break;
+    case ESP_SLEEP_WAKEUP_EXT1 : 
+      DEBUG("Wakeup caused by ext1 signal using RTC_CNTL");
+      GPIO = log(esp_sleep_get_ext1_wakeup_status() )/log(2); 
+      DEBUG("Waken up by GPIO_" + String(GPIO));
+      break;
+    case ESP_SLEEP_WAKEUP_TIMER : DEBUG("Wakeup caused by timer"); break;
+    case ESP_SLEEP_WAKEUP_TOUCHPAD : DEBUG("Wakeup caused by touchpad"); break;
+    case ESP_SLEEP_WAKEUP_ULP : DEBUG("Wakeup caused by ULP program"); break;
+    default : DEBUG("Wakeup was not caused by deep sleep: " + String(wakeup_cause)); break;
+  }
   oled.setFont(MEDIUM_FONT);
   oled.setTextAlignment(TEXT_ALIGN_CENTER);
   //oled.setContrast(100);
@@ -520,19 +547,19 @@ void ESP_on () {
   textAnimation(".",200,-4);
 }
 
-bool Check_RTC() {
-  bool RTC_present = false;
+int Check_RTC() {
+  RTC_present = 0;
   for(int i = 0; i < NUM_SWITCHES; ++i) {
     sw_RTC[i] = false;
     for(int j = 0; j < (sizeof(RTC_pins)/sizeof(RTC_pins[0])); ++j) {
       if(sw_pin[i] == RTC_pins[j]) {
         sw_RTC[i] = true;
-        RTC_present = true;
+        RTC_present++;
         DEBUG("RTC pin: " + String(sw_pin[i]));
         break;
       }
     }    
   }
-  DEBUG ("RTC pin present: " + String(RTC_present));
+  DEBUG ("RTC pins present: " + String(RTC_present));
   return RTC_present;
 }

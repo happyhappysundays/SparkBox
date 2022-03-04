@@ -66,9 +66,9 @@ float effect_volume = 0.0;
 int temp = 0;   
 int chrg_result = 0;                             // For charge state monitoring
 int attempt_count = 0;                         // Connection attempts counter
-
 int RTC_pins[]{0,2,4,12,13,14,15,25,26,27,32,33,34,35,36,37,38,39};
 bool sw_RTC[NUM_SWITCHES];
+int RTC_present=0;                // Number of RTC pins present in the config
 int sw_val[NUM_SWITCHES];
 int sw_pin[]{17,5,18,23};                       // Switch gpio numbers (for those who already has built a pedal with these pins)
 //int sw_pin[]{25,26,27,14};                       // Switch gpio numbers (for those who is building a pedal, these pins allow deep sleep)

@@ -13,7 +13,7 @@
 // You are monitoring the battery via a 2:1 10k/10k resistive divider to GPIO23
 // You can see an accurate representation of the remaining battery charge and a kinda-sorta
 // indicator of when the battery is charging. Maybe.
-//#define BATT_CHECK_1
+// #define BATT_CHECK_1
 //
 // You have the battery monitor mod described above AND you have a connection between the 
 // CHRG pin of the charger chip and GPIO 33. Go you! Now you have a guaranteed charge indicator too.
@@ -40,11 +40,12 @@
 #include "font.h"                   // Custom large font
 #include "bitmaps.h"                // Custom bitmaps (icons)
 #include "UI.h"                     // Any UI-related defines
+#include "driver/rtc_io.h"
 //
 //******************************************************************************************
 
 #define PGM_NAME "SparkBox"
-#define VERSION "V0.67" 
+#define VERSION "V0.68" 
 
 SSD1306Wire oled(0x3c, 4, 15);        // Default OLED Screen Definitions - ADDRESS, SDA, SCL 
 
@@ -81,6 +82,9 @@ void IRAM_ATTR onTime() {
 }
 
 void setup() {
+  Serial.begin(115200);                       // Start serial debug console monitoring via ESP32
+  while (!Serial);
+
   display_preset_num = 0;
   int tmp_batt;
   // Manually toggle the /RST pin to add Heltec module functionality
@@ -98,8 +102,9 @@ void setup() {
   // Set pushbutton inputs to pull-downs
   for (i = 0; i < NUM_SWITCHES; i++) {
     pinMode(sw_pin[i], INPUT_PULLDOWN);
+    gpio_pullup_dis(static_cast <gpio_num_t> (sw_pin[i]));
+    gpio_pulldown_en(static_cast <gpio_num_t> (sw_pin[i]));
   }
-  
   // Read Vbat input
   //vbat_result = analogRead(VBAT_AIN);
 
@@ -126,10 +131,7 @@ void setup() {
   oled.display();
   delay(1000);                                // Wait for splash screen
 
-  Serial.begin(115200);                       // Start serial debug console monitoring via ESP32
-  while (!Serial);
-
-  Serial.println("Connecting...");  
+  DEBUG("Connecting...");  
 
   isPedalMode = false;                        // Default to Preset mode
 
