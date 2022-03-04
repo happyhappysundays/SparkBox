@@ -1,4 +1,4 @@
-# SparkBox V0.66
+# SparkBox V0.67
 SparkBox is a BT pedal for the Positive Grid Spark 40.  I only needed the functionality of the simpler BT pedals. However many of them use captured hex chunks to communicate with the Spark, or were Python based. Instead I wanted to use Paul Hamshere's amazing code to create and process real messages. Also I wanted to extend the functionality a bit and make an attractive UI.
 
 # Functions
@@ -22,7 +22,7 @@ Under Files->Preferences->Additional Boards Manager URLs, enter the following:
 
 Under Tools->Board->Board manager ensure that you have the following version:
 - Heltec ESP32 Dev-Boards 0.0.5 (Heltec - WiFi Kit 32) **OR**
-- ESP32 by Espressif 1.0.4 (ESP32)
+- ESP32 by Espressif 2.0.1 (ESP32)
 
 Under Tools->Manage Libraries ensure that you have the following libraries and versions:
 - ThingPulse SSD1306 driver 4.2.1 (ESP32)
