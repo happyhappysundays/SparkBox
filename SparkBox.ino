@@ -13,11 +13,11 @@
 // You are monitoring the battery via a 2:1 10k/10k resistive divider to GPIO23
 // You can see an accurate representation of the remaining battery charge and a kinda-sorta
 // indicator of when the battery is charging. Maybe.
-//#define BATT_CHECK_1
+// #define BATT_CHECK_1
 //
 // You have the battery monitor mod described above AND you have a connection between the 
 // CHRG pin of the charger chip and GPIO 33. Go you! Now you have a guaranteed charge indicator too.
-//#define BATT_CHECK_2
+// #define BATT_CHECK_2
 //
 // Expression pedal define. Comment this out if you DO NOT have the expression pedal mod
 //#define EXPRESSION_PEDAL
@@ -26,13 +26,13 @@
 //#define DUMP_ON
 //
 // Uncomment for better Bluetooth compatibility with Android devices
-//#define CLASSIC
+// #define CLASSIC
 //
 // Uncomment when using a Heltec module as their implementation doesn't support setMTU()
 //#define HELTEC_WIFI
 //
 // Uncomment if two-colour OLED screens are used. Offsets some text and alternate tuner
-//#define TWOCOLOUR
+// #define TWOCOLOUR
 //
 //******************************************************************************************
 #include "SSD1306Wire.h"            // https://github.com/ThingPulse/esp8266-oled-ssd1306
@@ -43,11 +43,13 @@
 #include "font.h"                   // Custom large font
 #include "bitmaps.h"                // Custom bitmaps (icons)
 #include "UI.h"                     // Any UI-related defines
+#include "driver/rtc_io.h"
 //
 //******************************************************************************************
 
 #define PGM_NAME "SparkBox"
 #define VERSION "V0.67" 
+
 
 SSD1306Wire oled(0x3c, 4, 15);        // Default OLED Screen Definitions - ADDRESS, SDA, SCL 
 
@@ -84,8 +86,11 @@ void IRAM_ATTR onTime() {
 }
 
 void setup() {
-  display_preset_num = 0;
+  Serial.begin(115200);                       // Start serial debug console monitoring via ESP32
+  while (!Serial);
 
+  display_preset_num = 0;
+  int tmp_batt;
   // Manually toggle the /RST pin to add Heltec module functionality
   // but without the Heltec library
   pinMode(21,OUTPUT); // debug - helps Heltec mmodule display issue
@@ -97,41 +102,41 @@ void setup() {
   // Initialize device OLED display, and flip screen, as OLED library starts upside-down
   oled.init();
   oled.flipScreenVertically();
-
+  
   ESP_on();
   // Set pushbutton inputs to pull-downs
   for (i = 0; i < NUM_SWITCHES; i++) {
     pinMode(sw_pin[i], INPUT_PULLDOWN);
+    gpio_pullup_dis(static_cast <gpio_num_t> (sw_pin[i]));
+    gpio_pulldown_en(static_cast <gpio_num_t> (sw_pin[i]));
   }
-  
   // Read Vbat input
-  vbat_result = analogRead(VBAT_AIN);
+  //vbat_result = analogRead(VBAT_AIN);
+
+  // Avg battery voltage
+  for(i=0; i<VBAT_NUM; ++i) {
+    readBattery();
+    delay(10);
+  }
 
   // Show welcome message
   oled.clear();
-  oled.setFont(ArialMT_Plain_24);
+  oled.setFont(BIG_FONT);
   oled.setTextAlignment(TEXT_ALIGN_CENTER);
   oled.drawString(X1, Y3, PGM_NAME);
-  oled.setFont(ArialMT_Plain_16);
+  oled.setFont(MEDIUM_FONT);
   oled.setTextAlignment(TEXT_ALIGN_CENTER);
   oled.drawString(X1, Y4, VERSION);
+  if (batteryCharging()!=1) {
+    oled.drawString(X1, 0, "batt. " + String(batteryPercent(vbat_result))+"%");
+  } else {
+    oled.setFont(SMALL_FONT);
+    oled.drawString(X1, 1, "BATT. CHARGING");  
+  }
   oled.display();
   delay(1000);                                // Wait for splash screen
 
-  Serial.begin(115200);                       // Start serial debug console monitoring via ESP32
-  while (!Serial);
-
-  Serial.println("Connecting...");
-
-  // Show connection message
-  oled.clear();
-  oled.setFont(ArialMT_Plain_24);
-  oled.setTextAlignment(TEXT_ALIGN_CENTER);
-  oled.drawString(X1, Y3, "Connecting");
-  oled.setFont(ArialMT_Plain_16);
-  oled.setTextAlignment(TEXT_ALIGN_CENTER);
-  oled.drawString(X1, Y4, "Please wait");
-  oled.display();
+  DEBUG("Connecting...");  
 
   isPedalMode = false;                        // Default to Preset mode
 
@@ -140,24 +145,37 @@ void setup() {
   timerAlarmWrite(timer, 500000, true);       // 500ms, autoreload
   timerAlarmEnable(timer);                    // Start timer
 
-  while (!spark_state_tracker_start()) {  // set up data to track Spark and app state, if it fails to find the Spark it will return false
-    DEBUG("No Spark found - perhaps sleep?");// think about a deep sleep here if needed
-  }
-  DEBUG("Spark found and connected - starting");
-
-/*  
   while (!scan_result && attempt_count < MAX_ATTEMPTS) {     // Trying to connect
     attempt_count++;
+    // Read battery voltage
+    for(i=0; i<VBAT_NUM; ++i) {
+      readBattery();
+      delay(10);
+    }      
+    // Show connection message
+    oled.clear();
+    oled.setFont(BIG_FONT);
+    oled.setTextAlignment(TEXT_ALIGN_CENTER);
+    oled.drawString(X1, Y3, "Connecting ");
+    oled.setFont(MEDIUM_FONT);
+    oled.setTextAlignment(TEXT_ALIGN_CENTER);
+    oled.drawString(X1, Y4, "Please wait " + String(MAX_ATTEMPTS - attempt_count + 1) + "...");
+    if (batteryCharging()!=1) {
+      oled.drawString(X1, 0, "batt. " + String(batteryPercent(vbat_result))+"%");
+    } else {
+      oled.setFont(SMALL_FONT);
+      oled.drawString(X1, 1, "BATT. CHARGING");  
+    }
+    oled.display();    
     DEBUG("Scanning and connecting");
     scan_result = spark_state_tracker_start();
   }
-  // Deep sleep not yet functional
+  attempt_count = 0;
   if (!scan_result) {
-    //ESP_off();
+    ESP_off();
     // we never get here
   }
   // proceed if connected
-*/
 }
 
 void loop() {

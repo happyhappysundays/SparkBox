@@ -60,27 +60,7 @@ void updateIcons() {
   // Battery icon control - measured periodically via a 1s timer
   // Average readings to reduce noise
   if (isTimeout) {
-    vbat_result = analogRead(VBAT_AIN); // Read battery voltage
-
-    // To speed up the display when a battery is connected from scratch
-    // ignore/fudge any readings below the lower threshold
-    if (vbat_result < BATTERY_LOW) vbat_result = BATTERY_LOW;
-    temp = vbat_result;
-
-    // While collecting data
-    if (vbat_ring_count < VBAT_NUM) {
-      vbat_ring_sum += vbat_result;
-      vbat_ring_count++;
-      vbat_result = vbat_ring_sum / vbat_ring_count;
-    }
-    // Once enough is gathered, do a decimating average
-    else {
-      vbat_ring_sum *= 0.9;
-      vbat_ring_sum += vbat_result;
-      vbat_result = vbat_ring_sum / VBAT_NUM;
-    }
-
-    chrg_result = analogRead(CHRG_AIN); // Check state of /CHRG output
+    readBattery();
     isTimeout = false;
   }
 
@@ -89,23 +69,14 @@ void updateIcons() {
   // battery full but not charging is the last in the chain.
 
    // No battery monitoring so just show the empty symbol
-  #ifdef BATT_CHECK_0
+  if (batteryCharging()==-1) {
     oled.drawXbm(bat_pos, 0, bat_width, bat_height, bat00_bits);
-  #endif
+  }
   
-  // For level-based charge detection (not very reliable)
-  #ifdef BATT_CHECK_1
-    if (vbat_result >= BATTERY_CHRG) {
+  if (batteryCharging()==1) {
       oled.drawXbm(bat_pos, 0, bat_width, bat_height, batcharging_bits);
-    }
-  #endif
-      
-  // If advanced charge detection available, and charge detected
-  #ifdef BATT_CHECK_2
-    if (chrg_result < CHRG_LOW) {
-      oled.drawXbm(bat_pos, 0, bat_width, bat_height, batcharging_bits);
-    }
-  #endif
+  }
+  
   
   // Basic battery detection available. Coarse cut-offs for visual 
   // guide to remaining capacity. Surprisingly complex feedback to user.
@@ -271,7 +242,7 @@ void refreshUI(void)
       
       // Default display - draw meter bitmap and label
       oled.drawXbm(0, Y5, tuner_width, tuner_height, tuner_bits); 
-      oled.setFont(ArialMT_Plain_10);
+      oled.setFont(SMALL_FONT);
       oled.setTextAlignment(TEXT_ALIGN_LEFT);
       oled.drawString(0,0,"Tuner");
       
@@ -311,7 +282,7 @@ void refreshUI(void)
         meter_target = msg.param1; // Get note data
 
         // Show note names
-        oled.setFont(ArialMT_Plain_16);
+        oled.setFont(MEDIUM_FONT);
         oled.setTextAlignment(TEXT_ALIGN_RIGHT);
         switch (meter_target) {
         case 0:
@@ -359,7 +330,7 @@ void refreshUI(void)
     
     // Otherwise normal display
     else {
-      oled.setFont(ArialMT_Plain_16);
+      oled.setFont(MEDIUM_FONT);
       oled.setTextAlignment(TEXT_ALIGN_LEFT);
       if (!isPedalMode) {
         oled.drawString(0, 20, "Preset mode");
@@ -367,7 +338,7 @@ void refreshUI(void)
       else {
         oled.drawString(0, 20, "Effect mode");    
       }
-      oled.setFont(Roboto_Mono_Bold_52);
+      oled.setFont(HUGE_FONT);
       oled.setTextAlignment(TEXT_ALIGN_CENTER);
       
       if (flash_GUI || !setting_modified) {
@@ -377,7 +348,7 @@ void refreshUI(void)
         }
         oled.drawString(110, 12, String(display_preset_num+1));
       }
-      oled.setFont(ArialMT_Plain_10);
+      oled.setFont(SMALL_FONT);
       oled.setTextAlignment(TEXT_ALIGN_LEFT);
 
       // Truncate string so that it never extends into preset number
@@ -392,10 +363,10 @@ void refreshUI(void)
   
       // Flash "Connect App" message when no app connected
       if (flash_GUI && !conn_status[APP]){
-        oled.setFont(ArialMT_Plain_10);
+        oled.setFont(SMALL_FONT);
         oled.setTextAlignment(TEXT_ALIGN_LEFT);
         oled.drawString(15, 37, "Connect App");
-      }
+      } 
     
       updateIcons();
     }
@@ -405,16 +376,73 @@ void refreshUI(void)
   if (!connected_sp) {
     // Show reconnection message
     oled.clear();
-    oled.setFont(ArialMT_Plain_16);
+    oled.setFont(MEDIUM_FONT);
     oled.setTextAlignment(TEXT_ALIGN_CENTER);
     oled.drawString(X1, Y3, "Reconnecting");
-    oled.setFont(ArialMT_Plain_16);
+    oled.setFont(MEDIUM_FONT);
     oled.setTextAlignment(TEXT_ALIGN_CENTER);
     oled.drawString(X1, Y4, "Please wait");
     oled.display();
+    if (attempt_count > MAX_ATTEMPTS) {
+      ESP_off();
+    }
+    attempt_count++;
+  } else {
+    attempt_count = 0;
   }
 }
 
+void readBattery(){
+vbat_result = analogRead(VBAT_AIN); // Read battery voltage
+
+    // To speed up the display when a battery is connected from scratch
+    // ignore/fudge any readings below the lower threshold
+    if (vbat_result < BATTERY_LOW) vbat_result = BATTERY_LOW;
+    temp = vbat_result;
+
+    // While collecting data
+    if (vbat_ring_count < VBAT_NUM) {
+      vbat_ring_sum += vbat_result;
+      vbat_ring_count++;
+      vbat_result = vbat_ring_sum / vbat_ring_count;
+    }
+    // Once enough is gathered, do a decimating average
+    else {
+      vbat_ring_sum *= 0.9;
+      vbat_ring_sum += vbat_result;
+      vbat_result = vbat_ring_sum / VBAT_NUM;
+    }
+
+    chrg_result = analogRead(CHRG_AIN); // Check state of /CHRG output  
+}
+
+int batteryPercent(int vbat_value) {
+  return constrain(map(vbat_value, BATTERY_LOW, BATTERY_100, 0, 100), 0, 100);  
+}
+
+int batteryCharging() {
+  #ifdef BATT_CHECK_0
+    return -1; //unsupported
+  #endif
+  
+  // For level-based charge detection (not very reliable)
+  #ifdef BATT_CHECK_1
+    if (vbat_result >= BATTERY_CHRG) {
+      return 1;
+    } else {
+      return 0;
+    }
+  #endif
+  
+  // If advanced charge detection available, and charge detected
+  #ifdef BATT_CHECK_2
+    if (chrg_result < CHRG_LOW) {
+      return 1;
+    } else {
+      return 0;
+    }
+  #endif  
+}
 
 void textAnimation(const String &s, ulong msDelay, int yShift=0, bool show=true) {  
     oled.clear();
@@ -426,34 +454,87 @@ void textAnimation(const String &s, ulong msDelay, int yShift=0, bool show=true)
 }
 
 void ESP_off(){
+  int deep_sleep_pins;
+  deep_sleep_pins = Check_RTC(); // Find out if we have RTC pins assigned to buttons allowing deep sleep, otherwise we use light sleep
   //  CRT-off effect =) or something
   String s = "_________________";
   oled.clear();
   oled.display();
   oled.setFont(MEDIUM_FONT);
   oled.setTextAlignment(TEXT_ALIGN_CENTER);
-  for (int i=0; i<8; i++) {
-    s = s.substring(i);
-    textAnimation(s,70,-6);
+  if (deep_sleep_pins>0) {
+  //  Only GPIOs which have RTC functionality can be used for deep sleep: 0,2,4,12-15,25-27,32-39
+    int k;
+    for (k = 0; k < NUM_SWITCHES; ++k) { // let's find the first RTC pin
+      if (sw_RTC[k]) {
+        break;        
+      }
+    }
+  //  esp_bluedroid_disable(); //gracefully shutdoun BT (and WiFi)
+  //  esp_bt_controller_disable();
+  //  esp_wifi_stop();
+
+    textAnimation("Button" + String(k+1) + " wakes up",5000);
+    textAnimation("... z-z-Z-Z",1000);
+    for (int i=0; i<8; i++) {
+      s = s.substring(i);
+      textAnimation(s,70,-6);
+    }
+    for (int i=0; i<10; i++) {
+      textAnimation("\\",30);
+      textAnimation("|",30);
+      textAnimation("/",30);
+      textAnimation("--",30);
+    }
+    DEBUG("deep sleep");
+    oled.displayOff();                // turn it off, otherwise oled remains active
+    // esp_sleep_enable_ext0_wakeup(static_cast <gpio_num_t> (sw_pin[0]), HIGH); // wake up if BUTTON 1 pressed
+    esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_ALL);
+    esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_ON);
+    for (i = 0; i < NUM_SWITCHES; i++) {
+      gpio_pullup_dis(static_cast <gpio_num_t> (sw_pin[i]));
+      gpio_pulldown_en(static_cast <gpio_num_t> (sw_pin[i]));
+    }
+    esp_sleep_enable_ext1_wakeup( (1<<sw_pin[0]) + (1<<sw_pin[1]) + (1<<sw_pin[2]) + (1<<sw_pin[3]), ESP_EXT1_WAKEUP_ANY_HIGH); // wake up if BUTTON 1 pressed
+    esp_deep_sleep_start();
+  } else {
+    textAnimation("Button1 wakes up",5000);
+    textAnimation("..z-Z-Z",1000);
+    for (int i=0; i<8; i++) {
+      s = s.substring(i);
+      textAnimation(s,70,-6);
+    }
+    for (int i=0; i<10; i++) {
+      textAnimation("\\",30);
+      textAnimation("|",30);
+      textAnimation("/",30);
+      textAnimation("--",30);
+    }
+    DEBUG("light sleep");
+    oled.displayOff();                // turn it off, otherwise oled remains active
+    esp_sleep_enable_gpio_wakeup();
+    gpio_wakeup_enable(static_cast <gpio_num_t> (sw_pin[0]), GPIO_INTR_HIGH_LEVEL );
+    esp_light_sleep_start();
   }
-  for (int i=0; i<10; i++) {
-    textAnimation("\\",30);
-    textAnimation("|",30);
-    textAnimation("/",30);
-    textAnimation("--",30);
-  }
-  textAnimation("...z-Z-Z",5000);
-  // hopefully displayOff() saves energy, or more realistic it's just me lazy to RTFM
-  oled.displayOff();
-  oled.display();
-  DEBUG("deep sleep");
-  //  Only GPIOs which have RTC functionality can be used: 0,2,4,12-15,25-27,32-39
-  oled.displayOff(); // turn it off, otherwise oled remains active
-  esp_sleep_enable_ext0_wakeup(static_cast <gpio_num_t> (sw_pin[0]), HIGH); // wake up if BUTTON 1 pressed
-  esp_deep_sleep_start();
 };
 
 void ESP_on () {
+  uint8_t GPIO;  
+  esp_sleep_wakeup_cause_t wakeup_cause;
+  wakeup_cause = esp_sleep_get_wakeup_cause();
+  switch(wakeup_cause)
+  {
+    case ESP_SLEEP_WAKEUP_EXT0 : DEBUG("Wakeup caused by ext0 signal using RTC_IO"); break;
+    case ESP_SLEEP_WAKEUP_EXT1 : 
+      DEBUG("Wakeup caused by ext1 signal using RTC_CNTL");
+      GPIO = log(esp_sleep_get_ext1_wakeup_status() )/log(2); 
+      DEBUG("Waken up by GPIO_" + String(GPIO));
+      break;
+    case ESP_SLEEP_WAKEUP_TIMER : DEBUG("Wakeup caused by timer"); break;
+    case ESP_SLEEP_WAKEUP_TOUCHPAD : DEBUG("Wakeup caused by touchpad"); break;
+    case ESP_SLEEP_WAKEUP_ULP : DEBUG("Wakeup caused by ULP program"); break;
+    default : DEBUG("Wakeup was not caused by deep sleep: " + String(wakeup_cause)); break;
+  }
   oled.setFont(MEDIUM_FONT);
   oled.setTextAlignment(TEXT_ALIGN_CENTER);
   textAnimation(".",200,-5);
@@ -470,4 +551,21 @@ void ESP_on () {
   textAnimation("-------------",30,-3);
   textAnimation("----------------",20,-3);
   textAnimation("-------------------",10,-3);
+}
+
+int Check_RTC() {
+  RTC_present = 0;
+  for(int i = 0; i < NUM_SWITCHES; ++i) {
+    sw_RTC[i] = false;
+    for(int j = 0; j < (sizeof(RTC_pins)/sizeof(RTC_pins[0])); ++j) {
+      if(sw_pin[i] == RTC_pins[j]) {
+        sw_RTC[i] = true;
+        RTC_present++;
+        DEBUG("RTC pin: " + String(sw_pin[i]));
+        break;
+      }
+    }    
+  }
+  DEBUG ("RTC pins present: " + String(RTC_present));
+  return RTC_present;
 }

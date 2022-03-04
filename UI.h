@@ -4,7 +4,7 @@
 #define VBAT_AIN 32       // Vbat sense (2:1 divider)
 #define CHRG_AIN 33       // Charge pin sense (10k pull-up)
 #define EXP_AIN 34        // Expression pedal input (3V3)
-#define MAX_ATTEMPTS 5    // Connection attempts before deep sleep
+#define MAX_ATTEMPTS 5    // (Re-)Connection attempts before going to sleep
 #define CHRG_LOW 2000
 //
 #define BATTERY_LOW 2082  // Noise floor of 3.61V (<5%)
@@ -66,9 +66,12 @@ float effect_volume = 0.0;
 int temp = 0;   
 int chrg_result = 0;                             // For charge state monitoring
 int attempt_count = 0;                         // Connection attempts counter
-
-int sw_val[NUM_SWITCHES];     
-int sw_pin[]{17,5,18,23};                       // Switch gpio numbers
+int RTC_pins[]{0,2,4,12,13,14,15,25,26,27,32,33,34,35,36,37,38,39};
+bool sw_RTC[NUM_SWITCHES];
+int RTC_present=0;                // Number of RTC pins present in the config
+int sw_val[NUM_SWITCHES];
+int sw_pin[]{17,5,18,23};                       // Switch gpio numbers (for those who already has built a pedal with these pins)
+//int sw_pin[]{25,26,27,14};                       // Switch gpio numbers (for those who is building a pedal, these pins allow deep sleep)
                                                 // SW1 Toggle Drive 
                                                 // SW2 Toggle Modulation
                                                 // SW3 Toggle Delay
