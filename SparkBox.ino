@@ -28,6 +28,9 @@
 // Uncomment for better Bluetooth compatibility with Android devices
 // #define CLASSIC
 //
+// Uncomment when using a Heltec module as their implementation doesn't support setMTU()
+//#define HELTEC_WIFI
+//
 // Uncomment if two-colour OLED screens are used. Offsets some text and alternate tuner
 // #define TWOCOLOUR
 //
@@ -45,7 +48,8 @@
 //******************************************************************************************
 
 #define PGM_NAME "SparkBox"
-#define VERSION "V0.68" 
+#define VERSION "V0.67" 
+
 
 SSD1306Wire oled(0x3c, 4, 15);        // Default OLED Screen Definitions - ADDRESS, SDA, SCL 
 
@@ -89,6 +93,7 @@ void setup() {
   int tmp_batt;
   // Manually toggle the /RST pin to add Heltec module functionality
   // but without the Heltec library
+  pinMode(21,OUTPUT); // debug - helps Heltec mmodule display issue
   pinMode(16,OUTPUT);
   digitalWrite(16, LOW);
   delay(50);
