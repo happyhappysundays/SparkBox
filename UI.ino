@@ -381,14 +381,17 @@ void refreshUI(void)
     oled.drawString(X1, Y3, "Reconnecting");
     oled.setFont(MEDIUM_FONT);
     oled.setTextAlignment(TEXT_ALIGN_CENTER);
+  //  int gauge ; 
+  //  gauge = (time_to_sleep - millis()) / MILLIS_PER_ATTEMPT;
     oled.drawString(X1, Y4, "Please wait");
     oled.display();
-    if (attempt_count > MAX_ATTEMPTS) {
+    delay(10);
+    DEBUG(gauge);
+    if (millis() > time_to_sleep) {
       ESP_off();
     }
-    attempt_count++;
   } else {
-    attempt_count = 0;
+    time_to_sleep = millis() + (MAX_ATTEMPTS * MILLIS_PER_ATTEMPT);
   }
 }
 
@@ -454,6 +457,8 @@ void textAnimation(const String &s, ulong msDelay, int yShift=0, bool show=true)
 }
 
 void ESP_off(){
+  uint64_t bit_mask=0;
+  String wake_buttons;
   int deep_sleep_pins;
   deep_sleep_pins = Check_RTC(); // Find out if we have RTC pins assigned to buttons allowing deep sleep, otherwise we use light sleep
   //  CRT-off effect =) or something
@@ -464,17 +469,33 @@ void ESP_off(){
   oled.setTextAlignment(TEXT_ALIGN_CENTER);
   if (deep_sleep_pins>0) {
   //  Only GPIOs which have RTC functionality can be used for deep sleep: 0,2,4,12-15,25-27,32-39
-    int k;
-    for (k = 0; k < NUM_SWITCHES; ++k) { // let's find the first RTC pin
-      if (sw_RTC[k]) {
-        break;        
-      }
-    }
+
   //  esp_bluedroid_disable(); //gracefully shutdoun BT (and WiFi)
   //  esp_bt_controller_disable();
   //  esp_wifi_stop();
 
-    textAnimation("Button" + String(k+1) + " wakes up",5000);
+    esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_ALL);
+    esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_ON);
+    int k;
+    for (i = 0; i < NUM_SWITCHES; i++) {
+      gpio_pullup_dis(static_cast <gpio_num_t> (sw_pin[i]));
+      gpio_pulldown_en(static_cast <gpio_num_t> (sw_pin[i]));
+      if (sw_RTC[i]) {
+        bit_mask += 1<<sw_pin[i];
+        wake_buttons += String(i+1) + ",";
+        k = i+1;
+      }
+    }
+    if (deep_sleep_pins == NUM_SWITCHES) {
+      wake_buttons = "Any button wakes";
+    } else {
+      if (deep_sleep_pins == 1) {
+        wake_buttons = "Button " + String(k) + " wakes";
+      } else {
+        wake_buttons = "Buttons " + wake_buttons.substring(0, wake_buttons.length()-1) + " wake";
+      }
+    }
+    textAnimation(wake_buttons,5000);
     textAnimation("... z-z-Z-Z",1000);
     for (int i=0; i<8; i++) {
       s = s.substring(i);
@@ -489,13 +510,7 @@ void ESP_off(){
     DEBUG("deep sleep");
     oled.displayOff();                // turn it off, otherwise oled remains active
     // esp_sleep_enable_ext0_wakeup(static_cast <gpio_num_t> (sw_pin[0]), HIGH); // wake up if BUTTON 1 pressed
-    esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_ALL);
-    esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_ON);
-    for (i = 0; i < NUM_SWITCHES; i++) {
-      gpio_pullup_dis(static_cast <gpio_num_t> (sw_pin[i]));
-      gpio_pulldown_en(static_cast <gpio_num_t> (sw_pin[i]));
-    }
-    esp_sleep_enable_ext1_wakeup( (1<<sw_pin[0]) + (1<<sw_pin[1]) + (1<<sw_pin[2]) + (1<<sw_pin[3]), ESP_EXT1_WAKEUP_ANY_HIGH); // wake up if BUTTON 1 pressed
+    esp_sleep_enable_ext1_wakeup( bit_mask, ESP_EXT1_WAKEUP_ANY_HIGH); // wake up on RTC enabled GPIOs
     esp_deep_sleep_start();
   } else {
     textAnimation("Button1 wakes up",5000);
