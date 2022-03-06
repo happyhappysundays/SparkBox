@@ -5,6 +5,7 @@
 #define CHRG_AIN 33       // Charge pin sense (10k pull-up)
 #define EXP_AIN 34        // Expression pedal input (3V3)
 #define MAX_ATTEMPTS 5    // (Re-)Connection attempts before going to sleep
+#define MILLIS_PER_ATTEMPT 6000 // milliseconds per connection attempts, this is used when reconnecting, not quite as expected though
 #define CHRG_LOW 2000
 //
 #define BATTERY_LOW 2082  // Noise floor of 3.61V (<5%)
@@ -66,7 +67,7 @@ float effect_volume = 0.0;
 int temp = 0;   
 int chrg_result = 0;                             // For charge state monitoring
 int attempt_count = 0;                         // Connection attempts counter
-int RTC_pins[]{0,2,4,12,13,14,15,25,26,27,32,33,34,35,36,37,38,39};
+int RTC_pins[]{0,2,4,12,13,14,15,25,26,27,32,33,34,35,36,37,38,39}; // These are RTC enabled GPIOs of ESP32, this is hardware, and if you choose to connect buttons to at least one of this list, deep sleep will be enabled  
 bool sw_RTC[NUM_SWITCHES];
 int RTC_present=0;                // Number of RTC pins present in the config
 int sw_val[NUM_SWITCHES];
@@ -96,7 +97,7 @@ int16_t meter_x = 0;
 int16_t meter_y = 0;
 int16_t hub_x = 0;
 int16_t hub_y = 0;
-
+uint64_t time_to_sleep;
 
 
 // Flags
