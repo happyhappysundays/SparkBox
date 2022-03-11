@@ -386,7 +386,7 @@ void refreshUI(void)
     oled.drawString(X1, Y4, "Please wait");
     oled.display();
     delay(10);
-    DEBUG(gauge);
+  //  DEBUG(gauge);
     if (millis() > time_to_sleep) {
       ESP_off();
     }
