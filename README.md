@@ -1,4 +1,4 @@
-# SparkBox V0.67
+# SparkBox V0.68
 SparkBox is a BT pedal for the Positive Grid Spark 40.  I only needed the functionality of the simpler BT pedals. However many of them use captured hex chunks to communicate with the Spark, or were Python based. Instead I wanted to use Paul Hamshere's amazing code to create and process real messages. Also I wanted to extend the functionality a bit and make an attractive UI.
 
 # Functions
@@ -14,6 +14,7 @@ SparkBox is a BT pedal for the Positive Grid Spark 40.  I only needed the functi
 - BLE RSSI indicator
 - Now with remote guitar tuner display! Select from Spark, or hold all four buttons down to enter/exit.
 - Inter-operable with both conventional and Heltec ESP32 modules.
+- Sleep modes added to reduce power when disconnected
 
 # Arduino libraries and board versions
 Under Files->Preferences->Additional Boards Manager URLs, enter the following:
