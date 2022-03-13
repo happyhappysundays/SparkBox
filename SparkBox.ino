@@ -8,12 +8,12 @@
 //
 // Battery charge function defines. Please uncomment just one.
 // You have no mods to monitor the battery, so it will show empty
-//#define BATT_CHECK_0
+#define BATT_CHECK_0
 //
 // You are monitoring the battery via a 2:1 10k/10k resistive divider to GPIO23
 // You can see an accurate representation of the remaining battery charge and a kinda-sorta
 // indicator of when the battery is charging. Maybe.
-#define BATT_CHECK_1
+//#define BATT_CHECK_1
 //
 // You have the battery monitor mod described above AND you have a connection between the 
 // CHRG pin of the charger chip and GPIO 33. Go you! Now you have a guaranteed charge indicator too.
@@ -48,8 +48,7 @@
 //******************************************************************************************
 
 #define PGM_NAME "SparkBox"
-#define VERSION "V0.68" 
-
+#define VERSION "V0.69" 
 
 SSD1306Wire oled(0x3c, 4, 15);        // Default OLED Screen Definitions - ADDRESS, SDA, SCL 
 
@@ -68,7 +67,7 @@ int i, j, p;
 int count;                            // "
 bool flash_GUI;                       // Flash GUI items if true
 bool isTunerMode;                     // Tuner mode flag
-bool scan_result = false;                      // Connection attempt result
+bool scan_result = false;             // Connection attempt result
 
 hw_timer_t * timer = NULL;            // Timer variables
 portMUX_TYPE timerMux = portMUX_INITIALIZER_UNLOCKED;
@@ -91,9 +90,13 @@ void setup() {
 
   display_preset_num = 0;
   int tmp_batt;
+
+  // Debug - On my Heltec module, leaving this unconnected pin hanging causes
+  // a display issue where the screen dims, returning if touched.
+  pinMode(21,OUTPUT);
+  
   // Manually toggle the /RST pin to add Heltec module functionality
   // but without the Heltec library
-  pinMode(21,OUTPUT); // debug - helps Heltec mmodule display issue
   pinMode(16,OUTPUT);
   digitalWrite(16, LOW);
   delay(50);
@@ -108,8 +111,6 @@ void setup() {
   for (i = 0; i < NUM_SWITCHES; i++) {
     pinMode(sw_pin[i], INPUT_PULLDOWN);
   }
-  // Read Vbat input
-  //vbat_result = analogRead(VBAT_AIN);
 
   // Avg battery voltage
   for(i=0; i<VBAT_NUM; ++i) {
@@ -125,10 +126,10 @@ void setup() {
   oled.setFont(MEDIUM_FONT);
   oled.setTextAlignment(TEXT_ALIGN_CENTER);
   oled.drawString(X1, Y4, VERSION);
+  oled.setFont(SMALL_FONT);
   if (batteryCharging()!=1) {
-    oled.drawString(X1, 0, "batt. " + String(batteryPercent(vbat_result))+"%");
+    oled.drawString(X1, 0, "Battery = " + String(batteryPercent(vbat_result))+"%");
   } else {
-    oled.setFont(SMALL_FONT);
     oled.drawString(X1, 1, "BATT. CHARGING");  
   }
   oled.display();
@@ -145,11 +146,13 @@ void setup() {
 
   while (!scan_result && attempt_count < MAX_ATTEMPTS) {     // Trying to connect
     attempt_count++;
-    // Read battery voltage
+
+    // Read battery voltage - this is messy repeating the code from above
     for(i=0; i<VBAT_NUM; ++i) {
       readBattery();
       delay(10);
     }      
+    
     // Show connection message
     oled.clear();
     oled.setFont(BIG_FONT);
@@ -159,7 +162,8 @@ void setup() {
     oled.setTextAlignment(TEXT_ALIGN_CENTER);
     oled.drawString(X1, Y4, "Please wait " + String(MAX_ATTEMPTS - attempt_count + 1) + "...");
     if (batteryCharging()!=1) {
-      oled.drawString(X1, 0, "batt. " + String(batteryPercent(vbat_result))+"%");
+      oled.setFont(SMALL_FONT);
+      oled.drawString(X1, 0, "Battery = " + String(batteryPercent(vbat_result))+"%");
     } else {
       oled.setFont(SMALL_FONT);
       oled.drawString(X1, 1, "BATT. CHARGING");  
@@ -169,11 +173,11 @@ void setup() {
     scan_result = spark_state_tracker_start();
   }
   attempt_count = 0;
+
   if (!scan_result) {
     ESP_off();
-    // we never get here
   }
-  // proceed if connected
+  // Proceed if connected
 }
 
 void loop() {
@@ -307,6 +311,10 @@ void loop() {
     else if (cmdsub == 0x0104 || cmdsub == 0x0337 || cmdsub == 0x0106){
       expression_target = false;
     }
+/*    else if (cmdsub == 0x0101 || cmdsub == 0x0301){
+      oled.displayOn();
+      oled.display();
+    }*/
     else {
       expression_target = true; 
     }

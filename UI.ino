@@ -460,16 +460,25 @@ void ESP_off(){
   uint64_t bit_mask=0;
   String wake_buttons;
   int deep_sleep_pins;
-  deep_sleep_pins = Check_RTC(); // Find out if we have RTC pins assigned to buttons allowing deep sleep, otherwise we use light sleep
-  //  CRT-off effect =) or something
+  deep_sleep_pins = Check_RTC();  // Find out if we have RTC pins assigned to buttons allowing deep sleep, otherwise we use light sleep
+                                  //  CRT-off effect =) or something
   String s = "_________________";
-  oled.clear();
-  oled.display();
-  oled.setFont(MEDIUM_FONT);
-  oled.setTextAlignment(TEXT_ALIGN_CENTER);
-  if (deep_sleep_pins>0) {
+
+  // Debug
+  Serial.print("deep_sleep_pins = ");
+  Serial.print(deep_sleep_pins);
+  Serial.print(" RTC_present = ");
+  Serial.println(RTC_present);
+    
+  if (deep_sleep_pins > 0){
+    oled.clear();
+    oled.display();
+    oled.setFont(MEDIUM_FONT);
+    oled.setTextAlignment(TEXT_ALIGN_CENTER);
+   
   //  Only GPIOs which have RTC functionality can be used for deep sleep: 0,2,4,12-15,25-27,32-39
 
+  //  Future radio shutdown support here:
   //  esp_bluedroid_disable(); //gracefully shutdoun BT (and WiFi)
   //  esp_bt_controller_disable();
   //  esp_wifi_stop();
@@ -512,7 +521,9 @@ void ESP_off(){
     // esp_sleep_enable_ext0_wakeup(static_cast <gpio_num_t> (sw_pin[0]), HIGH); // wake up if BUTTON 1 pressed
     esp_sleep_enable_ext1_wakeup( bit_mask, ESP_EXT1_WAKEUP_ANY_HIGH); // wake up on RTC enabled GPIOs
     esp_deep_sleep_start();
-  } else {
+  } 
+  // Don't attempt to sleep if you have no way to wake up!
+  else if (RTC_present > 0) {
     textAnimation("Button1 wakes up",5000);
     textAnimation("..z-Z-Z",1000);
     for (int i=0; i<8; i++) {
@@ -550,6 +561,7 @@ void ESP_on () {
     case ESP_SLEEP_WAKEUP_ULP : DEBUG("Wakeup caused by ULP program"); break;
     default : DEBUG("Wakeup was not caused by deep sleep: " + String(wakeup_cause)); break;
   }
+  oled.displayOn();
   oled.setFont(MEDIUM_FONT);
   oled.setTextAlignment(TEXT_ALIGN_CENTER);
   textAnimation(".",200,-5);
