@@ -23,7 +23,7 @@ Under Files->Preferences->Additional Boards Manager URLs, enter the following:
 
 Under Tools->Board->Board manager ensure that you have the following version:
 - Heltec ESP32 Dev-Boards 0.0.5 (Heltec - WiFi Kit 32) **OR**
-- ESP32 by Espressif 2.0.1 (ESP32)
+- ESP32 by Espressif 2.0.2 (ESP32)
 
 Under Tools->Manage Libraries ensure that you have the following libraries and versions:
 - ThingPulse SSD1306 driver 4.2.1 (ESP32)
