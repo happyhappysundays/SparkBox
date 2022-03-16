@@ -1,4 +1,4 @@
-# SparkBox V0.70
+# SparkBox V0.71
 SparkBox is a BT pedal for the Positive Grid Spark 40.  I only needed the functionality of the simpler BT pedals. However many of them use captured hex chunks to communicate with the Spark, or were Python based. Instead I wanted to use Paul Hamshere's amazing code to create and process real messages. Also I wanted to extend the functionality a bit and make an attractive UI.
 
 # Functions
@@ -65,6 +65,9 @@ Uncomment when using a Heltec module as their implementation doesn't support set
 
 **define TWOCOLOUR**
 Uncomment if two-colour OLED screens are used. Offsets some text and shows an alternate tuner.
+
+**define NOSLEEP**
+Uncomment if you'd prefer not to use the power-saving sleep modes
 
 # Heltec module version
 ![alt text](https://github.com/happyhappysundays/SparkBox/blob/main/Pictures/Dev_board.jpg?raw=true)
