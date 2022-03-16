@@ -97,7 +97,7 @@ int16_t meter_x = 0;
 int16_t meter_y = 0;
 int16_t hub_x = 0;
 int16_t hub_y = 0;
-uint64_t time_to_sleep;
+uint64_t time_to_sleep = 0;
 
 
 // Flags
