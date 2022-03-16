@@ -335,7 +335,7 @@ void refreshUI(void)
       if (!isPedalMode) {
         oled.drawString(0, 20, "Preset mode");
       }
-      else {
+      else if (flash_GUI && isPedalMode){         // Kevin's mod to flash Effect Mode
         oled.drawString(0, 20, "Effect mode");    
       }
       oled.setFont(HUGE_FONT);
@@ -384,9 +384,12 @@ void refreshUI(void)
     oled.display();
     delay(10);
 
+#ifndef NOSLEEP
     if (millis() > time_to_sleep) {
       ESP_off();
     }
+#endif    
+
   } else {
     time_to_sleep = millis() + (MAX_ATTEMPTS * MILLIS_PER_ATTEMPT);
   }

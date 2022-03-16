@@ -34,6 +34,9 @@
 // Uncomment if two-colour OLED screens are used. Offsets some text and alternate tuner
 //#define TWOCOLOUR
 //
+// Uncomment if you don't want the pedal to sleep to save power
+//#define NOSLEEP
+//
 //******************************************************************************************
 #include "SSD1306Wire.h"            // https://github.com/ThingPulse/esp8266-oled-ssd1306
 #include "BluetoothSerial.h"
@@ -48,7 +51,7 @@
 //******************************************************************************************
 
 #define PGM_NAME "SparkBox"
-#define VERSION "V0.70" 
+#define VERSION "V0.71" 
 
 SSD1306Wire oled(0x3c, 4, 15);        // Default OLED Screen Definitions - ADDRESS, SDA, SCL 
 
@@ -104,11 +107,9 @@ void setup() {
 
   // Initialize device OLED display, and flip screen, as OLED library starts upside-down
   oled.init();
-  //oled.resetDisplay(); // debug
-  //Serial.println("Hello");
   oled.flipScreenVertically();
-  
   ESP_on();
+  
   // Set pushbutton inputs to pull-downs
   for (i = 0; i < NUM_SWITCHES; i++) {
     pinMode(sw_pin[i], INPUT_PULLDOWN);
@@ -174,12 +175,18 @@ void setup() {
     DEBUG("Scanning and connecting");
     scan_result = spark_state_tracker_start();
   }
+  
   attempt_count = 0;
 
   if (!scan_result) {
+#ifndef NOSLEEP
     ESP_off();
+#else
+    esp_restart();
+#endif
   }
   // Proceed if connected
+  time_to_sleep = millis() + (MAX_ATTEMPTS * MILLIS_PER_ATTEMPT); // Preset timeout 
 }
 
 void loop() {
@@ -307,16 +314,14 @@ void loop() {
     Serial.println();
     change_hardware_preset(display_preset_num); // Refresh app preset when first connected
     }
+ 
+    // Work out if the user is touching a switch or a knob
     if (cmdsub == 0x0115 || cmdsub == 0x0315){
       expression_target = true;
     }
     else if (cmdsub == 0x0104 || cmdsub == 0x0337 || cmdsub == 0x0106){
       expression_target = false;
     }
-/*    else if (cmdsub == 0x0101 || cmdsub == 0x0301){
-      oled.displayOn();
-      oled.display();
-    }*/
     else {
       expression_target = true; 
     }
