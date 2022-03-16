@@ -11,6 +11,7 @@ class MyClientCallback : public BLEClientCallbacks
   {
     DEBUG("callback: Spark connected");
     set_conn_status_connected(SPK);
+    //oled.displayOn(); //debug
   }
 
   void onDisconnect(BLEClient *pclient)

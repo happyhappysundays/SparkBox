@@ -367,7 +367,6 @@ void refreshUI(void)
         oled.setTextAlignment(TEXT_ALIGN_LEFT);
         oled.drawString(15, 37, "Connect App");
       } 
-    
       updateIcons();
     }
     oled.display();
@@ -381,12 +380,10 @@ void refreshUI(void)
     oled.drawString(X1, Y3, "Reconnecting");
     oled.setFont(MEDIUM_FONT);
     oled.setTextAlignment(TEXT_ALIGN_CENTER);
-  //  int gauge ; 
-  //  gauge = (time_to_sleep - millis()) / MILLIS_PER_ATTEMPT;
     oled.drawString(X1, Y4, "Please wait");
     oled.display();
     delay(10);
-  //  DEBUG(gauge);
+
     if (millis() > time_to_sleep) {
       ESP_off();
     }
@@ -396,27 +393,27 @@ void refreshUI(void)
 }
 
 void readBattery(){
-vbat_result = analogRead(VBAT_AIN); // Read battery voltage
+  vbat_result = analogRead(VBAT_AIN); // Read battery voltage
 
-    // To speed up the display when a battery is connected from scratch
-    // ignore/fudge any readings below the lower threshold
-    if (vbat_result < BATTERY_LOW) vbat_result = BATTERY_LOW;
-    temp = vbat_result;
+  // To speed up the display when a battery is connected from scratch
+  // ignore/fudge any readings below the lower threshold
+  if (vbat_result < BATTERY_LOW) vbat_result = BATTERY_LOW;
+  temp = vbat_result;
 
-    // While collecting data
-    if (vbat_ring_count < VBAT_NUM) {
-      vbat_ring_sum += vbat_result;
-      vbat_ring_count++;
-      vbat_result = vbat_ring_sum / vbat_ring_count;
-    }
-    // Once enough is gathered, do a decimating average
-    else {
-      vbat_ring_sum *= 0.9;
-      vbat_ring_sum += vbat_result;
-      vbat_result = vbat_ring_sum / VBAT_NUM;
-    }
+  // While collecting data
+  if (vbat_ring_count < VBAT_NUM) {
+    vbat_ring_sum += vbat_result;
+    vbat_ring_count++;
+    vbat_result = vbat_ring_sum / vbat_ring_count;
+  }
+  // Once enough is gathered, do a decimating average
+  else {
+    vbat_ring_sum *= 0.9;
+    vbat_ring_sum += vbat_result;
+    vbat_result = vbat_ring_sum / VBAT_NUM;
+  }
 
-    chrg_result = analogRead(CHRG_AIN); // Check state of /CHRG output  
+  chrg_result = analogRead(CHRG_AIN); // Check state of /CHRG output  
 }
 
 int batteryPercent(int vbat_value) {
@@ -465,7 +462,7 @@ void ESP_off(){
   String s = "_________________";
 
   // Debug
-  Serial.print("deep_sleep_pins = ");
+  Serial.print("Deep_sleep_pins = ");
   Serial.print(deep_sleep_pins);
   Serial.print(" RTC_present = ");
   Serial.println(RTC_present);
@@ -476,12 +473,12 @@ void ESP_off(){
     oled.setFont(MEDIUM_FONT);
     oled.setTextAlignment(TEXT_ALIGN_CENTER);
    
-  //  Only GPIOs which have RTC functionality can be used for deep sleep: 0,2,4,12-15,25-27,32-39
-
-  //  Future radio shutdown support here:
-  //  esp_bluedroid_disable(); //gracefully shutdoun BT (and WiFi)
-  //  esp_bt_controller_disable();
-  //  esp_wifi_stop();
+    //  Only GPIOs which have RTC functionality can be used for deep sleep: 0,2,4,12-15,25-27,32-39
+  
+    //  Future radio shutdown support here:
+    //  esp_bluedroid_disable(); //gracefully shutdoun BT (and WiFi)
+    //  esp_bt_controller_disable();
+    //  esp_wifi_stop();
 
     esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_ALL);
     esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_ON);
@@ -495,6 +492,7 @@ void ESP_off(){
         k = i+1;
       }
     }
+    oled.setFont(MEDIUM_FONT);
     if (deep_sleep_pins == NUM_SWITCHES) {
       wake_buttons = "Any button wakes";
     } else {
@@ -504,43 +502,46 @@ void ESP_off(){
         wake_buttons = "Buttons " + wake_buttons.substring(0, wake_buttons.length()-1) + " wake";
       }
     }
-    textAnimation(wake_buttons,5000);
-    textAnimation("... z-z-Z-Z",1000);
+    textAnimation(wake_buttons,3000);
+    textAnimation("Deep sleep",1000);
     for (int i=0; i<8; i++) {
       s = s.substring(i);
-      textAnimation(s,70,-6);
+      textAnimation(s,70,-8);
     }
-    for (int i=0; i<10; i++) {
-      textAnimation("\\",30);
-      textAnimation("|",30);
-      textAnimation("/",30);
-      textAnimation("--",30);
-    }
-    DEBUG("deep sleep");
+    textAnimation(".",200,-5);
+    textAnimation("*",100,3);
+    textAnimation("x",100,-3);
+    textAnimation("X",100,-1);
+    textAnimation("x",100,-3);
+    textAnimation(".",100,-5);
+
+    DEBUG("Deep sleep");
     oled.displayOff();                // turn it off, otherwise oled remains active
-    // esp_sleep_enable_ext0_wakeup(static_cast <gpio_num_t> (sw_pin[0]), HIGH); // wake up if BUTTON 1 pressed
+    //esp_sleep_enable_ext0_wakeup(static_cast <gpio_num_t> (sw_pin[0]), HIGH); // wake up if BUTTON 1 pressed
     esp_sleep_enable_ext1_wakeup( bit_mask, ESP_EXT1_WAKEUP_ANY_HIGH); // wake up on RTC enabled GPIOs
     esp_deep_sleep_start();
   } 
-  // Don't attempt to sleep if you have no way to wake up!
-  else if (RTC_present > 0) {
-    textAnimation("Button1 wakes up",5000);
-    textAnimation("..z-Z-Z",1000);
+  else {
+    oled.setFont(MEDIUM_FONT);
+    textAnimation("Button 1 wakes",3000);
+    textAnimation("Sleep",1000);
     for (int i=0; i<8; i++) {
       s = s.substring(i);
-      textAnimation(s,70,-6);
+      textAnimation(s,70,-8);
     }
-    for (int i=0; i<10; i++) {
-      textAnimation("\\",30);
-      textAnimation("|",30);
-      textAnimation("/",30);
-      textAnimation("--",30);
-    }
-    DEBUG("light sleep");
+    textAnimation(".",200,-5);
+    textAnimation("*",100,3);
+    textAnimation("x",100,-3);
+    textAnimation("X",100,-1);
+    textAnimation("x",100,-3);
+    textAnimation(".",100,-5);    
+
+    DEBUG("Light sleep");
     oled.displayOff();                // turn it off, otherwise oled remains active
-    esp_sleep_enable_gpio_wakeup();
     gpio_wakeup_enable(static_cast <gpio_num_t> (sw_pin[0]), GPIO_INTR_HIGH_LEVEL );
+    esp_sleep_enable_gpio_wakeup();
     esp_light_sleep_start();
+    esp_restart();
   }
 };
 
@@ -571,13 +572,13 @@ void ESP_on () {
   textAnimation("x",100,-3);
   textAnimation(".",100,-5);
   textAnimation("-",50,-3);
-  textAnimation("---",50,-3);
-  textAnimation("-----",50,-3);
-  textAnimation("-------",50,-3);
-  textAnimation("----------",40,-3);
-  textAnimation("-------------",30,-3);
-  textAnimation("----------------",20,-3);
-  textAnimation("-------------------",10,-3);
+  textAnimation("___",50,-8);
+  textAnimation("_____",50,-8);
+  textAnimation("_______",50,-8);
+  textAnimation("_________",40,-8);
+  textAnimation("___________",30,-8);
+  textAnimation("_____________",20,-8);
+  textAnimation("_______________",10,-8);
 }
 
 int Check_RTC() {

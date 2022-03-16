@@ -29,7 +29,7 @@
 //#define CLASSIC
 //
 // Uncomment when using a Heltec module as their implementation doesn't support setMTU()
-//#define HELTEC_WIFI
+#define HELTEC_WIFI
 //
 // Uncomment if two-colour OLED screens are used. Offsets some text and alternate tuner
 //#define TWOCOLOUR
@@ -48,7 +48,7 @@
 //******************************************************************************************
 
 #define PGM_NAME "SparkBox"
-#define VERSION "V0.69" 
+#define VERSION "V0.70" 
 
 SSD1306Wire oled(0x3c, 4, 15);        // Default OLED Screen Definitions - ADDRESS, SDA, SCL 
 
@@ -104,6 +104,8 @@ void setup() {
 
   // Initialize device OLED display, and flip screen, as OLED library starts upside-down
   oled.init();
+  //oled.resetDisplay(); // debug
+  //Serial.println("Hello");
   oled.flipScreenVertically();
   
   ESP_on();
