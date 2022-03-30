@@ -32,13 +32,16 @@
 #define HELTEC_WIFI
 //
 // Uncomment if two-colour OLED screens are used. Offsets some text and alternate tuner
-//#define TWOCOLOUR
+#define TWOCOLOUR // Probably the only mode left, it seems to look well on both types of display
 //
 // Uncomment if you don't want the pedal to sleep to save power
 //#define NOSLEEP
 //
 //******************************************************************************************
 #include "SSD1306Wire.h"            // https://github.com/ThingPulse/esp8266-oled-ssd1306
+// or #include "SH1106Wire.h"
+#include "OLEDDisplayUi.h"          // Include the UI lib
+#include "FS.h"
 #include "BluetoothSerial.h"
 #include "Spark.h"                  // Paul Hamshere's SparkIO library https://github.com/paulhamsh/Spark/tree/main/Spark
 #include "SparkIO.h"                // "
@@ -51,9 +54,11 @@
 //******************************************************************************************
 
 #define PGM_NAME "SparkBox"
-#define VERSION "V0.71" 
+#define VERSION "V0.80 alpha" 
 
 SSD1306Wire oled(0x3c, 4, 15);        // Default OLED Screen Definitions - ADDRESS, SDA, SCL 
+// SH1106Wire oled(0x3c, 4, 15);      // or this line if you are using SSH1106
+OLEDDisplayUi ui(&oled);              // Create UI instance for the display (slightly advanced frame based GUI)
 
 char str[STR_LEN];                    // Used for processing Spark commands from amp
 char param_str[50]; //debug
@@ -71,11 +76,32 @@ int count;                            // "
 bool flash_GUI;                       // Flash GUI items if true
 bool isTunerMode;                     // Tuner mode flag
 bool scan_result = false;             // Connection attempt result
+enum eMode_t {MODE_PRESETS, MODE_EFFECTS, MODE_SCENES, MODE_TUNER, MODE_BYPASS, MODE_MESSAGE};
+eMode_t curMode = MODE_PRESETS;
+eMode_t oldMode = MODE_PRESETS;
+eMode_t returnMode = MODE_PRESETS;
+enum ePresets_t {HW_PRESET_0, HW_PRESET_1, HW_PRESET_2, HW_PRESET_3, TMP_PRESET, CUR_EDITING, TMP_PRESET_ADDR=0x007f};
+enum eEffects_t {FX_GATE, FX_COMP, FX_DRIVE, FX_AMP, FX_MOD, FX_DELAY, FX_REVERB};
 
 hw_timer_t * timer = NULL;            // Timer variables
 portMUX_TYPE timerMux = portMUX_INITIALIZER_UNLOCKED;
 volatile boolean isTimeout = false;   // Update battery icon flag
 volatile boolean isRSSIupdate = false;// Update RSSI display flag
+
+// SWITCHES Init ===========================================================================
+typedef struct {
+  const uint8_t pin;
+  const String fxLabel;   // Sorry for using Strings here
+  uint8_t fxSlotNumber;   // [0-6] number in fx chain
+  bool fxOnOff; // Effect onOff
+} s_switches ;
+
+s_switches SWITCHES[NUM_SWITCHES] = {
+  {sw_pin[0], "DRIVE", FX_DRIVE, false},
+  {sw_pin[1], "MOD", FX_MOD, false},
+  {sw_pin[2], "DELAY", FX_DELAY, false},
+  {sw_pin[3], "REVERB", FX_REVERB, false},
+};
 
 //******************************************************************************************
 
@@ -86,7 +112,17 @@ void IRAM_ATTR onTime() {
    isRSSIupdate = true;
    portEXIT_CRITICAL_ISR(&timerMux);
 }
+// UI **************************************************************************************
+// array of frame drawing functions
+FrameCallback frames[] = { frPresets, frEffects, frScenes, frTuner, frBypass, frMessage };
+// number of frames in UI
+int frameCount = 6;
 
+// Overlays are statically drawn on top of a frame eg. a clock
+OverlayCallback overlays[] = { screenOverlay };
+int overlaysCount = 1;
+
+// SETUP() *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
 void setup() {
   Serial.begin(115200);                       // Start serial debug console monitoring via ESP32
   while (!Serial);
@@ -106,7 +142,16 @@ void setup() {
   digitalWrite(16, HIGH);
 
   // Initialize device OLED display, and flip screen, as OLED library starts upside-down
-  oled.init();
+  ui.setTargetFPS(30);
+  ui.disableAllIndicators();
+  ui.setFrameAnimation(SLIDE_LEFT);
+  ui.setFrames(frames, frameCount);
+  ui.setTimePerTransition(TRANSITION_TIME);
+  ui.setOverlays(overlays, overlaysCount);
+  ui.disableAutoTransition();
+  // Initialising the UI will init the display too.
+  ui.init();
+  //oled.init();
   oled.flipScreenVertically();
   ESP_on();
   
@@ -117,8 +162,8 @@ void setup() {
 
   // Avg battery voltage
   for(i=0; i<VBAT_NUM; ++i) {
-    readBattery();
     delay(10);
+    readBattery();
   }
 
   // Show welcome message
@@ -130,17 +175,11 @@ void setup() {
   oled.setTextAlignment(TEXT_ALIGN_CENTER);
   oled.drawString(X1, Y4, VERSION);
   oled.setFont(SMALL_FONT);
-  if (batteryCharging()!=1) {
-    oled.drawString(X1, 0, "Battery = " + String(batteryPercent(vbat_result))+"%");
-  } else {
-    oled.drawString(X1, 1, "BATT. CHARGING");  
-  }
+  mainIcons();
   oled.display();
   delay(1000);                                // Wait for splash screen
 
   DEBUG("Connecting...");  
-
-  isPedalMode = false;                        // Default to Preset mode
 
   timer = timerBegin(0, 80, true);            // Setup timer
   timerAttachInterrupt(timer, &onTime, true); // Attach to our handler
@@ -149,12 +188,8 @@ void setup() {
 
   while (!scan_result && attempt_count < MAX_ATTEMPTS) {     // Trying to connect
     attempt_count++;
-
-    // Read battery voltage - this is messy repeating the code from above
-    for(i=0; i<VBAT_NUM; ++i) {
-      readBattery();
-      delay(10);
-    }      
+  
+    readBattery();
     
     // Show connection message
     oled.clear();
@@ -164,13 +199,7 @@ void setup() {
     oled.setFont(MEDIUM_FONT);
     oled.setTextAlignment(TEXT_ALIGN_CENTER);
     oled.drawString(X1, Y4, "Please wait " + String(MAX_ATTEMPTS - attempt_count + 1) + "...");
-    if (batteryCharging()!=1) {
-      oled.setFont(SMALL_FONT);
-      oled.drawString(X1, 0, "Battery = " + String(batteryPercent(vbat_result))+"%");
-    } else {
-      oled.setFont(SMALL_FONT);
-      oled.drawString(X1, 1, "BATT. CHARGING");  
-    }
+    mainIcons();
     oled.display();    
     DEBUG("Scanning and connecting");
     scan_result = spark_state_tracker_start();
@@ -186,121 +215,23 @@ void setup() {
 #endif
   }
   // Proceed if connected
+  ui.switchToFrame(curMode);
   time_to_sleep = millis() + (MAX_ATTEMPTS * MILLIS_PER_ATTEMPT); // Preset timeout 
 }
 
 void loop() {
-
+  if(spark_state == SPARK_SYNCED){
+    int remainingTimeBudget = ui.update();
+  }
 #ifdef EXPRESSION_PEDAL
   // Only handle the pedal if the app is connected
   if (conn_status[APP]){
-    // Read expression pedal
-    // It can be sometimes difficult to get to zero, which we need,
-    // so we subtract an offset and expand the scale to cover the full range
-    express_result = (analogRead(EXP_AIN)/ 45) - 10;
-  
-    // Rolling average to remove noise
-    if (express_ring_count < 10) {
-      express_ring_sum += express_result;
-      express_ring_count++;
-      express_result = express_ring_sum / express_ring_count;
-    }
-    // Once enough is gathered, do a decimating average
-    else {
-      express_ring_sum *= 0.9;
-      express_ring_sum += express_result;
-      express_result = express_ring_sum / 10;
-    }  
-  
-    // Reduce noise and only respond to deliberate changes
-    if ((abs(express_result - old_exp_result) > 4))
-    {
-      old_exp_result = express_result;
-      effect_volume = float(express_result);
-      effect_volume = effect_volume / 64;
-      if (effect_volume > 1.0) effect_volume = 1.0;
-      if (effect_volume < 0.0) effect_volume = 0.0;
-  #ifdef DUMP_ON
-      Serial.print("Pedal data: ");
-      Serial.print(express_result);
-      Serial.print(" : ");
-      Serial.println(effect_volume);
-  #endif
-      // If effect on/off
-      if (expression_target) {
-         // Send effect ON state to Spark and App only if OFF
-         if ((effect_volume > 0.5)&&(!effectstate)) {
-            change_generic_onoff(get_effect_index(msg.str1),true);
-            Serial.print("Turning effect ");
-            Serial.print(msg.str1);
-            Serial.println(" ON via pedal");
-            effectstate = true;
-         }
-         // Send effect OFF state to Spark and App only if ON, also add hysteresis
-         else if ((effect_volume < 0.3)&&(effectstate))
-         {
-            change_generic_onoff(get_effect_index(msg.str1),false);
-            Serial.print("Turning effect ");
-            Serial.print(msg.str1);
-            Serial.println(" OFF via pedal");
-            effectstate = false;
-         }
-      }
-      // Parameter change
-      else
-      {
-        // Send expression pedal value to Spark and App
-        change_generic_param(get_effect_index(msg.str1), msg.param1, effect_volume);
-      }
-    }
+    doExpressionPedal();
   }
 #endif //EXPRESSION_PEDAL
 
   // Process user input
-  dopushbuttons();
-
-  // In Preset mode, use the four buttons to select the four HW presets
-  if ((sw_val[0] == HIGH)&&(!isPedalMode)) {  
-    change_hardware_preset(0);
-    display_preset_num = 0; 
-  }
-  else if ((sw_val[1] == HIGH)&&(!isPedalMode)) {  
-    change_hardware_preset(1);
-    display_preset_num = 1; 
-  }
-  else if ((sw_val[2] == HIGH)&&(!isPedalMode)) {  
-    change_hardware_preset(2);
-    display_preset_num = 2; 
-  }
-  else if ((sw_val[3] == HIGH)&&(!isPedalMode)) {  
-    change_hardware_preset(3);
-    display_preset_num = 3; 
-  }
-
-  // Effect mode (SW1-4 switch effects on/off)
-  // Drive
-  else if ((sw_val[0] == HIGH)&&(isPedalMode)) {    
-    change_drive_toggle();
-    setting_modified = true;
-  } 
-  
-  // Modulation
-  else if ((sw_val[1] == HIGH)&&(isPedalMode)) {    
-    change_mod_toggle();
-    setting_modified = true;
-  }
-
-  // Delay
-  else if ((sw_val[2] == HIGH)&&(isPedalMode)) {   
-    change_delay_toggle();
-    setting_modified = true;
-  }
-
-  // Reverb
-  else if ((sw_val[3] == HIGH)&&(isPedalMode)) {   
-    change_reverb_toggle();
-    setting_modified = true;
-  } 
+  doPushButtons();
 
   // Check if a message needs to be processed
   if (update_spark_state()) {
@@ -327,7 +258,7 @@ void loop() {
     }
     
     // do your own checks and processing here    
-    isOLEDUpdate = true;        // Flag screen update
+    //isOLEDUpdate = true;        // Flag screen update
   }
 
   // Refresh screen

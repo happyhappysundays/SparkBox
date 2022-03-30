@@ -1,122 +1,162 @@
-void updateIcons() {
-  
-  // Read RSSI from Spark
-  iRSSI = ble_getRSSI();
-            
-  // Show BT icon if connected
-  // Use graduated scale based on the following
-  // 0 bars (very poor) < -95db
-  // 1 bar (poor) = -75db to -95db
-  // 2 bars (fair) = -60db to -75db
-  // 3 bars (good) = -40db to -60db
-  // 4 bars (excellent) = > -40db
-  if(spark_state == SPARK_SYNCED){
-    oled.drawXbm(btlogo_pos, 0, bt_width, bt_height, bt_bits);
-    // Display BT RSSI icon depending on actual signal
-    if (iRSSI > -40) {
-      oled.drawXbm(rssi_pos, 0, rssi_width, rssi_height, rssi_4);
-    }
-    else if (iRSSI > -60) {
-      oled.drawXbm(rssi_pos, 0, rssi_width, rssi_height, rssi_3);
-    }
-    else if (iRSSI > -75) {
-      oled.drawXbm(rssi_pos, 0, rssi_width, rssi_height, rssi_2);
-    }
-     else if (iRSSI > -95) {
-      oled.drawXbm(rssi_pos, 0, rssi_width, rssi_height, rssi_1);
-    }
-    // else no bars 
-    
-    // Update drive status icons once data available
-    // Drive icon
-    if (presets[5].effects[2].OnOff){
-      oled.drawXbm(drive_pos, 0, icon_width, icon_height, drive_on_bits);
-    }
-    else {
-      oled.drawXbm(drive_pos, 0, icon_width, icon_height, drive_off_bits);   
-    }
-    // Mod icon
-    if (presets[5].effects[4].OnOff) {
-      oled.drawXbm(mod_pos, 0, icon_width, icon_height, mod_on_bits);
-    }
-    else {
-       oled.drawXbm(mod_pos, 0, icon_width, icon_height, mod_off_bits);   
-    }
-    // Delay icon
-    if (presets[5].effects[5].OnOff) {
-      oled.drawXbm(delay_pos, 0, icon_width, icon_height, delay_on_bits);
-    }
-    else {
-       oled.drawXbm(delay_pos, 0, icon_width, icon_height, delay_off_bits);   
-    }
-    // Reverb icon
-    if (presets[5].effects[6].OnOff) {
-      oled.drawXbm(rev_pos, 0, icon_width, icon_height, rev_on_bits);
-    }
-    else {
-       oled.drawXbm(rev_pos, 0, icon_width, icon_height, rev_off_bits);
-    }
-  }
-  // Battery icon control - measured periodically via a 1s timer
-  // Average readings to reduce noise
+// Overlay static graphics
+void screenOverlay(OLEDDisplay *display, OLEDDisplayUiState* state) {
   if (isTimeout) {
-    readBattery();
+    readBattery();  // Read analog voltage and average it
     isTimeout = false;
+  }  
+  mainIcons();
+  if ( curMode==MODE_PRESETS || curMode==MODE_BYPASS) {
+    fxIcons();
   }
+}
 
-  // Start by showing the empty icon. drawXBM writes OR on the screen so care
-  // must be taken not to graphically block out some symbols. This is why the
-  // battery full but not charging is the last in the chain.
+// frSomething functions are frame drawing of the UI
+void frPresets(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t y) {
+  static int scrollStep = -2; // speed of horiz scrolling tone names
+  static ulong scrollCounter;
+{
+      display->setTextAlignment(TEXT_ALIGN_LEFT);
+      display->setFont(HUGE_FONT);
+      int s1w = display->getStringWidth(String(display_preset_num + 1))+5;
+      display->setFont(BIG_FONT);
+      int s2w = display->getStringWidth(presets[CUR_EDITING].Name)+5;
+      if (s1w+s2w <= display->width()) {
+        scroller = ( display->width() - s1w - s2w ) / 2;
+      } else {
+        if ( millis() > scrollCounter ) {
+          scroller = scroller + scrollStep;
+          if (scroller < (int)(display->width())-s1w-s2w-s1w-s2w) {
+            scroller = scroller + s1w + s2w;
+          }
+          scrollCounter = millis() + 20;
+        }
+        display->setFont(HUGE_FONT);
+        display->drawString( x + scroller + s1w + s2w, 11 + y, String(display_preset_num + 1) ); // +1 for humans
+        display->setFont(BIG_FONT);
+        display->drawString(x + scroller + s1w + s2w + s1w, y + display->height()/2 - 6 ,presets[CUR_EDITING].Name);
+      }
+      display->setFont(HUGE_FONT);
+      display->drawString( x + scroller, 11 + y, String(display_preset_num + 1) ); // +1 for humans
+      display->setFont(BIG_FONT);
+      display->drawString(x + scroller + s1w, y + display->height()/2 - 6 ,presets[CUR_EDITING].Name);
+    }
+}
 
-   // No battery monitoring so just show the empty symbol
-  if (batteryCharging()==-1) {
-    oled.drawXbm(bat_pos, 0, bat_width, bat_height, bat00_bits);
+void frEffects(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t y) {
+  static int scrollStep = -1;     // speed of horiz scrolling tone names
+  static ulong scrollCounter;
+  int visibleLeft = (CONN_ICON_WIDTH+1)*2;    // calculate the place to show compact scrolling name at the top line
+  int visibleW = display->width() - BAT_WIDTH - visibleLeft - 1;
+  
+  fxHugeIcons();                              // Big FX icons
+  
+  display->setTextAlignment(TEXT_ALIGN_LEFT);
+  display->setFont(SMALL_FONT);
+  int s1w = display->getStringWidth(String(display_preset_num + 1))+5;  // Width of the 1st string representing the preset number
+  int s2w = display->getStringWidth(presets[CUR_EDITING].Name)+5;       // Width of the 2nd string representing the name of the preset
+  if (s1w+s2w <= visibleW) {
+    scroller = ( visibleW - s1w - s2w ) / 2;
+  } else {
+    if ( millis() > scrollCounter ) {
+      scroller = scroller + scrollStep;
+      if (scroller < (int)(visibleW)-s1w-s2w-s1w-s2w) {
+        scroller = scroller + s1w + s2w;
+      }
+      scrollCounter = millis() + 20;
+    }
+    
+    display->drawString( visibleLeft + x + scroller + s1w + s2w,  y, String(display_preset_num + 1) ); // +1 for humans
+    display->drawString( visibleLeft + x + scroller + s1w + s2w + s1w, y, presets[CUR_EDITING].Name);
   }
-  
-  if (batteryCharging()==1) {
-      oled.drawXbm(bat_pos, 0, bat_width, bat_height, batcharging_bits);
+  display->drawString( visibleLeft + x + scroller,   y, String(display_preset_num + 1) ); // +1 for humans
+  display->drawString( visibleLeft + x + scroller + s1w, y, presets[CUR_EDITING].Name);
+  // Mask left and right space for the top line status icons
+  display->setColor(BLACK);
+  display->fillRect(0, 0, visibleLeft, STATUS_HEIGHT);
+  display->fillRect(display->width()-BAT_WIDTH-1, 0, BAT_WIDTH+1, STATUS_HEIGHT);
+}
+
+void frScenes(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t y) {
+}
+
+void frBypass(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t y) {
+  display->setFont(BIG_FONT);
+  display->setTextAlignment(TEXT_ALIGN_CENTER);
+  display->drawString(display->width()/2 + x, 20 + y, "BYPASS" );
+}
+
+void frMessage(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t y) {
+}
+
+void frTuner(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t y) {
+  String note_names[] = {"...","C","C#","D","D#","E","F","F#","G","G#","A","A#","B","..."};
+  //String note_names[] = {"...","Do","Do#","Re","Re#","Mi","Fa","Fa#","Sol","Sol#","La","La#","Si","..."};
+  int16_t val_deg = 0;
+  int16_t meter_x = 0;
+  int16_t meter_y = 0;
+  int16_t hub_x = 0;
+  int16_t hub_y = 0;
+  float    test_val;
+  // Show tuner screen when requested by Spark
+  display->clear();
+  // Default display - draw meter bitmap and label
+  display->drawXbm(0, Y5, tuner_width, tuner_height, tuner_bits); 
+  display->setFont(SMALL_FONT);
+  //display->setTextAlignment(TEXT_ALIGN_LEFT);
+  //display->drawString(0,0,"Tuner");
+  test_val = msg.val;
+//  test_val = (millis() % 2000)/2000.0;
+  // If nothing to show
+  if (test_val == -1.0) {
+    display->setTextAlignment(TEXT_ALIGN_CENTER);
+    display->drawString(display->width()/2+x,0+y,note_names[0]);
   }
-  
-  
-  // Basic battery detection available. Coarse cut-offs for visual 
-  // guide to remaining capacity. Surprisingly complex feedback to user.
-  // No bars = 0% (should not be discharged further)
-  // Full symbol = >85%
-  #ifndef BATT_CHECK_0
-    else if (vbat_result < BATTERY_LOW) {
-      oled.drawXbm(bat_pos, 0, bat_width, bat_height, bat00_bits);
-    }
-    else if (vbat_result < BATTERY_10) {
-      oled.drawXbm(bat_pos, 0, bat_width, bat_height, bat10_bits);
-    }
-    else if (vbat_result < BATTERY_20) {
-      oled.drawXbm(bat_pos, 0, bat_width, bat_height, bat20_bits);
-    }
-    else if (vbat_result < BATTERY_30) {
-      oled.drawXbm(bat_pos, 0, bat_width, bat_height, bat30_bits);
-    }    
-    else if (vbat_result < BATTERY_40) {
-      oled.drawXbm(bat_pos, 0, bat_width, bat_height, bat40_bits);
-    }
-    else if (vbat_result < BATTERY_50) {
-      oled.drawXbm(bat_pos, 0, bat_width, bat_height, bat50_bits);
-    }
-    else if (vbat_result < BATTERY_60) {
-      oled.drawXbm(bat_pos, 0, bat_width, bat_height, bat60_bits);
-    }
-    else if (vbat_result < BATTERY_70) {
-      oled.drawXbm(bat_pos, 0, bat_width, bat_height, bat70_bits);
-    }        
-    else if (vbat_result < BATTERY_80) {
-      oled.drawXbm(bat_pos, 0, bat_width, bat_height, bat80_bits);
-    }
-    else if (vbat_result < BATTERY_90) {
-      oled.drawXbm(bat_pos, 0, bat_width, bat_height, bat90_bits);
-    }
-    else {
-      oled.drawXbm(bat_pos, 0, bat_width, bat_height, bat100_bits);
-    } 
-  #endif
+  // If something to show
+  else {
+
+    // Work out start and end-points of meter needle
+    val_deg = constrain(int16_t(test_val * 180.0), 0, 180);            // Span tuner's 0-1.0, to 0-180 degrees
+    meter_x = (tuner_width/2) - (tuner_width/2)*sin(radians(90-val_deg));
+    meter_y = (display->height()) - (tuner_height)*cos(radians(90-val_deg))+ (display->height()-tuner_height*5/4);
+    hub_x = (tuner_width/2) - (tuner_width/2/4)*sin(radians(90-val_deg));
+    hub_y = (display->height()) - (display->height()/4)*cos(radians(90-val_deg)) ;
+    display->drawLine(meter_x,meter_y,hub_x,hub_y); // Draw line from hub to meter edge
+    // Show note names
+    display->setFont(MEDIUM_FONT);
+    display->setTextAlignment(TEXT_ALIGN_CENTER);
+    display->drawString(display->width()/2+x,0,note_names[constrain(msg.param1+1,0,13)]); // The first and the last note_names[] are '...' such we name everything outside the bounds
+  }
+}
+
+void mainIcons() {
+  // Spark Amp BT connection icon
+  drawStatusIcon(s_bt_bits, s_bt_width, STATUS_HEIGHT, 0,                 0, CONN_ICON_WIDTH, STATUS_HEIGHT, spark_state==SPARK_SYNCED);
+  // App connection icon
+  drawStatusIcon(a_bt_bits, a_bt_width, STATUS_HEIGHT, CONN_ICON_WIDTH+1, 0, CONN_ICON_WIDTH, STATUS_HEIGHT, conn_status[APP]);
+  // Battery icon
+  drawBatteryH(oled.width()-BAT_WIDTH, 0, BAT_WIDTH, STATUS_HEIGHT, batteryPercent(vbat_result), batteryCharging()); 
+}
+
+void fxIcons() {
+  // Drive icon    
+  drawStatusIcon(dr_bits, dr_width, STATUS_HEIGHT, 2*(CONN_ICON_WIDTH+1)+1,                     0, FX_ICON_WIDTH,  STATUS_HEIGHT, presets[CUR_EDITING].effects[FX_DRIVE].OnOff);
+  // Mod icon
+  drawStatusIcon(md_bits, md_width, STATUS_HEIGHT, 2*(CONN_ICON_WIDTH+1)+1+FX_ICON_WIDTH+1,     0, FX_ICON_WIDTH,  STATUS_HEIGHT, presets[CUR_EDITING].effects[FX_MOD].OnOff);
+  // Delay icon
+  drawStatusIcon(dy_bits, dy_width, STATUS_HEIGHT, 2*(CONN_ICON_WIDTH+1)+1+(FX_ICON_WIDTH+1)*2, 0, FX_ICON_WIDTH,  STATUS_HEIGHT, presets[CUR_EDITING].effects[FX_DELAY].OnOff);
+  // Reverb icon
+  drawStatusIcon(rv_bits, rv_width, STATUS_HEIGHT, 2*(CONN_ICON_WIDTH+1)+1+(FX_ICON_WIDTH+1)*3, 0, FX_ICON_WIDTH,  STATUS_HEIGHT, presets[CUR_EDITING].effects[FX_REVERB].OnOff);
+}
+
+void fxHugeIcons() {
+  // Drive icon    
+  drawTextIcon("Dr", 0,  18, 30, 32, presets[CUR_EDITING].effects[FX_DRIVE].OnOff);
+  // Mod icon
+  drawTextIcon("Md", 32, 18, 30, 32, presets[CUR_EDITING].effects[FX_MOD].OnOff);
+  // Delay icon
+  drawTextIcon("Dy", 64, 18, 30, 32, presets[CUR_EDITING].effects[FX_DELAY].OnOff);
+  // Reverb icon
+  drawTextIcon("Rv", 96, 18, 30, 32, presets[CUR_EDITING].effects[FX_REVERB].OnOff);
 }
 
 // Print out the requested preset data
@@ -140,10 +180,18 @@ void dump_preset(SparkPreset preset) {
 }
 
 // Pushbutton handling
-void dopushbuttons(void)
+void doPushButtons(void)
 {
+  AnylongPressActive = false;
+  AllPressActive = true;
+  ActiveFlags = 0;  
+  LongPressFlags = 0;
+  ClickFlags = 0 ;
+  static uint8_t zeroCounter = 0;
+  static uint8_t oldActiveFlags = 0;
+  static uint8_t maxFlags = 0;
   // Debounce and long press code
-  for (i = 0; i < NUM_SWITCHES; i++) {
+  for (int i = 0; i < NUM_SWITCHES; i++) {
     // If the button pin reads HIGH, the button is pressed (VCC)
     if (digitalRead(sw_pin[i]) == HIGH)
     {
@@ -160,218 +208,166 @@ void dopushbuttons(void)
       // and is not already flagged as such
       if ((buttonPressDuration[i] > longPressThreshold) && (longPressActive[i] == false)) {
           longPressActive[i] = true;
-          latchpress = true;
+          longPressFired = false;
       }
     }
-    // Else the button reads as LOW, so the button is released which means that  
-    // the button either hasn't been pressed, or has just been released
-    else {
+    // The button either hasn't been pressed, or has just been released
+    else { // The button state is LOW
       // Reset switch register here so that switch is not repeated    
-      sw_val[i] = LOW; 
-      
+      buttonClick[i] = false; 
       // If the button was marked as active, it was recently pressed
       if (buttonActive[i] == true){
         
         // Reset the long press active state
         if (longPressActive[i] == true){
           longPressActive[i] = false;
-          latchpress = false;
+          longPressFired = true;
         }
         
-        // Long press wasn't active. We either need to debounce/reject the press or register a normal/short press
-        else {
-          // if the button press duration exceeds our bounce threshold, then we register a short press
+        // Long press wasn't active. We either need to debounce/reject the press or register a normal click
+        else
+        {
+          // if the button press duration exceeds our bounce threshold, then we register a click
           if (buttonPressDuration[i] > debounceThreshold){
-            sw_val[i] = HIGH;
+            buttonClick[i] = true;
           }
-      }
+        }
         
         // Reset the button active status
         buttonActive[i] = false;
       }
       
     }  // The button either hasn't been pressed, or has just been released
+    LongPressFlags += (static_cast <uint8_t> (longPressActive[i])) << i;
+    ActiveFlags += (static_cast <uint8_t> (buttonActive[i])) << i;
+    ClickFlags += (static_cast <uint8_t> (buttonClick[i])) << i;
     
   }  // Debounce and long press code loop
 
   // OR all the long press flags so any of the four main footswitches can switch modes
-  AnylongPressActive = (longPressActive[0] || longPressActive[1] || longPressActive[2] || longPressActive[3]);
-  AllPressActive = (longPressActive[0] && longPressActive[1] && longPressActive[2] && longPressActive[3]);
-
+  AnylongPressActive = (LongPressFlags > 0) ;
+  AllPressActive = (LongPressFlags == ((1 << NUM_SWITCHES)-1)) ;
+  if (oldActiveFlags == 0 && ActiveFlags == 0) {
+    zeroCounter++; // Idle counter to drop maxFlags when there's actually no activity
+    if (zeroCounter>10) {maxFlags = 0;}
+  }
+  if (oldActiveFlags != ActiveFlags) {
+//    Serial.print(ActiveFlags);
+    oldActiveFlags = ActiveFlags;
+    maxFlags = max(maxFlags, ActiveFlags);    
+  }
   // Have all buttons been held down? - toggle tuner mode
-  if (AllPressActive && (latchpress == true)){
-      Serial.println("Tuner mode");
-      if (isTunerMode) {
-        spark_msg_out.tuner_on_off(false);
-      }
-      else {
-        spark_msg_out.tuner_on_off(true);
-      }/*
-      longPressActive[0] = false; // This doesn't work
-      longPressActive[1] = false;
-      longPressActive[2] = false;
-      longPressActive[3] = false;*/
-      latchpress = false;
+  if (LongPressFlags >0 && LongPressFlags==ActiveFlags && !longPressFired){
+    Serial.println("Long press " + String(LongPressFlags));
+    longPressFired = true;  // In case when the next function is async and time consuming, 
+                            // let's flush it here not to call the function twice or more in a row
+    onLongPress(LongPressFlags);  // function to execute on Long Press event 
   }
+  if (ClickFlags > 0 && ActiveFlags ==0){
+    Serial.println("Click " + String(maxFlags));
    
-  // Has any button been held down?
-  if (AnylongPressActive && (latchpress == true)){
-      Serial.println("Switching pedal mode");
-      isOLEDUpdate = true;
-      latchpress = false;
-      if (isPedalMode) isPedalMode = false;   // Toggle pedal mode
-      else isPedalMode = true;
+    //onClick(ClickFlags);    // This will give only single button clicks
+
+    onClick(maxFlags);      // This will give you multi-button clicks
+
   }
+}
+
+// buttonMask is binary mask that has 1 in Nth position, if Nth button is active, 
+// say 0b00000100 (decimal 4) means that your 3rd button fired this event, multiple buttons allowed
+void onClick(uint8_t buttonMask) {
+  // Mode PRESETS
+  // In Preset mode, use the four buttons to select the four HW presets
+  uint8_t buttonId;
+  if (curMode == MODE_PRESETS) {
+    switch (buttonMask) {
+      case 1: // button 1
+      case 2: // button 2
+      case 4: // button 3
+      case 8: // button 4      
+      case 16:// ...
+      case 32:// ...
+      case 64:// ...
+        buttonId = log(buttonMask)/log(2); 
+        change_hardware_preset(buttonId);
+        display_preset_num = buttonId;
+        break;
+      default:
+        //no action yet
+        break;        
+    }
+  }
+  // Mode EFFECTS
+  if (curMode == MODE_EFFECTS) {
+    for(int i = 0; i<NUM_SWITCHES; ++i) {
+      if(bitRead(buttonMask,i)==1){
+        SWITCHES[i].fxOnOff = !SWITCHES[i].fxOnOff;
+        change_generic_onoff(SWITCHES[i].fxSlotNumber, SWITCHES[i].fxOnOff);
+        setting_modified = true;
+      }
+    }
+  }
+}
+
+// buttonMask is binary mask that has 1 in Nth position, if Nth button is active, 
+// say 0b00000110 (decimal 6) means that your 2nd and 3rd button were pressed
+void onLongPress(uint8_t buttonMask) {
+  switch (buttonMask) {
+    case 1: // button 1
+      cycleModes(); // Change current mode in cycle
+      break;
+    case 3: // buttons 1 an 2
+      toggleTuner();
+      break;
+    case 12: // buttons 2 an 3
+      toggleBypass();
+      break;
+    default:
+      //no action yet
+      break;
+  }
+}
+
+void cycleModes() {
+  uint8_t iCurMode;
+  iCurMode = static_cast <uint8_t> (curMode);
+  iCurMode++;
+  if (iCurMode >= NUM_MODES) {iCurMode = 0;}
+  curMode = static_cast <eMode_t> (iCurMode);
+  updateFxStatuses();
+  DEBUG("Mode: " + String(curMode));
 }
 
 // Refresh UI
 void refreshUI(void)
 {
-    // Flip GUI flash bool
-    if (isTimeout){
-      flash_GUI = !flash_GUI;
-    }
-  
-    // if a change has been made or the timer timed out and fully synched...
-    if ((isOLEDUpdate || isTimeout) && (spark_state == SPARK_SYNCED)){
-    isOLEDUpdate = false;  
-    oled.clear();
-
-    // Show tuner screen when requested by Spark
-    if (isTunerMode) {
-      
-      // Default display - draw meter bitmap and label
-      oled.drawXbm(0, Y5, tuner_width, tuner_height, tuner_bits); 
-      oled.setFont(SMALL_FONT);
-      oled.setTextAlignment(TEXT_ALIGN_LEFT);
-      oled.drawString(0,0,"Tuner");
-      
-      // If nothing to show
-      if (msg.val == -1.0) {
-        oled.setTextAlignment(TEXT_ALIGN_RIGHT);
-        oled.drawString(127,0,"...");
-      }
-      // If something to show
-      else {
-        // Work out start and end-points of meter needle
-        metervalue = int16_t(msg.val * 128);            // Span tuner's 0-1.0, to 0-127
-        if (metervalue > 127) metervalue = 127;         // Bounds check
-        if (metervalue < 0) metervalue = 0;
-        hubvalue = metervalue / 4;                      // Hub is 1/4 the size, so spans 0-32
-
-        // Work out the Y-values of the needle (both start and end points)
-        // Right-side calculations
-        if (metervalue > 64)
-        {
-          hubvalue = hubvalue - 16;                     // Scale hub RHS from 16-0 to 0-16 
-          hub_y = sqrt(256 - (hubvalue * hubvalue));    // Work out Y-value based on 16 pixel radius
-          meter_x = metervalue - 64;                    // Scale meter RHS from 64-128 to 0-64
-          meter_y = sqrt(tuner_scale - (meter_x * meter_x)); // Work out Y-value based on 64 (or 48) pixel radius
-          oled.drawLine((hubvalue + 64), (64-hub_y), metervalue, (64-meter_y)); // Draw line from hub to meter edge
-        }
-        // Left-side calculations
-        else
-        {
-          hubvalue = 16 - hubvalue;                     // Scale hub from 0-16 to 16-0
-          hub_y = sqrt(256 - (hubvalue * hubvalue));    // Work out Y-value based on 16 pixel radius (0-16)
-          meter_x = 64 - metervalue;                    // Scale meter RHS from 0-64 to 64-0
-          meter_y = sqrt(tuner_scale - (meter_x * meter_x)); // Work out Y-value based on 64 (or 48) pixel radius (0-64)
-          oled.drawLine(((16-hubvalue) + 48), (64-hub_y), metervalue, (64-meter_y)); // Draw line from hub to meter edge
-        }
-
-        meter_target = msg.param1; // Get note data
-
-        // Show note names
-        oled.setFont(MEDIUM_FONT);
-        oled.setTextAlignment(TEXT_ALIGN_RIGHT);
-        switch (meter_target) {
-        case 0:
-          oled.drawString(127, 0, "C");
-          break;
-        case 1:
-          oled.drawString(127, 0, "C#");
-          break;    
-        case 2:
-          oled.drawString(127, 0, "D");
-          break;
-        case 3:
-          oled.drawString(127, 0, "D#");
-          break;
-        case 4:
-          oled.drawString(127, 0, "E");
-          break;
-        case 5:
-          oled.drawString(127, 0, "F");
-          break;
-        case 6:
-          oled.drawString(127, 0, "F#");
-          break;         
-        case 7:
-          oled.drawString(127, 0, "G");
-          break;
-        case 8:
-          oled.drawString(127, 0, "G#");
-          break;
-        case 9:
-          oled.drawString(127, 0, "A");
-          break;
-        case 10:
-          oled.drawString(127, 0, "A#");
-          break;
-        case 11:
-          oled.drawString(127, 0, "B");
-          break;
-        default:
-          oled.drawString(127,0,"...");
-          break;
-        }
-      }     
-    }
-    
-    // Otherwise normal display
-    else {
-      oled.setFont(MEDIUM_FONT);
-      oled.setTextAlignment(TEXT_ALIGN_LEFT);
-      if (!isPedalMode) {
-        oled.drawString(0, 20, "Preset mode");
-      }
-      else if (flash_GUI && isPedalMode){         // Kevin's mod to flash Effect Mode
-        oled.drawString(0, 20, "Effect mode");    
-      }
-      oled.setFont(HUGE_FONT);
-      oled.setTextAlignment(TEXT_ALIGN_CENTER);
-      
-      if (flash_GUI || !setting_modified) {
-        // In-joke to the "I saw 5 on the display!" folk
-        if (display_preset_num > 3) {
-          display_preset_num = 3; 
-        }
-        oled.drawString(110, 12, String(display_preset_num+1));
-      }
-      oled.setFont(SMALL_FONT);
-      oled.setTextAlignment(TEXT_ALIGN_LEFT);
-
-      // Truncate string so that it never extends into preset number
-      strcpy(TempString, presets[5].Name);
-      i = STR_LEN;
-      while (oled.getStringWidth(TempString) > 90) {
-        TempString[i-1]= '\0';  // Rudely truncate
-        i--;
-      }
-
-      oled.drawString(0, 50, TempString);
-  
-      // Flash "Connect App" message when no app connected
-      if (flash_GUI && !conn_status[APP]){
-        oled.setFont(SMALL_FONT);
-        oled.setTextAlignment(TEXT_ALIGN_LEFT);
-        oled.drawString(15, 37, "Connect App");
-      } 
-      updateIcons();
-    }
-    oled.display();
+  // Flip GUI flash bool
+  if (isTimeout) {
+    flash_GUI = !flash_GUI;
   }
-  
+
+  if (isTunerMode) { // If Spark reports that we are in tuner mode
+    if (curMode!=MODE_TUNER) { // We have to switch the pedal to tuner also
+      returnMode = curMode;
+      curMode = MODE_TUNER;
+    }
+  } else {
+    if (curMode == MODE_TUNER) { //as this is async operation, we have to sync the pedal again
+      curMode = returnMode;
+    }
+  }
+
+  if (oldMode!=curMode) {
+    ui.switchToFrame(curMode);
+    updateFxStatuses();
+    oldMode = curMode;
+  }
+/*  
+  // if a change has been made or the timer timed out and fully synched...
+  if ((isOLEDUpdate || isTimeout) && (spark_state == SPARK_SYNCED)){
+    isOLEDUpdate = false;  
+  }
+*/  
   if (!connected_sp) {
     // Show reconnection message
     oled.clear();
@@ -395,13 +391,69 @@ void refreshUI(void)
   }
 }
 
-void readBattery(){
-  vbat_result = analogRead(VBAT_AIN); // Read battery voltage
+void drawStatusIcon(uint8_t* xbmVar, int xbmW, int xbmH, int x, int y, int w, int h, bool active) {
+  // draw active or inactive icon placeholder
+  oled.setColor(WHITE);
+  if (active) {
+    oled.fillRect(x, y, w, h);
+  } else {
+    oled.setColor(INVERSE);     // Rounded inactive icon borders or comment this line out for simple corners
+    oled.drawRect(x, y, w, h);  // Comment this line out if you want inactive icons without borders
+  }
+  // draw letters and signs within
+  oled.setColor(INVERSE);
+  oled.drawXbm(x+(w-xbmW)/2, y+(h-xbmH)/2, xbmW, xbmH, xbmVar);
+}
 
+
+void drawTextIcon(const String &text, int x, int y, int w, int h, bool active) {
+  int16_t yOffset = -10;
+  oled.setFont(MEDIUM_FONT);
+  oled.setTextAlignment(TEXT_ALIGN_CENTER);
+  // draw letters and signs within
+  oled.setColor(WHITE);
+  oled.drawString(x+w/2, y+h/2+yOffset, text);
+  oled.drawString(1+x+w/2, y+h/2+yOffset, text);
+  // draw active or inactive icon placeholder
+  oled.setColor(INVERSE);
+  if (active) {
+    oled.fillRect(x, y, w, h);
+  } else {
+    oled.setColor(INVERSE);     // INVERSE = rounded inactive icon borders, WHITE = corners
+    oled.drawRect(x, y, w, h);  // Comment this line out if you want inactive icons without borders
+  }
+}
+
+
+void drawBatteryH(int x, int y, int w, int h, int chg_percent, bool charging) {
+  //draw gauge
+  oled.setColor(WHITE);
+  oled.fillRect(x+2, y+2, constrain(map(chg_percent, 0, 100, 2, w-4), 2, (w*0.9)-3), h-4); // not to draw on the cap we use constrain
+  oled.fillRect(x+2, y+2+(h/4)-1, map(chg_percent, 0, 100, 2, w-4), h/2-2); // narrow gauge can draw on the cap
+  oled.setColor(INVERSE);
+  if (charging) {
+    chg_percent = 100; // overwrite because we don't really measure the process of charging
+    oled.drawXbm(x+((w-chrg_width)/2), y, chrg_width, chrg_height, chrg_bits);
+  }
+  //draw contour
+  oled.setColor(WHITE);
+  oled.drawLine(x, y, x+(w*0.9), y);
+  oled.drawLine(x+(w*0.9), y, x+(w*0.9), y+(h/4)-1);
+  oled.drawLine(x+(w*0.9), y+(h/4)-1, x+w-1, y+(h/4)-1);
+  oled.drawLine(x+w-1, y+(h/4)-1, x+w-1, y+(h-h/4));
+  oled.drawLine(x+(w*0.9), y+(h-h/4), x+w-1, y+(h-h/4));
+  oled.drawLine(x+(w*0.9), y+(h-h/4), x+(w*0.9), y+h-1);
+  oled.drawLine(x, y+h-1, x+(w*0.9), y+h-1);
+  oled.drawLine(x, y, x, y+h-1);
+}
+
+void readBattery(){
+  //DEBUG(vbat_result);
+  vbat_result = analogRead(VBAT_AIN); // Read battery voltage
+  //DEBUG(vbat_result);
   // To speed up the display when a battery is connected from scratch
   // ignore/fudge any readings below the lower threshold
   if (vbat_result < BATTERY_LOW) vbat_result = BATTERY_LOW;
-  temp = vbat_result;
 
   // While collecting data
   if (vbat_ring_count < VBAT_NUM) {
@@ -448,12 +500,12 @@ int batteryCharging() {
 }
 
 void textAnimation(const String &s, ulong msDelay, int yShift=0, bool show=true) {  
-    oled.clear();
-    oled.drawString(oled.width()/2, oled.height()/2-6 + yShift, s);
-    if (show) {
-      oled.display();
-      delay(msDelay);
-    }
+  oled.clear();
+  oled.drawString(oled.width()/2, oled.height()/2-6 + yShift, s);
+  if (show) {
+    oled.display();
+    delay(msDelay);
+  }
 }
 
 void ESP_off(){
@@ -599,4 +651,127 @@ int Check_RTC() {
   }
   DEBUG ("RTC pins present: " + String(RTC_present));
   return RTC_present;
+}
+
+void toggleBypass() {
+  if (curMode == MODE_BYPASS) {
+    bypassOff();
+  } else {
+    bypassOn();
+  }
+}
+
+void bypassOn() {
+  if (curMode != MODE_BYPASS) {
+    for (int i=0; i<=6; i++){
+      fxState[i] = presets[CUR_EDITING].effects[i].OnOff;
+      change_generic_onoff(i, false);
+    }
+    returnMode = curMode;
+    curMode = MODE_BYPASS;
+  }
+}
+
+void bypassOff() {
+  if (curMode == MODE_BYPASS) {
+    for (int i=0; i<=6; i++){
+      presets[CUR_EDITING].effects[i].OnOff = fxState[i];
+      change_generic_onoff(i, fxState[i]);
+    }
+    curMode = returnMode;
+  }
+}
+
+void toggleTuner() {
+  if (curMode==MODE_TUNER) {
+    tunerOff();
+  } else {
+    tunerOn();
+  }
+}
+
+void tunerOn() {
+  if (!isTunerMode) {
+    spark_msg_out.tuner_on_off(true);
+    returnMode = curMode;
+    curMode = MODE_TUNER;
+    DEBUG("Tuner mode ON, return to:" + String(returnMode));
+  }
+}
+
+void tunerOff() {
+  if (isTunerMode) {
+    spark_msg_out.tuner_on_off(false);
+    curMode = returnMode;
+    DEBUG("Tuner mode OFF, return to:" + String(returnMode) + " " + String(isTunerMode));
+  }
+}
+
+void doExpressionPedal() {
+  // Read expression pedal
+  // It can be sometimes difficult to get to zero, which we need,
+  // so we subtract an offset and expand the scale to cover the full range
+  express_result = (analogRead(EXP_AIN)/ 45) - 10;
+
+  // Rolling average to remove noise
+  if (express_ring_count < 10) {
+    express_ring_sum += express_result;
+    express_ring_count++;
+    express_result = express_ring_sum / express_ring_count;
+  }
+  // Once enough is gathered, do a decimating average
+  else {
+    express_ring_sum *= 0.9;
+    express_ring_sum += express_result;
+    express_result = express_ring_sum / 10;
+  }  
+
+  // Reduce noise and only respond to deliberate changes
+  if ((abs(express_result - old_exp_result) > 4))
+  {
+    old_exp_result = express_result;
+    effect_volume = float(express_result);
+    effect_volume = effect_volume / 64;
+    if (effect_volume > 1.0) effect_volume = 1.0;
+    if (effect_volume < 0.0) effect_volume = 0.0;
+#ifdef DUMP_ON
+    Serial.print("Pedal data: ");
+    Serial.print(express_result);
+    Serial.print(" : ");
+    Serial.println(effect_volume);
+#endif
+    // If effect on/off
+    if (expression_target) {
+        // Send effect ON state to Spark and App only if OFF
+        if ((effect_volume > 0.5)&&(!effectstate)) {
+          change_generic_onoff(get_effect_index(msg.str1),true);
+          Serial.print("Turning effect ");
+          Serial.print(msg.str1);
+          Serial.println(" ON via pedal");
+          effectstate = true;
+        }
+        // Send effect OFF state to Spark and App only if ON, also add hysteresis
+        else if ((effect_volume < 0.3)&&(effectstate))
+        {
+          change_generic_onoff(get_effect_index(msg.str1),false);
+          Serial.print("Turning effect ");
+          Serial.print(msg.str1);
+          Serial.println(" OFF via pedal");
+          effectstate = false;
+        }
+    }
+    // Parameter change
+    else
+    {
+      // Send expression pedal value to Spark and App
+      change_generic_param(get_effect_index(msg.str1), msg.param1, effect_volume);
+    }
+  }  
+}
+
+
+void updateFxStatuses() {
+  for (int i=0 ; i< NUM_SWITCHES; i++) {
+    SWITCHES[i].fxOnOff = presets[CUR_EDITING].effects[SWITCHES[i].fxSlotNumber].OnOff;
+  }
 }
