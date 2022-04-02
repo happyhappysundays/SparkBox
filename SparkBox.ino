@@ -32,7 +32,7 @@
 #define HELTEC_WIFI
 //
 // Uncomment if two-colour OLED screens are used. Offsets some text and alternate tuner
-#define TWOCOLOUR // Probably the only mode left, it seems to look well on both types of display
+//#define TWOCOLOUR // Probably the only mode left, it seems to look well on both types of display
 //
 // Uncomment if you don't want the pedal to sleep to save power
 //#define NOSLEEP
@@ -42,13 +42,17 @@
 // or #include "SH1106Wire.h"
 #include "OLEDDisplayUi.h"          // Include the UI lib
 #include "FS.h"
+#include "SPIFFS.h"
 #include "BluetoothSerial.h"
 #include "Spark.h"                  // Paul Hamshere's SparkIO library https://github.com/paulhamsh/Spark/tree/main/Spark
 #include "SparkIO.h"                // "
 #include "SparkComms.h"             // "
 #include "font.h"                   // Custom large font
 #include "bitmaps.h"                // Custom bitmaps (icons)
+#include "SparkPresets.h"                // Custom bitmaps (icons)
 #include "UI.h"                     // Any UI-related defines
+#define ARDUINOJSON_USE_DOUBLE 1
+#include "ArduinoJson.h"            // Should be installed already https://github.com/bblanchon/ArduinoJson
 #include "driver/rtc_io.h"
 //
 //******************************************************************************************
@@ -76,7 +80,7 @@ int count;                            // "
 bool flash_GUI;                       // Flash GUI items if true
 bool isTunerMode;                     // Tuner mode flag
 bool scan_result = false;             // Connection attempt result
-enum eMode_t {MODE_PRESETS, MODE_EFFECTS, MODE_SCENES, MODE_TUNER, MODE_BYPASS, MODE_MESSAGE};
+enum eMode_t {MODE_PRESETS, MODE_EFFECTS, MODE_SCENES, MODE_TUNER, MODE_BYPASS, MODE_MESSAGE, MODE_LEVEL};
 eMode_t curMode = MODE_PRESETS;
 eMode_t oldMode = MODE_PRESETS;
 eMode_t returnMode = MODE_PRESETS;
@@ -114,9 +118,9 @@ void IRAM_ATTR onTime() {
 }
 // UI **************************************************************************************
 // array of frame drawing functions
-FrameCallback frames[] = { frPresets, frEffects, frScenes, frTuner, frBypass, frMessage };
+FrameCallback frames[] = { frPresets, frEffects, frScenes, frTuner, frBypass, frMessage, frLevel };
 // number of frames in UI
-int frameCount = 6;
+int frameCount = 7;
 
 // Overlays are statically drawn on top of a frame eg. a clock
 OverlayCallback overlays[] = { screenOverlay };
@@ -258,6 +262,18 @@ void loop() {
     }
     
     // do your own checks and processing here    
+    if (cmdsub == 0x0337) {
+      DEBUG("Change parameter ");
+      int fxSlot = fxNumByName(msg.str1).fxSlot;
+      presets[CUR_EDITING].effects[fxSlot].Parameters[msg.param1] = msg.val;
+      fxCaption = spark_knobs[fxSlot][msg.param1];
+      if (fxSlot==5 && msg.param1==4){
+        //suppress the message "BPM=10.0"
+      } else {
+        level = msg.val * 100;
+        tempFrame(MODE_LEVEL, curMode, FRAME_TIMEOUT);
+      }
+    }
     //isOLEDUpdate = true;        // Flag screen update
   }
 

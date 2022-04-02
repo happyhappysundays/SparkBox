@@ -8,6 +8,8 @@
 #define MAX_ATTEMPTS 5    // (Re-)Connection attempts before going to sleep
 #define MILLIS_PER_ATTEMPT 6000 // milliseconds per connection attempts, this is used when reconnecting, not quite as expected though
 #define CHRG_LOW 2000
+
+#define HARD_PRESETS 24  // number of hard-coded presets in SparkPresets.h
 //
 #define BATTERY_LOW 2082  // Noise floor of 3.61V (<5%)
 #define BATTERY_100 2422  // Noise floor of 4.20V (100%)
@@ -19,11 +21,11 @@
 
 //GUI settings
 #define TRANSITION_TIME 600 // Frame transition time, ms
-#define STATUS_HEIGHT 16  // Status line height
 #define BAT_WIDTH 26      // Battery icon width
 #define CONN_ICON_WIDTH 11 // Connection status icons width
 #define FX_ICON_WIDTH 18  // Exxects icons width
 // Text offsets for different types of display
+#define STATUS_HEIGHT 16  // Status line height
 
 #ifdef TWOCOLOUR
 // Two-colour displays
@@ -33,17 +35,19 @@
 #define Y3 16
 #define Y4 41
 #define Y5 16
-#define tuner_scale 2304 // 48 * 48
+#define tuner_share 5
+#define note_y 0
 #else
 
 // Single colour displays
 #define X1 64 // Please wait, Version, Connecting, SparkBox, Reconnecting
 #define Y1 16
 #define Y2 42
-#define Y3 10
-#define Y4 35
+#define Y3 13
+#define Y4 36
 #define Y5 0
-#define tuner_scale 4096
+#define tuner_share 4
+#define note_y 16
 #endif
 
 // font aliases for quick modding
@@ -67,7 +71,7 @@ int attempt_count = 0;                          // Connection attempts counter
 int RTC_pins[]{0,2,4,12,13,14,15,25,26,27,32,33,34,35,36,37,38,39}; // These are RTC enabled GPIOs of ESP32, this is hardware, and if you choose to connect buttons to at least one of this list, deep sleep will be enabled
 bool sw_RTC[NUM_SWITCHES];
 int RTC_present = 0;                            // Number of RTC pins present in the config
-int sw_pin[]{17,5,18,23};                     // Switch gpio numbers (for those who already has built a pedal with these pins)
+int sw_pin[]{17,5,18,23};                     // Switch gpio numbers (for those who already has built a pedal with these pins
 //int sw_pin[]{25,26,27,14};                      // Switch gpio numbers (for those who is building a pedal, these pins allow deep sleep)
                                                 // SW1 Toggle Drive 
                                                 // SW2 Toggle Modulation
@@ -87,8 +91,14 @@ bool longPressFired = false;                    // indicates if the button has b
 bool AnylongPressActive = false;                // OR of any longPressActive states
 bool AllPressActive = false;                    // AND of any longPressActive states
 int scroller = 0;                               // Variable to keep scrolling offset 
+#define FRAME_TIMEOUT 3000                      // (ms) to return to main UI from temporary UI frame 
+String infoCaption, infoText;
+bool tempUI = false;
+int curKnob=0, curFx=3, curParam=4, level = 0;
+//char str[50];
+String fxCaption=spark_knobs[curFx][curParam];
 
-uint64_t time_to_sleep = 0;
+uint64_t timeToGoBack = 0, time_to_sleep = 0;
 bool fxState[] = {false,false,false,false,false,false,false}; // Array to store FX's on/off state before total bypass is ON
 
 // Flags

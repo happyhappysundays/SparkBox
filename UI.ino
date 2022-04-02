@@ -1,4 +1,4 @@
-// Overlay static graphics
+// Overlay static graphics ============================================================
 void screenOverlay(OLEDDisplay *display, OLEDDisplayUiState* state) {
   if (isTimeout) {
     readBattery();  // Read analog voltage and average it
@@ -11,6 +11,8 @@ void screenOverlay(OLEDDisplay *display, OLEDDisplayUiState* state) {
 }
 
 // frSomething functions are frame drawing of the UI
+
+// PRESETS MODE =======================================================================
 void frPresets(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t y) {
   static int scrollStep = -2; // speed of horiz scrolling tone names
   static ulong scrollCounter;
@@ -42,6 +44,7 @@ void frPresets(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16
     }
 }
 
+// EFFECTS MODE =======================================================================
 void frEffects(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t y) {
   static int scrollStep = -1;     // speed of horiz scrolling tone names
   static ulong scrollCounter;
@@ -76,18 +79,41 @@ void frEffects(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16
   display->fillRect(display->width()-BAT_WIDTH-1, 0, BAT_WIDTH+1, STATUS_HEIGHT);
 }
 
+// PRESETS MODE =======================================================================
 void frScenes(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t y) {
 }
 
+
+// BYPASS MODE =======================================================================
 void frBypass(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t y) {
   display->setFont(BIG_FONT);
   display->setTextAlignment(TEXT_ALIGN_CENTER);
   display->drawString(display->width()/2 + x, 20 + y, "BYPASS" );
 }
 
+// MESSAGE MODE =======================================================================
 void frMessage(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t y) {
+  //reserved for future use
 }
 
+// PRESETS MODE =======================================================================
+void frLevel(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t y) {
+  // indicates parameter change
+  display->setColor(WHITE);
+  display->setFont(SMALL_FONT);
+  display->setTextAlignment(TEXT_ALIGN_CENTER);
+  display->drawString(display->width()/2 + x,  y, fxCaption);
+  
+  display->setFont(HUGE_FONT);
+  display->setTextAlignment(TEXT_ALIGN_CENTER);
+  sprintf(str,"%3.1f",(float)(level)/10);
+  if(display->getStringWidth(str)>display->width()) {
+    display->setFont(BIG_FONT);
+  }
+  display->drawString((display->width())/2 + x, 11 + y , String(str) );
+}
+
+// TUNER MODE =======================================================================
 void frTuner(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t y) {
   String note_names[] = {"...","C","C#","D","D#","E","F","F#","G","G#","A","A#","B","..."};
   //String note_names[] = {"...","Do","Do#","Re","Re#","Mi","Fa","Fa#","Sol","Sol#","La","La#","Si","..."};
@@ -105,27 +131,23 @@ void frTuner(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t
   //display->setTextAlignment(TEXT_ALIGN_LEFT);
   //display->drawString(0,0,"Tuner");
   test_val = msg.val;
-//  test_val = (millis() % 2000)/2000.0;
+  //test_val = (millis() % 2000)/2000.0;
   // If nothing to show
-  if (test_val == -1.0) {
-    display->setTextAlignment(TEXT_ALIGN_CENTER);
-    display->drawString(display->width()/2+x,0+y,note_names[0]);
-  }
-  // If something to show
-  else {
-
+  if (test_val != -1.0) {
+    // If something to show
     // Work out start and end-points of meter needle
     val_deg = constrain(int16_t(test_val * 180.0), 0, 180);            // Span tuner's 0-1.0, to 0-180 degrees
     meter_x = (tuner_width/2) - (tuner_width/2)*sin(radians(90-val_deg));
-    meter_y = (display->height()) - (tuner_height)*cos(radians(90-val_deg))+ (display->height()-tuner_height*5/4);
+    meter_y = (display->height()) - (tuner_height)*cos(radians(90-val_deg))+ (display->height()-tuner_height*tuner_share/4);
     hub_x = (tuner_width/2) - (tuner_width/2/4)*sin(radians(90-val_deg));
     hub_y = (display->height()) - (display->height()/4)*cos(radians(90-val_deg)) ;
     display->drawLine(meter_x,meter_y,hub_x,hub_y); // Draw line from hub to meter edge
-    // Show note names
-    display->setFont(MEDIUM_FONT);
-    display->setTextAlignment(TEXT_ALIGN_CENTER);
-    display->drawString(display->width()/2+x,0,note_names[constrain(msg.param1+1,0,13)]); // The first and the last note_names[] are '...' such we name everything outside the bounds
   }
+  // Show note names
+  display->setFont(MEDIUM_FONT);
+  display->setTextAlignment(TEXT_ALIGN_CENTER);
+  display->drawString(display->width()/2+x,note_y+y,note_names[constrain(msg.param1+1,0,13)]); // The first and the last note_names[] are '...' such we name everything outside the bounds
+  display->drawString(display->width()/2+x-1,note_y+y,note_names[constrain(msg.param1+1,0,13)]); // Fake bold
 }
 
 void mainIcons() {
@@ -330,6 +352,9 @@ void onLongPress(uint8_t buttonMask) {
 
 void cycleModes() {
   uint8_t iCurMode;
+  if (isTunerMode) {
+    tunerOff();
+  }
   iCurMode = static_cast <uint8_t> (curMode);
   iCurMode++;
   if (iCurMode >= NUM_MODES) {iCurMode = 0;}
@@ -339,8 +364,12 @@ void cycleModes() {
 }
 
 // Refresh UI
-void refreshUI(void)
-{
+void refreshUI(void) {
+
+  if ((millis() > timeToGoBack) && tempUI) {
+    returnToMainUI();
+  }
+  
   // Flip GUI flash bool
   if (isTimeout) {
     flash_GUI = !flash_GUI;
@@ -361,6 +390,7 @@ void refreshUI(void)
     ui.switchToFrame(curMode);
     updateFxStatuses();
     oldMode = curMode;
+    DEBUG("Switch to mode: " + String(curMode));
   }
 /*  
   // if a change has been made or the timer timed out and fully synched...
@@ -769,9 +799,204 @@ void doExpressionPedal() {
   }  
 }
 
-
 void updateFxStatuses() {
   for (int i=0 ; i< NUM_SWITCHES; i++) {
     SWITCHES[i].fxOnOff = presets[CUR_EDITING].effects[SWITCHES[i].fxSlotNumber].OnOff;
+  }
+}
+
+SparkPreset somePreset(const char* substTitle) {
+  SparkPreset ret_preset = *my_presets[random(HARD_PRESETS-1)];
+  strcpy(ret_preset.Description, ret_preset.Name);
+  strcpy(ret_preset.Name, substTitle);
+  return ret_preset;
+}
+
+// load preset from json file in the format used by PG cloud back-up
+SparkPreset loadPresetFromFile(int presetSlot) {
+  SparkPreset retPreset;
+  File presetFile;
+  // open dir bound to the slot number
+  String dirName =  "/" + (String)(presetSlot) ;
+  String fileName = "";
+  if (!SPIFFS.exists(dirName)) {
+    return somePreset("(No Such Slot)");
+  } else {
+    File dir = SPIFFS.open(dirName);
+    while (!fileName.endsWith(".json")) {
+      presetFile = dir.openNextFile();
+      if (!presetFile) {
+        // no preset found in current slot directory, let's substitute a random one
+        DEBUG(">>>> '" + dirName + "' Empty Slot < Random");
+        return somePreset("(Empty Slot)");
+      }
+      fileName = presetFile.name();
+      DEBUG(">>>>>>>>>>>>>>>>>> '" + fileName + "'");
+    }
+    dir.close();
+    parseJsonPreset(presetFile, retPreset);
+  }
+  presetFile.close();
+  return retPreset;
+}
+
+void parseJsonPreset(File &presetFile, SparkPreset &retPreset) {
+  DynamicJsonDocument doc(3072);
+  DeserializationError error = deserializeJson(doc, presetFile);
+  if (error) {
+    retPreset = somePreset("(Invalid json file)");
+  } else {
+    if (doc["type"] == "jamup_speaker") { // PG app's json
+      retPreset.BPM = doc["bpm"];
+      JsonObject meta = doc["meta"];
+      strcpy(retPreset.Name, meta["name"]);
+      strcpy(retPreset.Description, meta["description"]);
+      strcpy(retPreset.Version, meta["version"]);
+      strcpy(retPreset.Icon, meta["icon"]);
+      strcpy(retPreset.UUID, meta["id"]);
+      JsonArray sigpath = doc["sigpath"];
+      for (int i=0; i<=6; i++) { // effects
+        int numParams = 0;
+        double value;
+        JsonObject fx = sigpath[i];
+        for (JsonObject elem : fx["params"].as<JsonArray>()) {
+          // <-----> PG format sometimes uses double, and sometimes bool as char[]
+          if ( elem["value"].is<bool>() ) {
+            if (elem["value"]) {
+              value = 0.5;
+            } else {
+              value = 0;
+            }
+          } else { // let's hope they don't invent some other type
+            value = elem["value"]; 
+          }
+          int index = elem["index"];
+          retPreset.effects[i].Parameters[index] = value;
+          numParams = max(numParams,index);
+        }
+        retPreset.effects[i].NumParameters = numParams+1;
+        strcpy(retPreset.effects[i].EffectName , fx["dspId"]);
+        retPreset.effects[i].OnOff = fx["active"];
+        retPreset.preset_num = 0;
+        retPreset.curr_preset = 0;
+      }   
+    }
+  }
+}
+
+// save preset to json file in the format used by PG cloud back-up
+bool savePresetToFile(SparkPreset savedPreset, const String &filePath) {
+  bool noErr = true;
+  if(strcmp(savedPreset.Name,"(Empty Slot)")==0){
+    strcpy(savedPreset.Name,savedPreset.Description);
+  }
+  DynamicJsonDocument doc(3072);
+  doc["type"] = "jamup_speaker";
+  doc["bpm"] = savedPreset.BPM;
+  JsonObject meta = doc.createNestedObject("meta");
+  meta["id"] = savedPreset.UUID;
+  meta["version"] = savedPreset.Version;
+  meta["icon"] = savedPreset.Icon;
+  meta["name"] = savedPreset.Name;
+  meta["description"] = savedPreset.Description;
+  JsonArray sigpath = doc.createNestedArray("sigpath");
+  for (int i=0; i<7; i++){
+    for (int j=0; j<savedPreset.effects[i].NumParameters; j++) {
+      sigpath[i]["params"][j]["index"] = j;
+      sigpath[i]["params"][j]["value"] = savedPreset.effects[i].Parameters[j];
+    }
+    sigpath[i]["type"] = "speaker_fx";
+    sigpath[i]["dspId"] = savedPreset.effects[i].EffectName;
+    sigpath[i]["active"] = savedPreset.effects[i].OnOff;
+  }
+  File fJson = SPIFFS.open(filePath,"w");
+  noErr = serializeJson(doc, fJson);
+  return noErr;
+}
+
+
+
+s_fx_coords fxNumByName(const char* fxName) {
+  int i = 0;
+  int j = 3; //3: amp is most often in use 
+  for (const auto &fx: spark_amps) {
+    if (strcmp(fx, fxName)==0){
+      return {j,i};
+    }
+    i++;
+  }
+
+  i = 0;
+  j = 4; //4: modulation 
+  for (const auto &fx: spark_modulations) {
+    if (strcmp(fx, fxName)==0){
+      return {j,i};
+    }
+    i++;
+  }
+
+  i = 0;
+  j = 5; // 5: delay
+  for (const auto &fx: spark_delays) {
+    if (strcmp(fx, fxName)==0){
+      return {j,i};
+    }
+    i++;
+  }
+  
+  i = 0;
+  j = 6; // 6: reverb
+  for (const auto &fx: spark_reverbs) {
+    if (strcmp(fx, fxName)==0){
+      return {j,i};
+    }
+    i++;
+  }
+
+  i = 0;
+  j = 2; //2: drive
+  for (const auto &fx: spark_drives) {
+    if (strcmp(fx, fxName)==0){
+      return {j,i};
+    }
+    i++;
+  }
+
+  i = 0;
+  j = 1; // 1: compressor
+  for (const auto &fx: spark_compressors) {
+    if (strcmp(fx, fxName)==0){
+      return {j,i};
+    }
+    i++;
+  }
+
+  i = 0;
+  j = 0; //0: noise gate
+  for (const auto &fx: spark_noisegates) {
+    if (strcmp(fx, fxName)==0){
+      return {j,i};
+    }
+    i++;
+  }
+  return {-1,-1};
+}
+
+
+void tempFrame(eMode_t tempFrame, eMode_t retFrame, const ulong msTimeout) {
+  if (!tempUI) {
+    curMode = tempFrame;
+    returnMode = retFrame;
+    tempUI = true;
+  }
+  timeToGoBack = millis() + msTimeout;
+}
+
+void returnToMainUI() {
+  if (tempUI) {
+    curMode = returnMode;
+    timeToGoBack = millis();
+    tempUI = false;
+    curKnob = 4;
   }
 }
