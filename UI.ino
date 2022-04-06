@@ -1,9 +1,14 @@
 // Overlay static graphics ============================================================
 void screenOverlay(OLEDDisplay *display, OLEDDisplayUiState* state) {
+  int visibleLeft = (CONN_ICON_WIDTH+1)*2;    // calculate the place to show compact scrolling name at the top line
+  int visibleW = display->width() - BAT_WIDTH - visibleLeft - 1;
   if (isTimeout) {
     readBattery();  // Read analog voltage and average it
     isTimeout = false;
   }  
+  display->setColor(BLACK);
+  display->fillRect(0, 0, visibleLeft, STATUS_HEIGHT);
+  display->fillRect(display->width()-BAT_WIDTH-1, 0, BAT_WIDTH+1, STATUS_HEIGHT);
   mainIcons();
   if ( curMode==MODE_PRESETS || curMode==MODE_BYPASS) {
     fxIcons();
@@ -16,32 +21,33 @@ void screenOverlay(OLEDDisplay *display, OLEDDisplayUiState* state) {
 void frPresets(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t y) {
   static int scrollStep = -2; // speed of horiz scrolling tone names
   static ulong scrollCounter;
-{
-      display->setTextAlignment(TEXT_ALIGN_LEFT);
-      display->setFont(HUGE_FONT);
-      int s1w = display->getStringWidth(String(display_preset_num + 1))+5;
-      display->setFont(BIG_FONT);
-      int s2w = display->getStringWidth(presets[CUR_EDITING].Name)+5;
-      if (s1w+s2w <= display->width()) {
-        scroller = ( display->width() - s1w - s2w ) / 2;
-      } else {
-        if ( millis() > scrollCounter ) {
-          scroller = scroller + scrollStep;
-          if (scroller < (int)(display->width())-s1w-s2w-s1w-s2w) {
-            scroller = scroller + s1w + s2w;
-          }
-          scrollCounter = millis() + 20;
+  {
+    display->setTextAlignment(TEXT_ALIGN_LEFT);
+    display->setFont(HUGE_FONT);
+    int s1w = display->getStringWidth(String(display_preset_num + 1))+5;
+    display->setFont(BIG_FONT);
+    int s2w = display->getStringWidth(presets[CUR_EDITING].Name)+5;
+    if (s1w+s2w <= display->width()) {
+      scroller = ( display->width() - s1w - s2w ) / 2;
+    } else {
+      if ( millis() > scrollCounter ) {
+        scroller = scroller + scrollStep;
+        if (scroller < (int)(display->width())-s1w-s2w-s1w-s2w) {
+          scroller = scroller + s1w + s2w;
         }
-        display->setFont(HUGE_FONT);
-        display->drawString( x + scroller + s1w + s2w, 11 + y, String(display_preset_num + 1) ); // +1 for humans
-        display->setFont(BIG_FONT);
-        display->drawString(x + scroller + s1w + s2w + s1w, y + display->height()/2 - 6 ,presets[CUR_EDITING].Name);
+        scrollCounter = millis() + 20;
       }
       display->setFont(HUGE_FONT);
-      display->drawString( x + scroller, 11 + y, String(display_preset_num + 1) ); // +1 for humans
+      display->drawString( x + scroller + s1w + s2w, 11 + y, String(display_preset_num + 1) ); // +1 for humans
       display->setFont(BIG_FONT);
-      display->drawString(x + scroller + s1w, y + display->height()/2 - 6 ,presets[CUR_EDITING].Name);
+      display->drawString(x + scroller + s1w + s2w + s1w, y + display->height()/2 - 6 ,presets[CUR_EDITING].Name);
     }
+    display->setFont(HUGE_FONT);
+    display->drawString( x + scroller, 11 + y, String(display_preset_num + 1) ); // +1 for humans
+    display->setFont(BIG_FONT);
+    display->drawString(x + scroller + s1w, y + display->height()/2 - 6 ,presets[CUR_EDITING].Name);
+  }
+  ui.setFrameAnimation(SLIDE_DOWN);
 }
 
 // EFFECTS MODE =======================================================================
@@ -51,7 +57,7 @@ void frEffects(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16
   int visibleLeft = (CONN_ICON_WIDTH+1)*2;    // calculate the place to show compact scrolling name at the top line
   int visibleW = display->width() - BAT_WIDTH - visibleLeft - 1;
   
-  fxHugeIcons();                              // Big FX icons
+  fxHugeIcons(x,y);                              // Big FX icons
   
   display->setTextAlignment(TEXT_ALIGN_LEFT);
   display->setFont(SMALL_FONT);
@@ -75,11 +81,11 @@ void frEffects(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16
   display->drawString( visibleLeft + x + scroller + s1w, y, presets[CUR_EDITING].Name);
   // Mask left and right space for the top line status icons
   display->setColor(BLACK);
-  display->fillRect(0, 0, visibleLeft, STATUS_HEIGHT);
-  display->fillRect(display->width()-BAT_WIDTH-1, 0, BAT_WIDTH+1, STATUS_HEIGHT);
+
+  ui.setFrameAnimation(SLIDE_UP);  
 }
 
-// PRESETS MODE =======================================================================
+// SCENES MODE =======================================================================
 void frScenes(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t y) {
 }
 
@@ -93,10 +99,24 @@ void frBypass(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_
 
 // MESSAGE MODE =======================================================================
 void frMessage(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t y) {
-  //reserved for future use
+  // splash screen with a text message
+  display->setColor(WHITE);
+  display->setFont(SMALL_FONT);
+  display->setTextAlignment(TEXT_ALIGN_CENTER);
+  display->drawString(display->width()/2 + x,  y, msgCaption);
+  
+  display->setFont(HUGE_FONT);
+  display->setTextAlignment(TEXT_ALIGN_CENTER);
+  if(display->getStringWidth(msgText)>display->width()) {
+    display->setFont(BIG_FONT);
+    if(display->getStringWidth(msgText)>display->width()) {
+      display->setFont(MEDIUM_FONT);
+    }
+  }
+  display->drawString((display->width())/2 + x, Y1 + y , String(msgText) );
 }
 
-// PRESETS MODE =======================================================================
+// FX LEVEL MODE ======================================================================
 void frLevel(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t y) {
   // indicates parameter change
   display->setColor(WHITE);
@@ -127,13 +147,17 @@ void frTuner(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t
   display->clear();
   // Default display - draw meter bitmap and label
   display->drawXbm(0, Y5, tuner_width, tuner_height, tuner_bits); 
-  display->setFont(SMALL_FONT);
   //display->setTextAlignment(TEXT_ALIGN_LEFT);
   //display->drawString(0,0,"Tuner");
   test_val = msg.val;
   //test_val = (millis() % 2000)/2000.0;
-  // If nothing to show
+  display->setFont(MEDIUM_FONT);
+  display->setTextAlignment(TEXT_ALIGN_CENTER);
+
   if (test_val != -1.0) {
+    // Show note names
+    display->drawString(display->width()/2+x,note_y+y,note_names[constrain(msg.param1+1,0,13)]); // The first and the last note_names[] are '...' such we name everything outside the bounds
+    display->drawString(display->width()/2+x-1,note_y+y,note_names[constrain(msg.param1+1,0,13)]); // Fake bold
     // If something to show
     // Work out start and end-points of meter needle
     val_deg = constrain(int16_t(test_val * 180.0), 0, 180);            // Span tuner's 0-1.0, to 0-180 degrees
@@ -142,12 +166,10 @@ void frTuner(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t
     hub_x = (tuner_width/2) - (tuner_width/2/4)*sin(radians(90-val_deg));
     hub_y = (display->height()) - (display->height()/4)*cos(radians(90-val_deg)) ;
     display->drawLine(meter_x,meter_y,hub_x,hub_y); // Draw line from hub to meter edge
+  } else {
+    // Nothing to show
+    display->drawString(display->width()/2+x,note_y+y,"..."); // Not detected
   }
-  // Show note names
-  display->setFont(MEDIUM_FONT);
-  display->setTextAlignment(TEXT_ALIGN_CENTER);
-  display->drawString(display->width()/2+x,note_y+y,note_names[constrain(msg.param1+1,0,13)]); // The first and the last note_names[] are '...' such we name everything outside the bounds
-  display->drawString(display->width()/2+x-1,note_y+y,note_names[constrain(msg.param1+1,0,13)]); // Fake bold
 }
 
 void mainIcons() {
@@ -170,15 +192,15 @@ void fxIcons() {
   drawStatusIcon(rv_bits, rv_width, STATUS_HEIGHT, 2*(CONN_ICON_WIDTH+1)+1+(FX_ICON_WIDTH+1)*3, 0, FX_ICON_WIDTH,  STATUS_HEIGHT, presets[CUR_EDITING].effects[FX_REVERB].OnOff);
 }
 
-void fxHugeIcons() {
+void fxHugeIcons(int x, int y) {
   // Drive icon    
-  drawTextIcon("Dr", 0,  18, 30, 32, presets[CUR_EDITING].effects[FX_DRIVE].OnOff);
+  drawTextIcon("Dr", x+0,  y+18, 30, 32, presets[CUR_EDITING].effects[FX_DRIVE].OnOff);
   // Mod icon
-  drawTextIcon("Md", 32, 18, 30, 32, presets[CUR_EDITING].effects[FX_MOD].OnOff);
+  drawTextIcon("Md", x+32, y+18, 30, 32, presets[CUR_EDITING].effects[FX_MOD].OnOff);
   // Delay icon
-  drawTextIcon("Dy", 64, 18, 30, 32, presets[CUR_EDITING].effects[FX_DELAY].OnOff);
+  drawTextIcon("Dy", x+64, y+18, 30, 32, presets[CUR_EDITING].effects[FX_DELAY].OnOff);
   // Reverb icon
-  drawTextIcon("Rv", 96, 18, 30, 32, presets[CUR_EDITING].effects[FX_REVERB].OnOff);
+  drawTextIcon("Rv", x+96, y+18, 30, 32, presets[CUR_EDITING].effects[FX_REVERB].OnOff);
 }
 
 // Print out the requested preset data
@@ -201,17 +223,38 @@ void dump_preset(SparkPreset preset) {
   }
 }
 
+// cycle through knobs (like they are on the Spark Amp)
+void changeKnobFx(int changeDirection=1) {
+  curKnob = curKnob + changeDirection;
+  if (curKnob>=knobs_number) curKnob=0;
+  if (curKnob<0) curKnob=knobs_number-1;
+  curFx = knobs_order[curKnob].fxSlot;
+  curParam = knobs_order[curKnob].fxNumber;
+  fxCaption = spark_knobs[curFx][curParam];
+  level = presets[CUR_EDITING].effects[curFx].Parameters[curParam] * MAX_LEVEL;
+  timeToGoBack = millis() + actual_timeout;
+  DEBUG(curKnob);
+}
+
+
 // Pushbutton handling
 void doPushButtons(void)
 {
-  AnylongPressActive = false;
-  AllPressActive = true;
-  ActiveFlags = 0;  
-  LongPressFlags = 0;
-  ClickFlags = 0 ;
+  static unsigned long buttonTimer[NUM_SWITCHES];         // stores the time that the button was pressed (relative to boot time)
+  static unsigned long buttonPressDuration[NUM_SWITCHES]; // stores the duration (in milliseconds) that the button was pressed/held down for
+  static unsigned long autoFireTimer = 0;
+  static bool buttonActive[NUM_SWITCHES];                 // indicates if the button is active/pressed
+  static bool longPressActive[NUM_SWITCHES];              // indicates if the button has been long-pressed
+  static bool buttonClick[NUM_SWITCHES];                  // indicates if the button has been clicked
+  static bool longPressFired = false;                     // indicates if the long-press event has fired
+  bool AnylongPressActive = false;                        // OR of any longPressActive states
+  bool AllPressActive = true;                             // AND of any longPressActive states
+  uint8_t ClickFlags = 0;                                 // Write buttons states to one binary mask variable
+  uint8_t LongPressFlags = 0;                             // Write buttons states to one binary mask variable
   static uint8_t zeroCounter = 0;
   static uint8_t oldActiveFlags = 0;
   static uint8_t maxFlags = 0;
+  ActiveFlags = 0;
   // Debounce and long press code
   for (int i = 0; i < NUM_SWITCHES; i++) {
     // If the button pin reads HIGH, the button is pressed (VCC)
@@ -246,12 +289,14 @@ void doPushButtons(void)
           longPressFired = true;
         }
         
-        // Long press wasn't active. We either need to debounce/reject the press or register a normal click
+        // Long press wasn't active. We either need to debounce/reject the press or register a normal tap
         else
         {
-          // if the button press duration exceeds our bounce threshold, then we register a click
+          // if the button press duration exceeds our bounce threshold, then we register a tap
           if (buttonPressDuration[i] > debounceThreshold){
             buttonClick[i] = true;
+            Serial.println("Tap " + String(1<<i));
+            onTap(1<<i);
           }
         }
         
@@ -278,30 +323,38 @@ void doPushButtons(void)
     oldActiveFlags = ActiveFlags;
     maxFlags = max(maxFlags, ActiveFlags);    
   }
-  // Have all buttons been held down? - toggle tuner mode
   if (LongPressFlags >0 && LongPressFlags==ActiveFlags && !longPressFired){
     Serial.println("Long press " + String(LongPressFlags));
     longPressFired = true;  // In case when the next function is async and time consuming, 
                             // let's flush it here not to call the function twice or more in a row
     onLongPress(LongPressFlags);  // function to execute on Long Press event 
+  } else if (LongPressFlags >0 && LongPressFlags==ActiveFlags && autoFireEnabled) { //Autofire 
+    if (autoFireTimer < millis()-autoFireDelay) { 
+      Serial.println("AutoFire " + String(LongPressFlags));
+      autoFireTimer = millis();
+      onAutoClick(LongPressFlags);  // function to execute on Long Press event 
+    }
   }
   if (ClickFlags > 0 && ActiveFlags ==0){
     Serial.println("Click " + String(maxFlags));
-   
-    //onClick(ClickFlags);    // This will give only single button clicks
-
     onClick(maxFlags);      // This will give you multi-button clicks
-
+  //  onClick(clickFlags);  // This will give only single button at a time to be clicked
   }
 }
 
 // buttonMask is binary mask that has 1 in Nth position, if Nth button is active, 
 // say 0b00000100 (decimal 4) means that your 3rd button fired this event, multiple buttons allowed
 void onClick(uint8_t buttonMask) {
-  // Mode PRESETS
   // In Preset mode, use the four buttons to select the four HW presets
   uint8_t buttonId;
-  if (curMode == MODE_PRESETS) {
+  if (isTunerMode) {
+    // bail out
+    tunerOff();
+  } else if (curMode == MODE_BYPASS) {
+    // bail out
+    bypassOff();
+  } else if (curMode == MODE_PRESETS) {
+  // Mode PRESETS
     switch (buttonMask) {
       case 1: // button 1
       case 2: // button 2
@@ -318,9 +371,8 @@ void onClick(uint8_t buttonMask) {
         //no action yet
         break;        
     }
-  }
+  } else if (curMode == MODE_EFFECTS) {
   // Mode EFFECTS
-  if (curMode == MODE_EFFECTS) {
     for(int i = 0; i<NUM_SWITCHES; ++i) {
       if(bitRead(buttonMask,i)==1){
         SWITCHES[i].fxOnOff = !SWITCHES[i].fxOnOff;
@@ -328,44 +380,113 @@ void onClick(uint8_t buttonMask) {
         setting_modified = true;
       }
     }
+  } else if (curMode == MODE_LEVEL && (buttonMask==2 || buttonMask==8)) {
+// Effect level adjustment with buttons 2 and 4
+    timeToGoBack = millis() + actual_timeout; // Prolongue the Mode as we are not idle
+    curFx = knobs_order[curKnob].fxSlot;
+    curParam = knobs_order[curKnob].fxNumber;
+    fxCaption = spark_knobs[curFx][curParam];
+    level = presets[CUR_EDITING].effects[curFx].Parameters[curParam] * MAX_LEVEL;
+    DEBUG(level);
+    if (buttonMask==8) {
+      level=level+1;
+      if (level>MAX_LEVEL) {level = MAX_LEVEL;}
+    } else {
+      level=level-1;
+      if (level<0) {level=0;}
+    }
+    float newVal = (float)level/(float)MAX_LEVEL + 0.005;
+  //  DEBUG(newVal);
+   // DEBUG(String(presets[CUR_EDITING].effects[curFx].EffectName) + " " + String(newVal) );
+    change_generic_param(curFx, curParam, newVal);
+    presets[CUR_EDITING].effects[curFx].Parameters[curParam] = newVal;
+  } else if (curMode == MODE_LEVEL && buttonMask == 1) {
+    changeKnobFx();
   }
 }
 
 // buttonMask is binary mask that has 1 in Nth position, if Nth button is active, 
 // say 0b00000110 (decimal 6) means that your 2nd and 3rd button were pressed
 void onLongPress(uint8_t buttonMask) {
-  switch (buttonMask) {
-    case 1: // button 1
-      cycleModes(); // Change current mode in cycle
-      break;
-    case 3: // buttons 1 an 2
-      toggleTuner();
-      break;
-    case 12: // buttons 2 an 3
-      toggleBypass();
-      break;
-    default:
-      //no action yet
-      break;
+  if (isTunerMode) {
+    // bail out
+    tunerOff();
+  } else if (curMode == MODE_BYPASS) {
+    // bail out
+    bypassOff();
+  } else {
+    switch (buttonMask) {
+      case 1: // button 1
+        cycleModes(); // Change current mode in cycle
+        break;
+      case 3: // buttons 1 an 2
+        toggleTuner();
+        break;
+      case 4: // button 3
+        if (!tempUI) {
+          autoFireEnabled = true;
+          curFx = knobs_order[curKnob].fxSlot;
+          curParam = knobs_order[curKnob].fxNumber;
+          fxCaption = spark_knobs[curFx][curParam];
+          level = presets[CUR_EDITING].effects[curFx].Parameters[curParam] * MAX_LEVEL;
+          tempFrame(MODE_LEVEL, curMode, FRAME_TIMEOUT); // Master level adj
+        } else {
+          tempUI=false;
+          autoFireEnabled = false;
+          change_custom_preset(&presets[CUR_EDITING], display_preset_num);
+          msgCaption = "CHANGES";
+          msgText = "SAVED TO AMP";
+          tempFrame(MODE_MESSAGE, returnMode, 1000);
+        }
+        break;
+      case 12: // buttons 2 an 3
+        toggleBypass();
+        break;
+      default:
+        //no action yet
+        break;
+    }
   }
 }
 
+void onAutoClick(uint8_t buttonMask) {
+  if (curMode==MODE_LEVEL && (buttonMask==2 || buttonMask==8)) {
+    onClick(buttonMask);    // inc/dec fx level with buttons 2 and 4
+  }
+}
+
+void onTap(uint8_t buttonMask) {
+  //DEBUG("TAP " + String(buttonMask));
+  //timeToGoBack = millis() + actual_timeout;  
+}
+
+// Cycle through first {NUM_MODES} modes
 void cycleModes() {
   uint8_t iCurMode;
   if (isTunerMode) {
     tunerOff();
+  } else if (curMode == MODE_BYPASS) {
+    bypassOff();
+  } else {
+    returnToMainUI();
+    iCurMode = static_cast <uint8_t> (curMode);
+    iCurMode++;
+    if (iCurMode >= NUM_MODES) {iCurMode = 0;}
+    curMode = static_cast <eMode_t> (iCurMode);
+    updateFxStatuses();
+    DEBUG("Mode: " + String(curMode));
   }
-  iCurMode = static_cast <uint8_t> (curMode);
-  iCurMode++;
-  if (iCurMode >= NUM_MODES) {iCurMode = 0;}
-  curMode = static_cast <eMode_t> (iCurMode);
-  updateFxStatuses();
-  DEBUG("Mode: " + String(curMode));
 }
 
-// Refresh UI
-void refreshUI(void) {
 
+// Refresh UI ============================================================================
+void refreshUI(void) {
+  // If some button is active, ploceed with a temp frame  
+  if (ActiveFlags > 0) {
+    timeToGoBack = millis() + actual_timeout;
+  }
+
+  // maybe it's time to return from a temp UI
   if ((millis() > timeToGoBack) && tempUI) {
     returnToMainUI();
   }
@@ -387,7 +508,15 @@ void refreshUI(void) {
   }
 
   if (oldMode!=curMode) {
-    ui.switchToFrame(curMode);
+    switch (curMode) {
+      case MODE_PRESETS:
+      case MODE_EFFECTS:
+        ui.transitionToFrame(curMode);
+        break;
+      default:
+        ui.switchToFrame(curMode);
+        break;
+    }
     updateFxStatuses();
     oldMode = curMode;
     DEBUG("Switch to mode: " + String(curMode));
@@ -407,6 +536,7 @@ void refreshUI(void) {
     oled.setFont(MEDIUM_FONT);
     oled.setTextAlignment(TEXT_ALIGN_CENTER);
     oled.drawString(X1, Y4, "Please wait");
+    mainIcons();
     oled.display();
     delay(10);
 
@@ -477,58 +607,7 @@ void drawBatteryH(int x, int y, int w, int h, int chg_percent, bool charging) {
   oled.drawLine(x, y, x, y+h-1);
 }
 
-void readBattery(){
-  //DEBUG(vbat_result);
-  vbat_result = analogRead(VBAT_AIN); // Read battery voltage
-  //DEBUG(vbat_result);
-  // To speed up the display when a battery is connected from scratch
-  // ignore/fudge any readings below the lower threshold
-  if (vbat_result < BATTERY_LOW) vbat_result = BATTERY_LOW;
-
-  // While collecting data
-  if (vbat_ring_count < VBAT_NUM) {
-    vbat_ring_sum += vbat_result;
-    vbat_ring_count++;
-    vbat_result = vbat_ring_sum / vbat_ring_count;
-  }
-  // Once enough is gathered, do a decimating average
-  else {
-    vbat_ring_sum *= 0.9;
-    vbat_ring_sum += vbat_result;
-    vbat_result = vbat_ring_sum / VBAT_NUM;
-  }
-
-  chrg_result = analogRead(CHRG_AIN); // Check state of /CHRG output  
-}
-
-int batteryPercent(int vbat_value) {
-  return constrain(map(vbat_value, BATTERY_LOW, BATTERY_100, 0, 100), 0, 100);  
-}
-
-int batteryCharging() {
-  #ifdef BATT_CHECK_0
-    return -1; //unsupported
-  #endif
-  
-  // For level-based charge detection (not very reliable)
-  #ifdef BATT_CHECK_1
-    if (vbat_result >= BATTERY_CHRG) {
-      return 1;
-    } else {
-      return 0;
-    }
-  #endif
-  
-  // If advanced charge detection available, and charge detected
-  #ifdef BATT_CHECK_2
-    if (chrg_result < CHRG_LOW) {
-      return 1;
-    } else {
-      return 0;
-    }
-  #endif  
-}
-
+// a simple script to show a text string during a given time
 void textAnimation(const String &s, ulong msDelay, int yShift=0, bool show=true) {  
   oled.clear();
   oled.drawString(oled.width()/2, oled.height()/2-6 + yShift, s);
@@ -538,6 +617,69 @@ void textAnimation(const String &s, ulong msDelay, int yShift=0, bool show=true)
   }
 }
 
+void readBattery(){
+  vbat_result = analogRead(VBAT_AIN); // Read battery voltage
+  // To speed up the display when a battery is connected from scratch
+  // ignore/fudge any readings below the lower threshold
+  if (vbat_result < BATTERY_LOW * ADC_COEFF) {
+    vbat_result = BATTERY_LOW * ADC_COEFF;
+  }
+  // While collecting data
+  if (vbat_ring_count < VBAT_NUM) {
+    vbat_ring_sum += vbat_result;
+    vbat_ring_count++;
+    vbat_result = vbat_ring_sum / vbat_ring_count;
+  }
+  // Once enough is gathered, do a decimating average
+  else {
+    vbat_ring_sum = (VBAT_NUM-1) * vbat_ring_sum / VBAT_NUM + vbat_result;
+    vbat_result = vbat_ring_sum / VBAT_NUM;
+    #ifndef NOSLEEP
+      // Low-battery go to sleep to save the LiPo's life
+      if (vbat_result < BATTERY_LOW * ADC_COEFF) {
+        oled.clear();
+        oled.setFont(MEDIUM_FONT);
+        oled.setColor(WHITE);
+        textAnimation("LOW BATTERY", 5000);
+        ESP_off();
+      }
+    #endif
+  }
+  chrg_result = analogRead(CHRG_AIN); // Check state of /CHRG output  
+  //DEBUG(vbat_result/ADC_COEFF);
+}
+
+// Calc the percentage
+int batteryPercent(int vbat_value) {
+  return constrain(map(vbat_value, BATTERY_LOW*ADC_COEFF, BATTERY_100*ADC_COEFF, 0, 100), 0, 100);  
+}
+
+// Charging or not?
+int batteryCharging() {
+  #ifdef BATT_CHECK_0
+    return -1; //unsupported
+  #endif
+  
+  // For level-based charge detection (not very reliable)
+  #ifdef BATT_CHECK_1
+    if (vbat_result >= BATTERY_CHRG*ADC_COEFF) {
+      return 1;
+    } else {
+      return 0;
+    }
+  #endif
+  
+  // If advanced charge detection available, and charge detected
+  #ifdef BATT_CHECK_2
+    if (chrg_result < CHRG_LOW*ADC_COEFF) {
+      return 1;
+    } else {
+      return 0;
+    }
+  #endif  
+}
+
+// Stand by mode with some fun
 void ESP_off(){
   uint64_t bit_mask=0;
   String wake_buttons;
@@ -630,6 +772,7 @@ void ESP_off(){
   }
 };
 
+// Respawn
 void ESP_on () {
   uint8_t GPIO;  
   esp_sleep_wakeup_cause_t wakeup_cause;
@@ -666,6 +809,7 @@ void ESP_on () {
   textAnimation("_______________",10,-8);
 }
 
+// Checking the config if we have some pins with RTC connection which allows waking from a deep sleep. Otherwise we only can use light sleep
 int Check_RTC() {
   RTC_present = 0;
   for(int i = 0; i < NUM_SWITCHES; ++i) {
@@ -683,6 +827,7 @@ int Check_RTC() {
   return RTC_present;
 }
 
+// Toggle bypass mode, switching on/off all the effects and amp sim
 void toggleBypass() {
   if (curMode == MODE_BYPASS) {
     bypassOff();
@@ -712,6 +857,7 @@ void bypassOff() {
   }
 }
 
+// Toggle tuner mode. This is Spark mode, not just pedal mode. Spark will send measurements continiously.
 void toggleTuner() {
   if (curMode==MODE_TUNER) {
     tunerOff();
@@ -799,12 +945,14 @@ void doExpressionPedal() {
   }  
 }
 
+// We need to know which effects are on and which are off to draw icons
 void updateFxStatuses() {
   for (int i=0 ; i< NUM_SWITCHES; i++) {
     SWITCHES[i].fxOnOff = presets[CUR_EDITING].effects[SWITCHES[i].fxSlotNumber].OnOff;
   }
 }
 
+// it's useful sometimes not just have an error code, but also some random yet valid data to play with.
 SparkPreset somePreset(const char* substTitle) {
   SparkPreset ret_preset = *my_presets[random(HARD_PRESETS-1)];
   strcpy(ret_preset.Description, ret_preset.Name);
@@ -914,8 +1062,7 @@ bool savePresetToFile(SparkPreset savedPreset, const String &filePath) {
   return noErr;
 }
 
-
-
+// This function returns {fxSlot, fxNumber} by fxName, thanks PG for such brute force routine
 s_fx_coords fxNumByName(const char* fxName) {
   int i = 0;
   int j = 3; //3: amp is most often in use 
@@ -979,24 +1126,29 @@ s_fx_coords fxNumByName(const char* fxName) {
     }
     i++;
   }
-  return {-1,-1};
+  return {-1,-1}; // unknown situation, unknown effect
 }
 
-
+// temporarily switching to a different UI frame
 void tempFrame(eMode_t tempFrame, eMode_t retFrame, const ulong msTimeout) {
   if (!tempUI) {
     curMode = tempFrame;
     returnMode = retFrame;
     tempUI = true;
   }
+  actual_timeout = msTimeout;
   timeToGoBack = millis() + msTimeout;
 }
 
+// Returning from a temp UI frame
 void returnToMainUI() {
   if (tempUI) {
     curMode = returnMode;
     timeToGoBack = millis();
     tempUI = false;
-    curKnob = 4;
+    #ifdef RETURN_TO_MASTER   
+      curKnob = 4; // Set to Master knob {3,1} (SparkPresets.h)
+    #endif
+    DEBUG("Return to main UI");
   }
 }

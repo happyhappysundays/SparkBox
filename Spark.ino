@@ -354,12 +354,14 @@ void change_reverb_toggle() {
 }
 
 void change_generic_param(int slot, int param, float val) {
-  float diff;
+/* float diff;
 
   // some code to reduce the number of changes
   diff = presets[5].effects[slot].Parameters[param] - val;
   if (diff < 0) diff = -diff;
   if (diff > 0.04) {
+*/
+  {
     spark_msg_out.change_effect_parameter(presets[5].effects[slot].EffectName, param, val);
     app_msg_out.change_effect_parameter(presets[5].effects[slot].EffectName, param, val);
     presets[5].effects[slot].Parameters[param] = val;

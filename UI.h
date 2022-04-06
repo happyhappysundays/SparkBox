@@ -1,31 +1,29 @@
 // Defines
 #define MAXNAME 24        // Truncate preset names
 #define NUM_SWITCHES 4    // How many switches do we have
-#define NUM_MODES 2       // How many pedal modes does it support 
+#define NUM_MODES 2       // How many pedal modes will switch in cycle when button 1 is long-pressed
 #define VBAT_AIN 32       // Vbat sense (2:1 divider)
 #define CHRG_AIN 33       // Charge pin sense (10k pull-up)
 #define EXP_AIN 34        // Expression pedal input (3V3)
 #define MAX_ATTEMPTS 5    // (Re-)Connection attempts before going to sleep
 #define MILLIS_PER_ATTEMPT 6000 // milliseconds per connection attempts, this is used when reconnecting, not quite as expected though
-#define CHRG_LOW 2000
 
-#define HARD_PRESETS 24  // number of hard-coded presets in SparkPresets.h
+#define HARD_PRESETS 24   // number of hard-coded presets in SparkPresets.h
 //
-#define BATTERY_LOW 2082  // Noise floor of 3.61V (<5%)
-#define BATTERY_100 2422  // Noise floor of 4.20V (100%)
-//
-#define BATTERY_HIGH 2256 // Noise floor of 3.91V (>66%)
-#define BATTERY_MAX 2290  // Noise floor of 3.97V (>80%)
-#define BATTERY_CHRG 2451 // Totally empirical, adjust as required. Currently 4.25V-ish
+#define ADC_COEFF 576.66  // Multiplier to get ADC value out of voltage
+#define BATTERY_LOW 3.30  // Noise floor of 0%, if we measure such voltage it's better to go to sleep 
+#define BATTERY_100 4.20  // Noise floor of 100%
+#define BATTERY_CHRG 4.26 // Totally empirical, adjust as required. Currently 4.26V-ish
+#define CHRG_LOW 3.47     // Charging voltage detection
 #define VBAT_NUM 10       // Number of vbat readings to average
 
 //GUI settings
-#define TRANSITION_TIME 600 // Frame transition time, ms
-#define BAT_WIDTH 26      // Battery icon width
-#define CONN_ICON_WIDTH 11 // Connection status icons width
-#define FX_ICON_WIDTH 18  // Exxects icons width
-// Text offsets for different types of display
-#define STATUS_HEIGHT 16  // Status line height
+#define TRANSITION_TIME 500 // Frame transition time, ms
+#define BAT_WIDTH 26        // Battery icon width
+#define CONN_ICON_WIDTH 11  // Connection status icons width
+#define FX_ICON_WIDTH 18    // Exxects icons width
+#define STATUS_HEIGHT 16    // Status line height
+#define FRAME_TIMEOUT 3000                      // (ms) to return to main UI from temporary UI frame 
 
 #ifdef TWOCOLOUR
 // Two-colour displays
@@ -71,38 +69,78 @@ int attempt_count = 0;                          // Connection attempts counter
 int RTC_pins[]{0,2,4,12,13,14,15,25,26,27,32,33,34,35,36,37,38,39}; // These are RTC enabled GPIOs of ESP32, this is hardware, and if you choose to connect buttons to at least one of this list, deep sleep will be enabled
 bool sw_RTC[NUM_SWITCHES];
 int RTC_present = 0;                            // Number of RTC pins present in the config
-int sw_pin[]{17,5,18,23};                     // Switch gpio numbers (for those who already has built a pedal with these pins
-//int sw_pin[]{25,26,27,14};                      // Switch gpio numbers (for those who is building a pedal, these pins allow deep sleep)
+//int sw_pin[]{17,5,18,23};                     // Switch gpio numbers (for those who already has built a pedal with these pins
+int sw_pin[]{25,26,27,14};                      // Switch gpio numbers (for those who is building a pedal, these pins allow deep sleep)
                                                 // SW1 Toggle Drive 
                                                 // SW2 Toggle Modulation
                                                 // SW3 Toggle Delay
                                                 // SW4 Toggle Reverb
                                                 // SW5 Decrement preset
                                                 // SW6 Increment preset
-
+// BUTTONS SECTION ====================================================================
 const unsigned long longPressThreshold = 800;   // the threshold (in milliseconds) before a long press is detected
+const unsigned long autoFireDelay = 120;        // the threshold (in milliseconds) between clicks if autofire is enabled
+bool autoFireEnabled = true;                    // should the buttons generate continious clicks when pressed longer than a longPressThreshold
 const unsigned long debounceThreshold = 20;     // the threshold (in milliseconds) for a button press to be confirmed (i.e. not "noise")
-unsigned long buttonTimer[NUM_SWITCHES];        // stores the time that the button was pressed (relative to boot time)
-unsigned long buttonPressDuration[NUM_SWITCHES];// stores the duration (in milliseconds) that the button was pressed/held down for
-bool buttonActive[NUM_SWITCHES];                // indicates if the button is active/pressed
-bool longPressActive[NUM_SWITCHES];             // indicates if the button has been long-pressed
-bool buttonClick[NUM_SWITCHES];                 // indicates if the button has been clicked
-bool longPressFired = false;                    // indicates if the button has been long-pressed
-bool AnylongPressActive = false;                // OR of any longPressActive states
-bool AllPressActive = false;                    // AND of any longPressActive states
-int scroller = 0;                               // Variable to keep scrolling offset 
-#define FRAME_TIMEOUT 3000                      // (ms) to return to main UI from temporary UI frame 
-String infoCaption, infoText;
-bool tempUI = false;
-int curKnob=0, curFx=3, curParam=4, level = 0;
-//char str[50];
-String fxCaption=spark_knobs[curFx][curParam];
+uint8_t ActiveFlags = 0;                        // Write buttons states to one binary mask; it's global so that we can check it anywhere
 
+// UI SECTION =========================================================================
+int scroller = 0;                               // Variable to keep scrolling offset 
+String msgCaption, msgText;
+bool tempUI = false;                            // If we are in the temporary frame which returns after a given timeout
+boolean isOLEDUpdate;                           // Flag OLED needs refresh
+unsigned long actual_timeout=FRAME_TIMEOUT;
 uint64_t timeToGoBack = 0, time_to_sleep = 0;
+
+// Presets section
 bool fxState[] = {false,false,false,false,false,false,false}; // Array to store FX's on/off state before total bypass is ON
 
-// Flags
-boolean isOLEDUpdate;                           // Flag OLED needs refresh
-uint8_t ActiveFlags = 0;                        // Write buttons states to one binary mask variable
-uint8_t ClickFlags = 0;                         // Write buttons states to one binary mask variable
-uint8_t LongPressFlags = 0;                     // Write buttons states to one binary mask variable
+// Type for Coordinates of Fx Params
+typedef struct {
+  int fxSlot;
+  int fxNumber;
+} s_fx_coords;
+
+// Yeah, we need to maintain this list (((
+const char spark_noisegates[][STR_LEN+1]{"bias.noisegate"};
+const char spark_compressors[][STR_LEN+1]{"BassComp","BBEOpticalComp","BlueComp","Compressor","JH.Vox846","LA2AComp"};
+const char spark_drives[][STR_LEN+1]{"BassBigMuff","Booster","DistortionTS9","Fuzz","GuitarMuff","KlonCentaurSilver","MaestroBassmaster",
+  "Overdrive","ProCoRat","SABdriver","TrebleBooster"};
+const char spark_amps[][STR_LEN+1]{"6505Plus","94MatchDCV2","AC Boost","Acoustic","AcousticAmpV2","ADClean","AmericanHighGain","Bassman",
+  "BE101","BluesJrTweed","Bogner","Checkmate","Deluxe65","EVH","FatAcousticV2","FlatAcoustic","GK800","Hammer500","Invader","JH.JTM45",
+  "JH.SuperLead100","ODS50CN","OrangeAD30","OverDrivenJM45","OverDrivenLuxVerb","Plexi","Rectifier","RolandJC120","SLO100","Sunny3000",
+  "SwitchAxeLead","Twin","TwoStoneSP50","W600","YJM100"};
+const char spark_modulations[][STR_LEN+1]{"ChorusAnalog","Cloner","Flanger","GuitarEQ6","JH.VoodooVibeJr","MiniVibe","Phaser",
+  "Tremolator","Tremolo","TremoloSquare","UniVibe","Vibrato01"};
+const char spark_delays[][STR_LEN+1]{"DelayEchoFilt","DelayMono","DelayMultiHead","DelayRe201","DelayReverse","VintageDelay"};
+const char spark_reverbs[][STR_LEN+1]{"bias.reverb"};
+
+// knob, fx, param
+const char spark_knobs[7][5][12] {
+  {"0-0","0-1","0-2","0-3","0-4"},                  //noise gate
+  {"1-0","1-1","1-2","1-3","1-4"},                  //compressor
+  {"DRIVE","2-1","2-2","2-3","2-4"},                //drive
+  {"GAIN","TREBLE","MID","BASS","MASTER"},          //amp
+  {"MODULATION","MOD-INTENS.","4-2","4-3","4-4"},   //modulation
+  {"DELAY","5-1","5-2","5-3","BPM"},                //delay
+  {"REVERB","6-1","6-2","6-3","6-4"}                //reverb
+};    
+
+const s_fx_coords knobs_order[] = {
+  {3,0}, //gain
+  {3,3}, //bass
+  {3,2}, //mid
+  {3,1}, //treble
+  {3,4}, //master
+  {4,0}, //modulation
+  {5,0}, //delay
+  {6,0}, //reverb
+  {2,0}  //drive
+};
+
+const uint8_t knobs_number = 9;
+
+const uint8_t MAX_LEVEL = 100; // maximum level of effect, actual value in UI is level divided by 100
+int curKnob=4, curFx=3, curParam=4;
+int level = 0;
+String fxCaption=spark_knobs[curFx][curParam];  // Effect caption for displaying at the top of the screen when adjusting

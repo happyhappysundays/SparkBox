@@ -10,11 +10,6 @@
 #include <Arduino.h>
 #include "Spark.h"
 
-typedef struct {
-  int fxSlot;
-  int fxNumber;
-} s_fx_coords;
-
 const SparkPreset preset0{0x0,0x7f,"07079063-94A9-41B1-AB1D-02CBC5D00790","Silver Ship","0.7","1-Clean","icon.png",120.000000,{ 
   {"bias.noisegate", false, 3, {0.138313, 0.224643, 0.000000}}, 
   {"LA2AComp", true, 3, {0.000000, 0.852394, 0.373072}}, 
@@ -234,41 +229,3 @@ const SparkPreset preset23{0x0,0x7f,"DEFBB271-B3EE-4C7E-A623-2E5CA53B6DDA","Stud
 const SparkPreset *my_presets[]{&preset0,  &preset1,  &preset2,  &preset3,  &preset4,  &preset5,  &preset6,  &preset7,  &preset8,  &preset9,  
               &preset10, &preset11, &preset12, &preset13, &preset14, &preset15, &preset16, &preset17, &preset18, &preset19, 
               &preset20, &preset21, &preset22, &preset23};
-
-const char spark_noisegates[][STR_LEN+1]{"bias.noisegate"};
-const char spark_compressors[][STR_LEN+1]{"BassComp","BBEOpticalComp","BlueComp","Compressor","JH.Vox846","LA2AComp"};
-const char spark_drives[][STR_LEN+1]{"BassBigMuff","Booster","DistortionTS9","Fuzz","GuitarMuff","KlonCentaurSilver","MaestroBassmaster",
-  "Overdrive","ProCoRat","SABdriver","TrebleBooster"};
-const char spark_amps[][STR_LEN+1]{"6505Plus","94MatchDCV2","AC Boost","Acoustic","AcousticAmpV2","ADClean","AmericanHighGain","Bassman",
-  "BE101","BluesJrTweed","Bogner","Checkmate","Deluxe65","EVH","FatAcousticV2","FlatAcoustic","GK800","Hammer500","Invader","JH.JTM45",
-  "JH.SuperLead100","ODS50CN","OrangeAD30","OverDrivenJM45","OverDrivenLuxVerb","Plexi","Rectifier","RolandJC120","SLO100","Sunny3000",
-  "SwitchAxeLead","Twin","TwoStoneSP50","W600","YJM100"};
-const char spark_modulations[][STR_LEN+1]{"ChorusAnalog","Cloner","Flanger","GuitarEQ6","JH.VoodooVibeJr","MiniVibe","Phaser",
-  "Tremolator","Tremolo","TremoloSquare","UniVibe","Vibrato01"};
-const char spark_delays[][STR_LEN+1]{"DelayEchoFilt","DelayMono","DelayMultiHead","DelayRe201","DelayReverse","VintageDelay"};
-const char spark_reverbs[][STR_LEN+1]{"bias.reverb"};
-
-// knob, fx, param
-const char spark_knobs[7][5][12] {
-  {"0-0","0-1","0-2","0-3","0-4"}, //noise gate
-  {"1-0","1-1","1-2","1-3","1-4"}, //compressor
-  {"DRIVE","2-1","2-2","2-3","2-4"}, //drive
-  {"GAIN","TREBLE","MID","BASS","MASTER"}, //amp
-  {"MODULATION","M-INTENSITY","4-2","4-3","4-4"}, //modulation
-  {"DELAY","5-1","5-2","5-3","BPM"}, //delay
-  {"REVERB","6-1","6-2","6-3","6-4"}  //reverb
-};    
-
-const s_fx_coords knobs_order[] = {
-  {3,0},
-  {3,3},
-  {3,2},
-  {3,1},
-  {3,4},
-  {4,0},
-  {5,0},
-  {6,0},
-  {2,0}
-};
-
-const uint8_t knobs_number = 9;

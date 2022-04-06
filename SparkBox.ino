@@ -8,7 +8,7 @@
 //
 // Battery charge function defines. Please uncomment just one.
 // You have no mods to monitor the battery, so it will show empty
-#define BATT_CHECK_0
+//#define BATT_CHECK_0
 //
 // You are monitoring the battery via a 2:1 10k/10k resistive divider to GPIO23
 // You can see an accurate representation of the remaining battery charge and a kinda-sorta
@@ -17,7 +17,7 @@
 //
 // You have the battery monitor mod described above AND you have a connection between the 
 // CHRG pin of the charger chip and GPIO 33. Go you! Now you have a guaranteed charge indicator too.
-//#define BATT_CHECK_2
+#define BATT_CHECK_2
 //
 // Expression pedal define. Comment this out if you DO NOT have the expression pedal mod
 //#define EXPRESSION_PEDAL
@@ -26,20 +26,31 @@
 //#define DUMP_ON
 //
 // Uncomment for better Bluetooth compatibility with Android devices
-//#define CLASSIC
+#define CLASSIC
 //
 // Uncomment when using a Heltec module as their implementation doesn't support setMTU()
 #define HELTEC_WIFI
 //
-// Uncomment if two-colour OLED screens are used. Offsets some text and alternate tuner
-//#define TWOCOLOUR // Probably the only mode left, it seems to look well on both types of display
+// Choose and uncomment the type of OLED display used: 0.96" SSD1306 or 1.3" SH1106 
+#define SSD1306
+//#define SH1106
 //
-// Uncomment if you don't want the pedal to sleep to save power
+// Uncomment if two-colour OLED screens are used. Offsets some text and alternate tuner
+#define TWOCOLOUR
+//
+// Uncomment if you don't want the pedal to sleep to save power, this also prevents low-battery sleep
 //#define NOSLEEP
 //
+// When adjusting the level of effects, always start with Master level settings. Comment this line out if you like it to remember your last choice
+#define RETURN_TO_MASTER
+//
 //******************************************************************************************
+#ifdef SSD1306
 #include "SSD1306Wire.h"            // https://github.com/ThingPulse/esp8266-oled-ssd1306
-// or #include "SH1106Wire.h"
+#endif
+#ifdef SH1106
+#include "SH1106Wire.h"
+#endif
 #include "OLEDDisplayUi.h"          // Include the UI lib
 #include "FS.h"
 #include "SPIFFS.h"
@@ -49,7 +60,7 @@
 #include "SparkComms.h"             // "
 #include "font.h"                   // Custom large font
 #include "bitmaps.h"                // Custom bitmaps (icons)
-#include "SparkPresets.h"                // Custom bitmaps (icons)
+#include "SparkPresets.h"           // Custom bitmaps (icons)
 #include "UI.h"                     // Any UI-related defines
 #define ARDUINOJSON_USE_DOUBLE 1
 #include "ArduinoJson.h"            // Should be installed already https://github.com/bblanchon/ArduinoJson
@@ -58,10 +69,14 @@
 //******************************************************************************************
 
 #define PGM_NAME "SparkBox"
-#define VERSION "V0.80 alpha" 
+#define VERSION "V0.83 alpha" 
 
-SSD1306Wire oled(0x3c, 4, 15);        // Default OLED Screen Definitions - ADDRESS, SDA, SCL 
-// SH1106Wire oled(0x3c, 4, 15);      // or this line if you are using SSH1106
+#ifdef SSD1306
+SSD1306Wire oled(0x3c, 4, 15);        // Default OLED Screen Definitions - ADDRESS, SDA, SCL
+#endif
+#ifdef SH1106
+SH1106Wire oled(0x3c, 4, 15);      // or this line if you are using SSH1106
+#endif
 OLEDDisplayUi ui(&oled);              // Create UI instance for the display (slightly advanced frame based GUI)
 
 char str[STR_LEN];                    // Used for processing Spark commands from amp
@@ -90,7 +105,7 @@ enum eEffects_t {FX_GATE, FX_COMP, FX_DRIVE, FX_AMP, FX_MOD, FX_DELAY, FX_REVERB
 hw_timer_t * timer = NULL;            // Timer variables
 portMUX_TYPE timerMux = portMUX_INITIALIZER_UNLOCKED;
 volatile boolean isTimeout = false;   // Update battery icon flag
-volatile boolean isRSSIupdate = false;// Update RSSI display flag
+// volatile boolean isRSSIupdate = false;// Update RSSI display flag
 
 // SWITCHES Init ===========================================================================
 typedef struct {
@@ -112,8 +127,8 @@ s_switches SWITCHES[NUM_SWITCHES] = {
 // Timer interrupt handler
 void IRAM_ATTR onTime() {
    portENTER_CRITICAL_ISR(&timerMux);
-   isTimeout = true;
-   isRSSIupdate = true;
+    isTimeout = true;
+   // isRSSIupdate = true;
    portEXIT_CRITICAL_ISR(&timerMux);
 }
 // UI **************************************************************************************
@@ -246,8 +261,8 @@ void loop() {
           Serial.print("0");
         Serial.print(license_key[i], HEX);
       }
-    Serial.println();
-    change_hardware_preset(display_preset_num); // Refresh app preset when first connected
+      Serial.println();
+      change_hardware_preset(display_preset_num); // Refresh app preset when first connected
     }
  
     // Work out if the user is touching a switch or a knob
@@ -262,7 +277,7 @@ void loop() {
     }
     
     // do your own checks and processing here    
-    if (cmdsub == 0x0337) {
+    if (cmdsub == 0x0337 || cmdsub == 0x0104) {
       DEBUG("Change parameter ");
       int fxSlot = fxNumByName(msg.str1).fxSlot;
       presets[CUR_EDITING].effects[fxSlot].Parameters[msg.param1] = msg.val;
@@ -270,10 +285,17 @@ void loop() {
       if (fxSlot==5 && msg.param1==4){
         //suppress the message "BPM=10.0"
       } else {
-        level = msg.val * 100;
+        level = msg.val * MAX_LEVEL;
         tempFrame(MODE_LEVEL, curMode, FRAME_TIMEOUT);
       }
     }
+
+    if (cmdsub == 0x0363) {
+      DEBUG("Tap Tempo " + String(msg.val));
+      level = msg.val * 10;
+      tempFrame(MODE_LEVEL, curMode, 1000);
+    }   
+   
     //isOLEDUpdate = true;        // Flag screen update
   }
 
