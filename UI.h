@@ -69,8 +69,8 @@ int attempt_count = 0;                          // Connection attempts counter
 int RTC_pins[]{0,2,4,12,13,14,15,25,26,27,32,33,34,35,36,37,38,39}; // These are RTC enabled GPIOs of ESP32, this is hardware, and if you choose to connect buttons to at least one of this list, deep sleep will be enabled
 bool sw_RTC[NUM_SWITCHES];
 int RTC_present = 0;                            // Number of RTC pins present in the config
-//int sw_pin[]{17,5,18,23};                     // Switch gpio numbers (for those who already has built a pedal with these pins
-int sw_pin[]{25,26,27,14};                      // Switch gpio numbers (for those who is building a pedal, these pins allow deep sleep)
+int sw_pin[]{17,5,18,23};                     // Switch gpio numbers (for those who already has built a pedal with these pins
+//int sw_pin[]{25,26,27,14};                      // Switch gpio numbers (for those who is building a pedal, these pins allow deep sleep)
                                                 // SW1 Toggle Drive 
                                                 // SW2 Toggle Modulation
                                                 // SW3 Toggle Delay
