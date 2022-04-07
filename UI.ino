@@ -182,6 +182,8 @@ void mainIcons() {
 }
 
 void fxIcons() {
+  oled.setColor(BLACK);
+  oled.fillRect(2*(CONN_ICON_WIDTH+1),0,(FX_ICON_WIDTH+1)*4+1,STATUS_HEIGHT);
   // Drive icon    
   drawStatusIcon(dr_bits, dr_width, STATUS_HEIGHT, 2*(CONN_ICON_WIDTH+1)+1,                     0, FX_ICON_WIDTH,  STATUS_HEIGHT, presets[CUR_EDITING].effects[FX_DRIVE].OnOff);
   // Mod icon
@@ -257,8 +259,8 @@ void doPushButtons(void)
   ActiveFlags = 0;
   // Debounce and long press code
   for (int i = 0; i < NUM_SWITCHES; i++) {
-    // If the button pin reads HIGH, the button is pressed (VCC)
-    if (digitalRead(sw_pin[i]) == HIGH)
+    // If the button pin reads ON, the button is pressed
+    if (digitalRead(switchPins[i]) == logicON)
     {
       // If button was previously off, mark the button as active, and reset the timer
       if (buttonActive[i] == false){
@@ -684,6 +686,7 @@ void ESP_off(){
   uint64_t bit_mask=0;
   String wake_buttons;
   int deep_sleep_pins;
+  int k;
   deep_sleep_pins = Check_RTC();  // Find out if we have RTC pins assigned to buttons allowing deep sleep, otherwise we use light sleep
                                   //  CRT-off effect =) or something
   String s = "_________________";
@@ -709,26 +712,32 @@ void ESP_off(){
 
     esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_ALL);
     esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_ON);
-    int k;
-    for (i = 0; i < NUM_SWITCHES; i++) {
-      gpio_pullup_dis(static_cast <gpio_num_t> (sw_pin[i]));
-      gpio_pulldown_en(static_cast <gpio_num_t> (sw_pin[i]));
-      if (sw_RTC[i]) {
-        bit_mask += 1<<sw_pin[i];
-        wake_buttons += String(i+1) + ",";
-        k = i+1;
+    #ifdef ACTIVE_HIGH
+      for (i = 0; i < NUM_SWITCHES; i++) {
+        if (sw_RTC[i]) {
+          gpio_pullup_dis(static_cast <gpio_num_t> (switchPins[i]));
+          gpio_pulldown_en(static_cast <gpio_num_t> (switchPins[i]));
+          bit_mask += 1<<switchPins[i];
+          wake_buttons += String(i+1) + ",";
+          k = i+1;
+        }
       }
-    }
-    oled.setFont(MEDIUM_FONT);
-    if (deep_sleep_pins == NUM_SWITCHES) {
-      wake_buttons = "Any button wakes";
-    } else {
-      if (deep_sleep_pins == 1) {
-        wake_buttons = "Button " + String(k) + " wakes";
+      if (deep_sleep_pins == NUM_SWITCHES) {
+        wake_buttons = "Any button wakes";
       } else {
-        wake_buttons = "Buttons " + wake_buttons.substring(0, wake_buttons.length()-1) + " wake";
+        if (deep_sleep_pins == 1) {
+          wake_buttons = "Button " + String(k) + " wakes";
+        } else {
+          wake_buttons = "Buttons " + wake_buttons.substring(0, wake_buttons.length()-1) + " wake";
+        }
       }
-    }
+    #else
+      gpio_pulldown_dis(static_cast <gpio_num_t> (switchPins[RTC_1st]));
+      gpio_pullup_en(static_cast <gpio_num_t> (switchPins[RTC_1st]));
+      bit_mask += 1<<switchPins[RTC_1st];
+      wake_buttons = "Button " + String(RTC_1st+1) + " wakes";
+    #endif
+    oled.setFont(MEDIUM_FONT);
     textAnimation(wake_buttons,3000);
     textAnimation("Deep sleep",1000);
     for (int i=0; i<8; i++) {
@@ -744,11 +753,15 @@ void ESP_off(){
 
     DEBUG("Deep sleep");
     oled.displayOff();                // turn it off, otherwise oled remains active
-    //esp_sleep_enable_ext0_wakeup(static_cast <gpio_num_t> (sw_pin[0]), HIGH); // wake up if BUTTON 1 pressed
-    esp_sleep_enable_ext1_wakeup( bit_mask, ESP_EXT1_WAKEUP_ANY_HIGH); // wake up on RTC enabled GPIOs
+    #ifdef ACTIVE_HIGH
+      esp_sleep_enable_ext1_wakeup( bit_mask, ESP_EXT1_WAKEUP_ANY_HIGH); // wake up on RTC enabled GPIOs
+    #else
+      // if you use LOW as an active state, only one button can be used for wake up source
+      esp_sleep_enable_ext1_wakeup( bit_mask, ESP_EXT1_WAKEUP_ALL_LOW );
+    #endif
     esp_deep_sleep_start();
   } 
-  else {
+  else { // if we don't have buttons on RTC GPIOs 
     oled.setFont(MEDIUM_FONT);
     textAnimation("Button 1 wakes",3000);
     textAnimation("Sleep",1000);
@@ -765,7 +778,11 @@ void ESP_off(){
 
     DEBUG("Light sleep");
     oled.displayOff();                // turn it off, otherwise oled remains active
-    gpio_wakeup_enable(static_cast <gpio_num_t> (sw_pin[0]), GPIO_INTR_HIGH_LEVEL );
+    #ifdef ACTIVE_HIGH
+      gpio_wakeup_enable(static_cast <gpio_num_t> (switchPins[0]), GPIO_INTR_HIGH_LEVEL );
+    #else
+      gpio_wakeup_enable(static_cast <gpio_num_t> (switchPins[0]), GPIO_INTR_LOW_LEVEL );
+    #endif
     esp_sleep_enable_gpio_wakeup();
     esp_light_sleep_start();
     esp_restart();
@@ -815,10 +832,11 @@ int Check_RTC() {
   for(int i = 0; i < NUM_SWITCHES; ++i) {
     sw_RTC[i] = false;
     for(int j = 0; j < (sizeof(RTC_pins)/sizeof(RTC_pins[0])); ++j) {
-      if(sw_pin[i] == RTC_pins[j]) {
+      if(switchPins[i] == RTC_pins[j]) {
         sw_RTC[i] = true;
         RTC_present++;
-        DEBUG("RTC pin: " + String(sw_pin[i]));
+        if (RTC_present == 1) {RTC_1st = switchPins[i];}
+        DEBUG("RTC pin: " + String(switchPins[i]));
         break;
       }
     }    

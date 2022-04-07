@@ -1,6 +1,4 @@
 // Defines
-#define MAXNAME 24        // Truncate preset names
-#define NUM_SWITCHES 4    // How many switches do we have
 #define NUM_MODES 2       // How many pedal modes will switch in cycle when button 1 is long-pressed
 #define VBAT_AIN 32       // Vbat sense (2:1 divider)
 #define CHRG_AIN 33       // Charge pin sense (10k pull-up)
@@ -69,14 +67,7 @@ int attempt_count = 0;                          // Connection attempts counter
 int RTC_pins[]{0,2,4,12,13,14,15,25,26,27,32,33,34,35,36,37,38,39}; // These are RTC enabled GPIOs of ESP32, this is hardware, and if you choose to connect buttons to at least one of this list, deep sleep will be enabled
 bool sw_RTC[NUM_SWITCHES];
 int RTC_present = 0;                            // Number of RTC pins present in the config
-int sw_pin[]{17,5,18,23};                     // Switch gpio numbers (for those who already has built a pedal with these pins
-//int sw_pin[]{25,26,27,14};                      // Switch gpio numbers (for those who is building a pedal, these pins allow deep sleep)
-                                                // SW1 Toggle Drive 
-                                                // SW2 Toggle Modulation
-                                                // SW3 Toggle Delay
-                                                // SW4 Toggle Reverb
-                                                // SW5 Decrement preset
-                                                // SW6 Increment preset
+int RTC_1st = -1;
 // BUTTONS SECTION ====================================================================
 const unsigned long longPressThreshold = 800;   // the threshold (in milliseconds) before a long press is detected
 const unsigned long autoFireDelay = 120;        // the threshold (in milliseconds) between clicks if autofire is enabled
