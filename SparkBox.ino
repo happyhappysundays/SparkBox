@@ -52,8 +52,8 @@
 #define NUM_SWITCHES 4
 //
 // GPIOs of the buttons in your setup in the form of switchPins[]{GPIO_for_button1, GPIO_for_button2, GPIO_for_button3, GPIO_for_button4, ... }
-//int switchPins[]{17,5,18,23};                     // Switch gpio numbers (for those who already has built a pedal with these pins)
-int switchPins[]{25,26,27,14};                      // Switch gpio numbers (for those who is building a pedal, these pins allow deep sleep)
+int switchPins[]{17,5,18,23};                     // Switch gpio numbers (for those who already has built a pedal with these pins)
+//int switchPins[]{25,26,27,14};                      // Switch gpio numbers (for those who is building a pedal, these pins allow deep sleep)
                                                 
 //******************************************************************************************
 #ifdef SSD1306
