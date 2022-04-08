@@ -1,4 +1,12 @@
 // Defines
+#define DEBUG_ON          // Comment this line out for a production build
+
+#ifdef DEBUG_ON
+#define DEBUG(...) Serial.println(__VA_ARGS__) // found this hint with __VA_ARGS__ on the web, it accepts different sets of arguments /Copych
+#else
+#define DEBUG(...)
+#endif
+
 #define NUM_MODES 2       // How many pedal modes will switch in cycle when button 1 is long-pressed
 #define VBAT_AIN 32       // Vbat sense (2:1 divider)
 #define CHRG_AIN 33       // Charge pin sense (10k pull-up)
@@ -16,12 +24,12 @@
 #define VBAT_NUM 10       // Number of vbat readings to average
 
 //GUI settings
-#define TRANSITION_TIME 500 // Frame transition time, ms
+#define TRANSITION_TIME 350 // Frame transition time, ms
 #define BAT_WIDTH 26        // Battery icon width
 #define CONN_ICON_WIDTH 11  // Connection status icons width
 #define FX_ICON_WIDTH 18    // Exxects icons width
 #define STATUS_HEIGHT 16    // Status line height
-#define FRAME_TIMEOUT 3000                      // (ms) to return to main UI from temporary UI frame 
+#define FRAME_TIMEOUT 3000  // (ms) to return to main UI from temporary UI frame 
 
 #ifdef TWOCOLOUR
 // Two-colour displays

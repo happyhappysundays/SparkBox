@@ -6,13 +6,16 @@ void screenOverlay(OLEDDisplay *display, OLEDDisplayUiState* state) {
     readBattery();  // Read analog voltage and average it
     isTimeout = false;
   }  
+  if ( curMode==MODE_PRESETS || curMode==MODE_BYPASS) {
+    display->setColor(BLACK);
+    display->fillRect(visibleLeft, 0, display->width()-BAT_WIDTH-visibleLeft, STATUS_HEIGHT);
+    fxIcons();
+  }
   display->setColor(BLACK);
   display->fillRect(0, 0, visibleLeft, STATUS_HEIGHT);
   display->fillRect(display->width()-BAT_WIDTH-1, 0, BAT_WIDTH+1, STATUS_HEIGHT);
   mainIcons();
-  if ( curMode==MODE_PRESETS || curMode==MODE_BYPASS) {
-    fxIcons();
-  }
+  
 }
 
 // frSomething functions are frame drawing of the UI
@@ -21,33 +24,62 @@ void screenOverlay(OLEDDisplay *display, OLEDDisplayUiState* state) {
 void frPresets(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t y) {
   static int scrollStep = -2; // speed of horiz scrolling tone names
   static ulong scrollCounter;
-  {
+#ifndef STALE_NUMBER
     display->setTextAlignment(TEXT_ALIGN_LEFT);
     display->setFont(HUGE_FONT);
-    int s1w = display->getStringWidth(String(display_preset_num + 1))+5;
+    int numW = display->getStringWidth(String(display_preset_num + 1))+5;
     display->setFont(BIG_FONT);
-    int s2w = display->getStringWidth(presets[CUR_EDITING].Name)+5;
-    if (s1w+s2w <= display->width()) {
-      scroller = ( display->width() - s1w - s2w ) / 2;
+    int nameW = display->getStringWidth(presets[CUR_EDITING].Name)+5;
+    if (numW+nameW <= display->width()) {
+      scroller = ( display->width() - numW - nameW ) / 2;
     } else {
       if ( millis() > scrollCounter ) {
         scroller = scroller + scrollStep;
-        if (scroller < (int)(display->width())-s1w-s2w-s1w-s2w) {
-          scroller = scroller + s1w + s2w;
+        if (scroller < (int)(display->width())-numW-nameW-numW-nameW) {
+          scroller = scroller + numW + nameW;
         }
         scrollCounter = millis() + 20;
       }
       display->setFont(HUGE_FONT);
-      display->drawString( x + scroller + s1w + s2w, 11 + y, String(display_preset_num + 1) ); // +1 for humans
+      display->drawString( x + scroller + numW + nameW, 11 + y, String(display_preset_num + 1) ); // +1 for humans
       display->setFont(BIG_FONT);
-      display->drawString(x + scroller + s1w + s2w + s1w, y + display->height()/2 - 6 ,presets[CUR_EDITING].Name);
+      display->drawString(x + scroller + numW + nameW + numW, y + display->height()/2 - 6 ,presets[CUR_EDITING].Name);
     }
     display->setFont(HUGE_FONT);
     display->drawString( x + scroller, 11 + y, String(display_preset_num + 1) ); // +1 for humans
     display->setFont(BIG_FONT);
-    display->drawString(x + scroller + s1w, y + display->height()/2 - 6 ,presets[CUR_EDITING].Name);
-  }
-  ui.setFrameAnimation(SLIDE_DOWN);
+    display->drawString(x + scroller + numW, y + display->height()/2 - 6 ,presets[CUR_EDITING].Name);
+#else
+    display->setTextAlignment(TEXT_ALIGN_LEFT);
+    display->setColor(WHITE);
+    display->setFont(HUGE_FONT);
+    int numW = display->getStringWidth(String(display_preset_num + 1))+5;
+    display->setFont(BIG_FONT);
+    int nameW = display->getStringWidth(presets[CUR_EDITING].Name)+5;
+    if (numW+nameW <= display->width()) {
+      scroller = ( display->width() - numW ) / 2;
+      display->setTextAlignment(TEXT_ALIGN_CENTER);
+    } else {
+      display->setTextAlignment(TEXT_ALIGN_LEFT);
+      if ( millis() > scrollCounter ) {
+        scroller = scroller + scrollStep;
+        if (scroller < 0) {
+          scroller = scroller + nameW;
+        }
+        scrollCounter = millis() + 20;
+      }
+      display->setFont(BIG_FONT);
+      display->drawString( x + scroller - nameW , y + display->height()/2 - 6 ,presets[CUR_EDITING].Name);
+    }
+    display->setFont(BIG_FONT);
+    display->drawString( x + scroller , y + display->height()/2 - 6 ,presets[CUR_EDITING].Name);
+    display->setColor(BLACK);
+    display->fillRect(display->width()-numW+x+2, STATUS_HEIGHT+y, numW-2, display->height()-STATUS_HEIGHT);
+    display->setFont(HUGE_FONT);
+    display->setColor(WHITE);
+    display->setTextAlignment(TEXT_ALIGN_RIGHT);
+    display->drawString( display->width()+x, STATUS_HEIGHT-5+y, String(display_preset_num + 1) ); // +1 for humans
+#endif
 }
 
 // EFFECTS MODE =======================================================================
@@ -61,28 +93,27 @@ void frEffects(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16
   
   display->setTextAlignment(TEXT_ALIGN_LEFT);
   display->setFont(SMALL_FONT);
-  int s1w = display->getStringWidth(String(display_preset_num + 1))+5;  // Width of the 1st string representing the preset number
-  int s2w = display->getStringWidth(presets[CUR_EDITING].Name)+5;       // Width of the 2nd string representing the name of the preset
-  if (s1w+s2w <= visibleW) {
-    scroller = ( visibleW - s1w - s2w ) / 2;
+  int numW = display->getStringWidth(String(display_preset_num + 1))+5;  // Width of the 1st string representing the preset number
+  int nameW = display->getStringWidth(presets[CUR_EDITING].Name)+5;       // Width of the 2nd string representing the name of the preset
+  if (numW+nameW <= visibleW) {
+    scroller = ( visibleW - numW - nameW ) / 2;
   } else {
     if ( millis() > scrollCounter ) {
       scroller = scroller + scrollStep;
-      if (scroller < (int)(visibleW)-s1w-s2w-s1w-s2w) {
-        scroller = scroller + s1w + s2w;
+      if (scroller < (int)(visibleW)-numW-nameW-numW-nameW) {
+        scroller = scroller + numW + nameW;
       }
       scrollCounter = millis() + 20;
     }
     
-    display->drawString( visibleLeft + x + scroller + s1w + s2w,  y, String(display_preset_num + 1) ); // +1 for humans
-    display->drawString( visibleLeft + x + scroller + s1w + s2w + s1w, y, presets[CUR_EDITING].Name);
+    display->drawString( visibleLeft + x + scroller + numW + nameW,  y, String(display_preset_num + 1) ); // +1 for humans
+    display->drawString( visibleLeft + x + scroller + numW + nameW + numW, y, presets[CUR_EDITING].Name);
   }
   display->drawString( visibleLeft + x + scroller,   y, String(display_preset_num + 1) ); // +1 for humans
-  display->drawString( visibleLeft + x + scroller + s1w, y, presets[CUR_EDITING].Name);
+  display->drawString( visibleLeft + x + scroller + numW, y, presets[CUR_EDITING].Name);
   // Mask left and right space for the top line status icons
   display->setColor(BLACK);
 
-  ui.setFrameAnimation(SLIDE_UP);  
 }
 
 // SCENES MODE =======================================================================
@@ -146,7 +177,7 @@ void frTuner(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t
   // Show tuner screen when requested by Spark
   display->clear();
   // Default display - draw meter bitmap and label
-  display->drawXbm(0, Y5, tuner_width, tuner_height, tuner_bits); 
+  display->drawXbm(0+x, Y5+y, tuner_width, tuner_height, tuner_bits); 
   //display->setTextAlignment(TEXT_ALIGN_LEFT);
   //display->drawString(0,0,"Tuner");
   test_val = msg.val;
@@ -165,7 +196,7 @@ void frTuner(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t
     meter_y = (display->height()) - (tuner_height)*cos(radians(90-val_deg))+ (display->height()-tuner_height*tuner_share/4);
     hub_x = (tuner_width/2) - (tuner_width/2/4)*sin(radians(90-val_deg));
     hub_y = (display->height()) - (display->height()/4)*cos(radians(90-val_deg)) ;
-    display->drawLine(meter_x,meter_y,hub_x,hub_y); // Draw line from hub to meter edge
+    display->drawLine(meter_x+x, meter_y+y, hub_x+x, hub_y+y); // Draw line from hub to meter edge
   } else {
     // Nothing to show
     display->drawString(display->width()/2+x,note_y+y,"..."); // Not detected
@@ -182,8 +213,6 @@ void mainIcons() {
 }
 
 void fxIcons() {
-  oled.setColor(BLACK);
-  oled.fillRect(2*(CONN_ICON_WIDTH+1),0,(FX_ICON_WIDTH+1)*4+1,STATUS_HEIGHT);
   // Drive icon    
   drawStatusIcon(dr_bits, dr_width, STATUS_HEIGHT, 2*(CONN_ICON_WIDTH+1)+1,                     0, FX_ICON_WIDTH,  STATUS_HEIGHT, presets[CUR_EDITING].effects[FX_DRIVE].OnOff);
   // Mod icon
@@ -209,19 +238,19 @@ void fxHugeIcons(int x, int y) {
 void dump_preset(SparkPreset preset) {
   int i,j;
 
-  Serial.print(preset.curr_preset); Serial.print(" ");
-  Serial.print(preset.preset_num); Serial.print(" ");
-  Serial.print(preset.Name); Serial.print(" ");
-  Serial.println(preset.Description);
+  DEBUG(preset.curr_preset); DEBUG(" ");
+  DEBUG(preset.preset_num); DEBUG(" ");
+  DEBUG(preset.Name); DEBUG(" ");
+  DEBUG(preset.Description);
 
   for (j=0; j<7; j++) {
-    Serial.print("    ");
-    Serial.print(preset.effects[j].EffectName); Serial.print(" ");
-    if (preset.effects[j].OnOff == true) Serial.print(" On "); else Serial.print (" Off ");
+    DEBUG("    ");
+    DEBUG(preset.effects[j].EffectName); DEBUG(" ");
+    if (preset.effects[j].OnOff == true) DEBUG(" On "); else DEBUG (" Off ");
     for (i = 0; i < preset.effects[j].NumParameters; i++) {
-      Serial.print(preset.effects[j].Parameters[i]); Serial.print(" ");
+      DEBUG(preset.effects[j].Parameters[i]); DEBUG(" ");
     }
-    Serial.println();
+    DEBUG();
   }
 }
 
@@ -297,7 +326,7 @@ void doPushButtons(void)
           // if the button press duration exceeds our bounce threshold, then we register a tap
           if (buttonPressDuration[i] > debounceThreshold){
             buttonClick[i] = true;
-            Serial.println("Tap " + String(1<<i));
+            DEBUG("Tap " + String(1<<i));
             onTap(1<<i);
           }
         }
@@ -321,24 +350,24 @@ void doPushButtons(void)
     if (zeroCounter>10) {maxFlags = 0;}
   }
   if (oldActiveFlags != ActiveFlags) {
-//    Serial.print(ActiveFlags);
+//    DEBUG(ActiveFlags);
     oldActiveFlags = ActiveFlags;
     maxFlags = max(maxFlags, ActiveFlags);    
   }
   if (LongPressFlags >0 && LongPressFlags==ActiveFlags && !longPressFired){
-    Serial.println("Long press " + String(LongPressFlags));
+    DEBUG("Long press " + String(LongPressFlags));
     longPressFired = true;  // In case when the next function is async and time consuming, 
                             // let's flush it here not to call the function twice or more in a row
     onLongPress(LongPressFlags);  // function to execute on Long Press event 
   } else if (LongPressFlags >0 && LongPressFlags==ActiveFlags && autoFireEnabled) { //Autofire 
     if (autoFireTimer < millis()-autoFireDelay) { 
-      Serial.println("AutoFire " + String(LongPressFlags));
+      DEBUG("AutoFire " + String(LongPressFlags));
       autoFireTimer = millis();
       onAutoClick(LongPressFlags);  // function to execute on Long Press event 
     }
   }
   if (ClickFlags > 0 && ActiveFlags ==0){
-    Serial.println("Click " + String(maxFlags));
+    DEBUG("Click " + String(maxFlags));
     onClick(maxFlags);      // This will give you multi-button clicks
   //  onClick(clickFlags);  // This will give only single button at a time to be clicked
   }
@@ -510,15 +539,21 @@ void refreshUI(void) {
   }
 
   if (oldMode!=curMode) {
-    switch (curMode) {
+    switch (oldMode) {
       case MODE_PRESETS:
+        ui.setFrameAnimation(SLIDE_DOWN);
+        break;
       case MODE_EFFECTS:
-        ui.transitionToFrame(curMode);
+        ui.setFrameAnimation(SLIDE_DOWN);
+        break;
+      case MODE_LEVEL:
+        ui.setFrameAnimation(SLIDE_DOWN);
         break;
       default:
-        ui.switchToFrame(curMode);
         break;
     }
+    if (tempUI) {ui.setFrameAnimation(SLIDE_UP);}    
+    ui.transitionToFrame(curMode);
     updateFxStatuses();
     oldMode = curMode;
     DEBUG("Switch to mode: " + String(curMode));
@@ -590,8 +625,8 @@ void drawTextIcon(const String &text, int x, int y, int w, int h, bool active) {
 void drawBatteryH(int x, int y, int w, int h, int chg_percent, bool charging) {
   //draw gauge
   oled.setColor(WHITE);
-  oled.fillRect(x+2, y+2, constrain(map(chg_percent, 0, 100, 2, w-4), 2, (w*0.9)-3), h-4); // not to draw on the cap we use constrain
-  oled.fillRect(x+2, y+2+(h/4)-1, map(chg_percent, 0, 100, 2, w-4), h/2-2); // narrow gauge can draw on the cap
+  oled.fillRect(x+2, y+2, constrain(map(chg_percent, 0, 100, 0, w-4), 0, (w*0.9)-3), h-4); // not to draw on the cap we use constrain
+  oled.fillRect(x+2, y+2+(h/4)-1, map(chg_percent, 0, 100, 0, w-4), h/2-2); // narrow gauge can draw on the cap
   oled.setColor(INVERSE);
   if (charging) {
     chg_percent = 100; // overwrite because we don't really measure the process of charging
@@ -637,14 +672,16 @@ void readBattery(){
     vbat_ring_sum = (VBAT_NUM-1) * vbat_ring_sum / VBAT_NUM + vbat_result;
     vbat_result = vbat_ring_sum / VBAT_NUM;
     #ifndef NOSLEEP
-      // Low-battery go to sleep to save the LiPo's life
-      if (vbat_result < BATTERY_LOW * ADC_COEFF) {
-        oled.clear();
-        oled.setFont(MEDIUM_FONT);
-        oled.setColor(WHITE);
-        textAnimation("LOW BATTERY", 5000);
-        ESP_off();
-      }
+      #ifndef BATT_CHECK_0
+        // Low-battery go to sleep to save the LiPo's life
+        if ((vbat_result < BATTERY_LOW * ADC_COEFF) && (batteryCharging()<=0)) {
+          oled.clear();
+          oled.setFont(MEDIUM_FONT);
+          oled.setColor(WHITE);
+          textAnimation("LOW BATTERY", 5000);
+          ESP_off();
+        }
+      #endif
     #endif
   }
   chrg_result = analogRead(CHRG_AIN); // Check state of /CHRG output  
@@ -692,10 +729,10 @@ void ESP_off(){
   String s = "_________________";
 
   // Debug
-  Serial.print("Deep_sleep_pins = ");
-  Serial.print(deep_sleep_pins);
-  Serial.print(" RTC_present = ");
-  Serial.println(RTC_present);
+  DEBUG("Deep_sleep_pins = ");
+  DEBUG(deep_sleep_pins);
+  DEBUG(" RTC_present = ");
+  DEBUG(RTC_present);
     
   if (deep_sleep_pins > 0){
     oled.clear();
@@ -810,6 +847,7 @@ void ESP_on () {
   oled.displayOn();
   oled.setFont(MEDIUM_FONT);
   oled.setTextAlignment(TEXT_ALIGN_CENTER);
+  /*
   textAnimation(".",200,-5);
   textAnimation("*",100,3);
   textAnimation("x",100,-3);
@@ -824,6 +862,35 @@ void ESP_on () {
   textAnimation("___________",30,-8);
   textAnimation("_____________",20,-8);
   textAnimation("_______________",10,-8);
+  */
+  textAnimation("_______________",180,-8);
+  textAnimation("\\_______________",30,-8);
+  textAnimation("/\\______________",30,-8);
+  textAnimation("_/\\_____________",30,-8);
+  textAnimation("__/\\____________",30,-8);
+  textAnimation("___/\\___________",30,-8);
+  textAnimation("____/\\__________",30,-8);
+  textAnimation("_____/\\_________",30,-8);
+  textAnimation("______/\\________",30,-8);
+  textAnimation("_______/\\_______",30,-8);
+  textAnimation("________/\\______",30,-8);
+  textAnimation("_________/\\_____",30,-8);
+  textAnimation("__________/\\____",30,-8);
+  textAnimation("___________/\\___",30,-8);
+  textAnimation("____________/\\__",30,-8);
+  textAnimation("_____________/\\_",30,-8);
+  textAnimation("______________/\\",30,-8);
+  textAnimation("_______________/",30,-8);
+  textAnimation("______________|",30,-8);
+  textAnimation("               _____________",30,-8);
+  textAnimation("                    _______|",30,-8);
+  textAnimation("                           .",200,-5);
+  textAnimation("                           *",100,3);
+  textAnimation("                           x",100,-3);
+  textAnimation("                           X",100,-1);
+  textAnimation("                           x",100,-3);
+  textAnimation("                           .",100,-5);
+  textAnimation("                           -",50,-3);
 }
 
 // Checking the config if we have some pins with RTC connection which allows waking from a deep sleep. Otherwise we only can use light sleep
@@ -929,28 +996,28 @@ void doExpressionPedal() {
     if (effect_volume > 1.0) effect_volume = 1.0;
     if (effect_volume < 0.0) effect_volume = 0.0;
 #ifdef DUMP_ON
-    Serial.print("Pedal data: ");
-    Serial.print(express_result);
-    Serial.print(" : ");
-    Serial.println(effect_volume);
+    DEBUG("Pedal data: ");
+    DEBUG(express_result);
+    DEBUG(" : ");
+    DEBUG(effect_volume);
 #endif
     // If effect on/off
     if (expression_target) {
         // Send effect ON state to Spark and App only if OFF
         if ((effect_volume > 0.5)&&(!effectstate)) {
           change_generic_onoff(get_effect_index(msg.str1),true);
-          Serial.print("Turning effect ");
-          Serial.print(msg.str1);
-          Serial.println(" ON via pedal");
+          DEBUG("Turning effect ");
+          DEBUG(msg.str1);
+          DEBUG(" ON via pedal");
           effectstate = true;
         }
         // Send effect OFF state to Spark and App only if ON, also add hysteresis
         else if ((effect_volume < 0.3)&&(effectstate))
         {
           change_generic_onoff(get_effect_index(msg.str1),false);
-          Serial.print("Turning effect ");
-          Serial.print(msg.str1);
-          Serial.println(" OFF via pedal");
+          DEBUG("Turning effect ");
+          DEBUG(msg.str1);
+          DEBUG(" OFF via pedal");
           effectstate = false;
         }
     }

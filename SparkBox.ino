@@ -8,7 +8,7 @@
 //
 // Battery charge function defines. Please uncomment just one.
 // You have no mods to monitor the battery, so it will show empty
-//#define BATT_CHECK_0
+#define BATT_CHECK_0
 //
 // You are monitoring the battery via a 2:1 10k/10k resistive divider to GPIO23
 // You can see an accurate representation of the remaining battery charge and a kinda-sorta
@@ -17,7 +17,7 @@
 //
 // You have the battery monitor mod described above AND you have a connection between the 
 // CHRG pin of the charger chip and GPIO 33. Go you! Now you have a guaranteed charge indicator too.
-#define BATT_CHECK_2
+// #define BATT_CHECK_2
 //
 // Expression pedal define. Comment this out if you DO NOT have the expression pedal mod
 //#define EXPRESSION_PEDAL
@@ -38,13 +38,16 @@
 // Uncomment if two-colour OLED screens are used. Offsets some text and alternate tuner
 #define TWOCOLOUR
 //
+// Comment next line if you want preset number to scroll together with the name, otherwise it'll be locked in place
+#define STALE_NUMBER
+//
 // Uncomment if you don't want the pedal to sleep to save power, this also prevents low-battery sleep
 //#define NOSLEEP
 //
 // When adjusting the level of effects, always start with Master level settings. Comment this line out if you like it to remember your last choice
 #define RETURN_TO_MASTER
 //
-// Logical level of a button being pressed. If your buttons connects to GND, then comment this setting out.
+// Logical level of a button being pressed. If your buttons connect to GND, then comment this setting out.
 // This setting also affects Pull-up/down, and waking source settings. 
 #define ACTIVE_HIGH
 //
@@ -53,8 +56,11 @@
 //
 // GPIOs of the buttons in your setup in the form of switchPins[]{GPIO_for_button1, GPIO_for_button2, GPIO_for_button3, GPIO_for_button4, ... }
 int switchPins[]{17,5,18,23};                     // Switch gpio numbers (for those who already has built a pedal with these pins)
-//int switchPins[]{25,26,27,14};                      // Switch gpio numbers (for those who is building a pedal, these pins allow deep sleep)
-                                                
+//int switchPins[]{25,26,27,14};                      // Switch gpio numbers (recommended for those who is building a pedal, these pins allow deep sleep)
+//
+//
+//
+//
 //******************************************************************************************
 #ifdef SSD1306
   #include "SSD1306Wire.h"            // https://github.com/ThingPulse/esp8266-oled-ssd1306
@@ -80,7 +86,7 @@ int switchPins[]{17,5,18,23};                     // Switch gpio numbers (for th
 //******************************************************************************************
 
 #define PGM_NAME "SparkBox"
-#define VERSION "V0.84 alpha" 
+#define VERSION "V0.85 alpha" 
 
 #ifdef SSD1306
   SSD1306Wire oled(0x3c, 4, 15);        // Default OLED Screen Definitions - ADDRESS, SDA, SCL
@@ -162,9 +168,11 @@ int overlaysCount = 1;
 
 // SETUP() *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
 void setup() {
-  Serial.begin(115200);                       // Start serial debug console monitoring via ESP32
-  while (!Serial);
-
+  setCpuFrequencyMhz(180);
+  #ifdef DEBUG_ON
+    Serial.begin(115200);                       // Start serial debug console monitoring via ESP32
+    while (!Serial);
+  #endif
   display_preset_num = 0;
   int tmp_batt;
 
@@ -182,8 +190,8 @@ void setup() {
   // Initialize device OLED display, and flip screen, as OLED library starts upside-down
   ui.setTargetFPS(30);
   ui.disableAllIndicators();
-  ui.setFrameAnimation(SLIDE_LEFT);
   ui.setFrames(frames, frameCount);
+  ui.setFrameAnimation(SLIDE_UP);
   ui.setTimePerTransition(TRANSITION_TIME);
   ui.setOverlays(overlays, overlaysCount);
   ui.disableAutoTransition();
@@ -278,13 +286,13 @@ void loop() {
   // Check if a message needs to be processed
   if (update_spark_state()) {
     if (cmdsub == 0x170) {
-      Serial.println();
+      DEBUG();
       for (int i=0; i < 64; i++) {
         if (license_key[i] < 16)
-          Serial.print("0");
-        Serial.print(license_key[i], HEX);
+          DEBUG("0");
+        DEBUG(license_key[i], HEX);
       }
-      Serial.println();
+      DEBUG();
       change_hardware_preset(display_preset_num); // Refresh app preset when first connected
     }
  

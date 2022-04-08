@@ -1,7 +1,6 @@
 #ifndef SparkStructures_h
 #define SparkStructures_h
 
-#define DEBUG(x) Serial.println(x)
 #define STR_LEN 40
 
 typedef struct  {
