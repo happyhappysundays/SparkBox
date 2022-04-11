@@ -8,9 +8,9 @@
 #endif
 
 #define NUM_MODES 2       // How many pedal modes will switch in cycle when button 1 is long-pressed
-#define VBAT_AIN 32       // Vbat sense (2:1 divider)
-#define CHRG_AIN 33       // Charge pin sense (10k pull-up)
-#define EXP_AIN 34        // Expression pedal input (3V3)
+#define VBAT_AIN 32       // Vbat sense GPIO (2:1 divider)
+#define CHRG_AIN 33       // Charge pin sense GPIO (10k pull-up)
+#define EXP_AIN 34        // Expression pedal input GPIO (a pot (usually 10-50kOhm) connected via an additional 1kOhm resistor to 3V3)
 #define MAX_ATTEMPTS 5    // (Re-)Connection attempts before going to sleep
 #define MILLIS_PER_ATTEMPT 6000 // milliseconds per connection attempts, this is used when reconnecting, not quite as expected though
 
@@ -61,9 +61,6 @@
 #define HUGE_FONT Roboto_Mono_Bold_52
 
 // Globals
-// static int iRSSI = 0;                           // BLE signal strength
-int vbat_ring_count = 0;
-int vbat_ring_sum = 0;
 int vbat_result = 0;                            // For battery monitoring
 int express_ring_count = 0;
 int express_ring_sum = 0;

@@ -17,7 +17,7 @@
 //
 // You have the battery monitor mod described above AND you have a connection between the 
 // CHRG pin of the charger chip and GPIO 33. Go you! Now you have a guaranteed charge indicator too.
-// #define BATT_CHECK_2
+//#define BATT_CHECK_2
 //
 // Expression pedal define. Comment this out if you DO NOT have the expression pedal mod
 //#define EXPRESSION_PEDAL
@@ -26,7 +26,7 @@
 //#define DUMP_ON
 //
 // Uncomment for better Bluetooth compatibility with Android devices
-#define CLASSIC
+//#define CLASSIC
 //
 // Uncomment when using a Heltec module as their implementation doesn't support setMTU()
 #define HELTEC_WIFI
@@ -36,7 +36,7 @@
 //#define SH1106
 //
 // Uncomment if two-colour OLED screens are used. Offsets some text and alternate tuner
-#define TWOCOLOUR
+//#define TWOCOLOUR
 //
 // Comment next line if you want preset number to scroll together with the name, otherwise it'll be locked in place
 #define STALE_NUMBER
@@ -58,7 +58,9 @@
 int switchPins[]{17,5,18,23};                     // Switch gpio numbers (for those who already has built a pedal with these pins)
 //int switchPins[]{25,26,27,14};                      // Switch gpio numbers (recommended for those who is building a pedal, these pins allow deep sleep)
 //
-//
+// Startup splash animation
+#define ANIMATION_1
+//#define ANIMATION_2
 //
 //
 //******************************************************************************************
@@ -86,7 +88,7 @@ int switchPins[]{17,5,18,23};                     // Switch gpio numbers (for th
 //******************************************************************************************
 
 #define PGM_NAME "SparkBox"
-#define VERSION "V0.85 alpha" 
+#define VERSION "V0.86 alpha" 
 
 #ifdef SSD1306
   SSD1306Wire oled(0x3c, 4, 15);        // Default OLED Screen Definitions - ADDRESS, SDA, SCL
@@ -116,6 +118,7 @@ enum eMode_t {MODE_PRESETS, MODE_EFFECTS, MODE_SCENES, MODE_TUNER, MODE_BYPASS, 
 eMode_t curMode = MODE_PRESETS;
 eMode_t oldMode = MODE_PRESETS;
 eMode_t returnMode = MODE_PRESETS;
+eMode_t mainMode = MODE_PRESETS;
 enum ePresets_t {HW_PRESET_0, HW_PRESET_1, HW_PRESET_2, HW_PRESET_3, TMP_PRESET, CUR_EDITING, TMP_PRESET_ADDR=0x007f};
 enum eEffects_t {FX_GATE, FX_COMP, FX_DRIVE, FX_AMP, FX_MOD, FX_DELAY, FX_REVERB};
 #ifdef ACTIVE_HIGH
@@ -195,6 +198,7 @@ void setup() {
   ui.setTimePerTransition(TRANSITION_TIME);
   ui.setOverlays(overlays, overlaysCount);
   ui.disableAutoTransition();
+ // ui.enableAutoTransition();
   // Initialising the UI will init the display too.
   ui.init();
   //oled.init();
@@ -260,6 +264,7 @@ void setup() {
   if (!scan_result) {
 #ifndef NOSLEEP
     ESP_off();
+    esp_restart(); // if it sleeps deep, then we never get here, but if light, then we need to restart the unit
 #else
     esp_restart();
 #endif
