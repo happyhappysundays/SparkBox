@@ -922,7 +922,7 @@ int Check_RTC() {
       if(switchPins[i] == RTC_pins[j]) {
         sw_RTC[i] = true;
         RTC_present++;
-        if (RTC_present == 1) {RTC_1st = switchPins[i];}
+        if (RTC_present == 1) {RTC_1st = i;}
         DEBUG("RTC pin: " + String(switchPins[i]));
         break;
       }
