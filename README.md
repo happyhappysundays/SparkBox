@@ -1,20 +1,22 @@
-# SparkBox V0.71
+# SparkBox V0.86 alpha
 SparkBox is a BT pedal for the Positive Grid Spark 40.  I only needed the functionality of the simpler BT pedals. However many of them use captured hex chunks to communicate with the Spark, or were Python based. Instead I wanted to use Paul Hamshere's amazing code to create and process real messages. Also I wanted to extend the functionality a bit and make an attractive UI.
 
 # Functions
-- Expression pedal input on D34 for altering the current parameter or on/off switch
+- Expression pedal input on GPIO34 for altering the current parameter or on/off switch
 - Uses BLE so that it can be used with music function of the Spark app
 - Allows connection of the app for full simultaneous control
+- Supports the most common diy display types: SSD1306 and SH1106
 - Switch presets either on footswitch, app or Spark to update display
 - Switch on and off all four major effects dynamically
 - Graphically display the effect state on the display
 - Supports 4-button pedals
-- Hold down any switch for 1s to switch between Effect mode and Preset mode
 - Battery level indicator on UI
-- BLE RSSI indicator
-- Now with remote guitar tuner display! Select from Spark, or hold all four buttons down to enter/exit.
-- Inter-operable with both conventional and Heltec ESP32 modules.
-- Sleep modes added to reduce power when disconnected - only for supported hardware
+- Long press (more than 1s) BUTTON 1 to switch between Effect mode and Preset mode
+- Long press BUTTON 3 to adjust effect parameters: use BUTTONS 2 and 4 to decrement/increment, BUTTON 1 to cycle thru parameters and long press BUTTON 3 to save your edits back to the amp.
+- Now with remote guitar TUNER display! Long press BUTTONS 1 and 2 simultaneously, or turn it ON from the app or on the amp.
+- Bypass mode, invoked by long pressing BUTTONS 3 and 4 simultaneously, allows adjusting effect levels to match your raw pickup output. 
+- Inter-operable with both conventional and Heltec ESP32 modules. Also tested on WEMOS LOLIN32 Lite with battery support.
+- Stand-by mode added to reduce power when disconnected - light or deep ESP32 sleep mode will be configured automatically depending on GPIOs of the buttons and logical levels choosen in your build.
 
 # Arduino libraries and board versions
 Under Files->Preferences->Additional Boards Manager URLs, enter the following:
@@ -31,43 +33,60 @@ Under Tools->Manage Libraries ensure that you have the following libraries and v
 
 # Compile options
 
-**define CLASSIC**
+- **define CLASSIC**
 
 Uncomment this to use with Android devices that are happier with classic BT code.
 
-**define BATT_CHECK_0**
+- **define BATT_CHECK_0**
 
 You have no mods to monitor the battery, so it will show empty (default).
 
-**define BATT_CHECK_1**
+- **define BATT_CHECK_1**
 
 You are monitoring the battery via a 2:1 10k/10k resistive divider to GPIO23.
 You can see an accurate representation of the remaining battery charge and a kinda-sorta
 indicator of when the battery is charging. Maybe.
 
-**define BATT_CHECK_2**
+- **define BATT_CHECK_2**
 
 You have the battery monitor mod described above AND you have a connection between the 
 CHRG pin of the charger chip and GPIO 33. Go you! Now you have a guaranteed charge indicator too.
 
-**define EXPRESSION_PEDAL**
+- **define EXPRESSION_PEDAL**
 
 Expression pedal define. Comment this out if you DO NOT have the expression pedal mod.
 
-**define DUMP_ON**
+- **define DUMP_ON**
+
 Dump preset define. Comment out if you'd prefer to not see so much text output
 
-**define CLASSIC**
+- **define CLASSIC**
+
 Uncomment for better Bluetooth compatibility with Android devices
 
-**define HELTEC_WIFI**
+- **define HELTEC_WIFI**
+
 Uncomment when using a Heltec module as their implementation doesn't support setMTU()
 
-**define TWOCOLOUR**
-Uncomment if two-colour OLED screens are used. Offsets some text and shows an alternate tuner.
+- **define SSD1306** OR **define SH1106**
 
-**define NOSLEEP**
+Choose and uncomment the type of OLED display that you use: 0.96" SSD1306 or 1.3" SH1106 
+
+- **define TWOCOLOUR**
+
+Uncomment if two-colour OLED screens are used. Offsets some text and shows an alternate tuner
+
+- **define NOSLEEP**
+
 Uncomment if you'd prefer not to use the power-saving sleep modes
+
+- **define ACTIVE_HIGH**
+
+Comment out if your buttons connect to the GND rather than to VCC, this will engage internal pullup and sleep routines also. If you make a decision on the build right now, it's recommended to connect buttons to VCC and to use ACTIVE_HIGH directive.
+
+- **int switchPins[]{25,26,27,14};**
+
+GPIOs of the buttons in your setup in the form of switchPins[]{GPIO_for_button1, GPIO_for_button2, GPIO_for_button3, GPIO_for_button4, ... }. Note that GPIOs 25,26,27 and 14 are recommended ones if you want to get the least battery drain in the stand-by mode. 
 
 # Heltec module version
 ![alt text](https://github.com/happyhappysundays/SparkBox/blob/main/Pictures/Dev_board.jpg?raw=true)
