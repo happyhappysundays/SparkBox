@@ -28,7 +28,7 @@ Under Tools->Board->Board manager ensure that you have the following version:
 - ESP32 by Espressif 2.0.2 (ESP32)
 
 Under Tools->Manage Libraries ensure that you have the following libraries and versions:
-- ESP8266 and ESP32 OLED driver for SSD1306 by ThingPulse 4.2.1 (ESP32)
+- ThingPulse SSD1306 driver 4.2.1 (ESP32)
 - NimBLE-Arduino 1.3.6
 
 # Compile options
@@ -102,7 +102,7 @@ GPIOs of the buttons in your setup in the form of switchPins[]{GPIO_for_button1,
 ![alt text](https://github.com/happyhappysundays/SparkBox/blob/main/Pictures/meter_during.jpg?raw=true)
 ![alt text](https://github.com/happyhappysundays/SparkBox/blob/main/Pictures/thumbnail_IMG_7475.jpg?raw=true)
 ![alt text](https://github.com/happyhappysundays/SparkBox_old/blob/main/Pictures/V0_4.jpg?raw=true)
-![alt text](https://github.com/happyhappysundays/SparkBox/blob/main/Pictures/SparkBox_Heltec_Exp.png?raw=true)
+![alt text](https://github.com/happyhappysundays/SparkBox_old/blob/main/Pictures/SparkBox_Heltec_Exp.png?raw=true)
 ![alt text](https://github.com/happyhappysundays/SparkBox_old/blob/main/Pictures/SparkBox_Battery.png?raw=true)
 
 # ESP32 pedal parts list

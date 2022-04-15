@@ -36,7 +36,7 @@
 //#define SH1106
 //
 // Uncomment if two-colour OLED screens are used. Offsets some text and alternate tuner
-//#define TWOCOLOUR
+#define TWOCOLOUR
 //
 // Comment next line if you want preset number to scroll together with the name, otherwise it'll be locked in place
 #define STALE_NUMBER
@@ -55,8 +55,8 @@
 #define NUM_SWITCHES 4
 //
 // GPIOs of the buttons in your setup in the form of switchPins[]{GPIO_for_button1, GPIO_for_button2, GPIO_for_button3, GPIO_for_button4, ... }
-int switchPins[]{17,5,18,23};                     // Switch gpio numbers (for those who already has built a pedal with these pins)
-//int switchPins[]{25,26,27,14};                      // Switch gpio numbers (recommended for those who is building a pedal, these pins allow deep sleep)
+uint8_t switchPins[]{17,5,18,23};                     // Switch gpio numbers (for those who already has built a pedal with these pins)
+//uint8_t switchPins[]{25,26,27,14};                    // Switch gpio numbers (recommended for those who is building a pedal, these pins allow deep sleep)
 //
 // Startup splash animation
 #define ANIMATION_1
@@ -88,7 +88,7 @@ int switchPins[]{17,5,18,23};                     // Switch gpio numbers (for th
 //******************************************************************************************
 
 #define PGM_NAME "SparkBox"
-#define VERSION "V0.86 alpha" 
+#define VERSION "V0.87" 
 
 #ifdef SSD1306
   SSD1306Wire oled(0x3c, 4, 15);        // Default OLED Screen Definitions - ADDRESS, SDA, SCL

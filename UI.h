@@ -47,8 +47,8 @@
 #define X1 64 // Please wait, Version, Connecting, SparkBox, Reconnecting
 #define Y1 16
 #define Y2 42
-#define Y3 13
-#define Y4 36
+#define Y3 16 // was 13
+#define Y4 41 // was 36
 #define Y5 0
 #define tuner_share 4
 #define note_y 16
@@ -113,7 +113,7 @@ const char spark_reverbs[][STR_LEN+1]{"bias.reverb"};
 
 // knob, fx, param
 const char spark_knobs[7][5][12] {
-  {"0-0","0-1","0-2","0-3","0-4"},                  //noise gate
+  {"THRESHOLD","DECAY","0-2","0-3","0-4"},          //noise gate
   {"1-0","1-1","1-2","1-3","1-4"},                  //compressor
   {"DRIVE","2-1","2-2","2-3","2-4"},                //drive
   {"GAIN","TREBLE","MID","BASS","MASTER"},          //amp

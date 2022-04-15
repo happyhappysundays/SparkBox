@@ -395,6 +395,10 @@ uint8_t app_read() {
 #ifdef CLASSIC  
   else
     return bt->read();
+#else
+  else {
+    return(0);
+  }
 #endif
 }
 
