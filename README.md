@@ -5,7 +5,7 @@ SparkBox is a BT pedal for the Positive Grid Spark 40.  I only needed the functi
 - Expression pedal input on GPIO34 for altering the current parameter or on/off switch
 - Uses BLE so that it can be used with music function of the Spark app
 - Allows connection of the app for full simultaneous control
-- Supports the most common diy display types: SSD1306 and SH1106
+- Supports the most common DIY display types: SSD1306 and SH1106
 - Switch presets either on footswitch, app or Spark to update display
 - Switch on and off all four major effects dynamically
 - Graphically display the effect state on the display
@@ -84,7 +84,7 @@ Uncomment if you'd prefer not to use the power-saving sleep modes
 
 Comment out if your buttons connect to the GND rather than to VCC, this will engage internal pullup and sleep routines also. If you make a decision on the build right now, it's recommended to connect buttons to VCC and to use ACTIVE_HIGH directive.
 
-- **int switchPins[]{25,26,27,14};**
+- **uint8_t switchPins[]{25,26,27,14};**
 
 GPIOs of the buttons in your setup in the form of switchPins[]{GPIO_for_button1, GPIO_for_button2, GPIO_for_button3, GPIO_for_button4, ... }. Note that GPIOs 25,26,27 and 14 are recommended ones if you want to get the least battery drain in the stand-by mode. 
 
