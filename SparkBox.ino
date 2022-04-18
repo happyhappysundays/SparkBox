@@ -36,7 +36,7 @@
 //#define SH1106
 //
 // Uncomment if two-colour OLED screens are used. Offsets some text and alternate tuner
-#define TWOCOLOUR
+//#define TWOCOLOUR
 //
 // Comment next line if you want preset number to scroll together with the name, otherwise it'll be locked in place
 #define STALE_NUMBER
@@ -59,8 +59,8 @@ uint8_t switchPins[]{17,5,18,23};                     // Switch gpio numbers (fo
 //uint8_t switchPins[]{25,26,27,14};                    // Switch gpio numbers (recommended for those who is building a pedal, these pins allow deep sleep)
 //
 // Startup splash animation
-#define ANIMATION_1
-//#define ANIMATION_2
+//#define ANIMATION_1
+#define ANIMATION_2
 //
 //
 //******************************************************************************************

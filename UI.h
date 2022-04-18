@@ -9,7 +9,9 @@
 
 #define NUM_MODES 2       // How many pedal modes will switch in cycle when button 1 is long-pressed
 #define VBAT_AIN 32       // Vbat sense GPIO (2:1 divider)
-#define CHRG_AIN 33       // Charge pin sense GPIO (10k pull-up)
+#ifdef BATT_CHECK_2
+  #define CHRG_AIN 33       // Charge pin sense GPIO (10k pull-up). Don't tie pin up if not using charge detection.
+#endif
 #define EXP_AIN 34        // Expression pedal input GPIO (a pot (usually 10-50kOhm) connected via an additional 1kOhm resistor to 3V3)
 #define MAX_ATTEMPTS 5    // (Re-)Connection attempts before going to sleep
 #define MILLIS_PER_ATTEMPT 6000 // milliseconds per connection attempts, this is used when reconnecting, not quite as expected though

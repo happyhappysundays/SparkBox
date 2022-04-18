@@ -702,7 +702,11 @@ void readBattery(){
       #endif
     #endif
   }
+#ifdef BATT_CHECK_2
   chrg_result = analogRead(CHRG_AIN); // Check state of /CHRG output  
+#else
+  chrg_result = 0;
+#endif
   //DEBUG(vbat_result/ADC_COEFF);
 }
 
