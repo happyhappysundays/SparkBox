@@ -76,17 +76,33 @@ Choose and uncomment the type of OLED display that you use: 0.96" SSD1306 or 1.3
 
 Uncomment if two-colour OLED screens are used. Offsets some text and shows an alternate tuner
 
+- **#define STALE_NUMBER**
+
+Uncomment if you want preset number to scroll together with the name, otherwise it'll be locked in place
+
 - **define NOSLEEP**
 
 Uncomment if you'd prefer not to use the power-saving sleep modes
+
+- **define RETURN_TO_MASTER**
+
+When adjusting the level of effects, always start with Master level settings. Comment this line out if you like it to remember your last choice
 
 - **define ACTIVE_HIGH**
 
 Comment out if your buttons connect to the GND rather than to VCC, this will engage internal pullup and sleep routines also. If you make a decision on the build right now, it's recommended to connect buttons to VCC and to use ACTIVE_HIGH directive.
 
+- **define NUM_SWITCHES 4**
+
+How many switches do we have
+
 - **uint8_t switchPins[]{25,26,27,14};**
 
 GPIOs of the buttons in your setup in the form of switchPins[]{GPIO_for_button1, GPIO_for_button2, GPIO_for_button3, GPIO_for_button4, ... }. Note that GPIOs 25,26,27 and 14 are recommended ones if you want to get the least battery drain in the stand-by mode. 
+
+- **define ANIMATION_1 or ANIMATION_2**
+
+Until one or the other is voted as a winner you can choose between two animations at startup.
 
 # Heltec module version
 ![alt text](https://github.com/happyhappysundays/SparkBox/blob/main/Pictures/Dev_board.jpg?raw=true)
