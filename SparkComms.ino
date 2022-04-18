@@ -393,13 +393,12 @@ uint8_t app_read() {
      return b;
   }
 #ifdef CLASSIC  
-  else
-    return bt->read();
-#else
   else {
-    return(0);
+    return bt->read();
   }
 #endif
+  // Never gets here
+  return(0);
 }
 
 void app_write(byte *buf, int len) {
