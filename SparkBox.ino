@@ -42,7 +42,7 @@
 #define STALE_NUMBER
 //
 // Uncomment if you don't want the pedal to sleep to save power, this also prevents low-battery sleep
-//#define NOSLEEP
+#define NOSLEEP
 //
 // When adjusting the level of effects, always start with Master level settings. Comment this line out if you like it to remember your last choice
 #define RETURN_TO_MASTER
@@ -59,8 +59,8 @@ uint8_t switchPins[]{17,5,18,23};                     // Switch gpio numbers (fo
 //uint8_t switchPins[]{25,26,27,14};                    // Switch gpio numbers (recommended for those who is building a pedal, these pins allow deep sleep)
 //
 // Startup splash animation
-//#define ANIMATION_1
-#define ANIMATION_2
+#define ANIMATION_1
+//#define ANIMATION_2
 //
 //
 //******************************************************************************************
@@ -88,7 +88,7 @@ uint8_t switchPins[]{17,5,18,23};                     // Switch gpio numbers (fo
 //******************************************************************************************
 
 #define PGM_NAME "SparkBox"
-#define VERSION "V0.87" 
+#define VERSION "V0.88" 
 
 #ifdef SSD1306
   SSD1306Wire oled(0x3c, 4, 15);        // Default OLED Screen Definitions - ADDRESS, SDA, SCL
