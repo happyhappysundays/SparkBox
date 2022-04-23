@@ -18,9 +18,11 @@
 
 #define HARD_PRESETS 24   // number of hard-coded presets in SparkPresets.h
 //
-#define ADC_COEFF 576.66  // Multiplier to get ADC value out of voltage
-#define BATTERY_LOW 3.30  // Noise floor of 0%, if we measure such voltage it's better to go to sleep 
-#define BATTERY_100 4.20  // Noise floor of 100%
+#define ADC_COEFF 573     // Multiplier to get ADC value out of voltage
+#define BATTERY_FUDGE 3.65// Fudge factor to speed up initial averaging calcs
+#define BATTERY_OFF 3.69  // 10% capacity, if we measure such voltage it's better to go to sleep 
+#define BATTERY_LOW 3.71  // 15% capacity. Lowest safe "empty" limit
+#define BATTERY_100 4.15  // 95% capacity
 #define BATTERY_CHRG 4.26 // Totally empirical, adjust as required. Currently 4.26V-ish
 #define CHRG_LOW 3.47     // Charging voltage detection
 #define VBAT_NUM 10       // Number of vbat readings to average
@@ -63,6 +65,8 @@
 #define HUGE_FONT Roboto_Mono_Bold_52
 
 // Globals
+static int vbat_ring_count = 0;                 // Must be global for battery averaging
+static int vbat_ring_sum = 0;
 int vbat_result = 0;                            // For battery monitoring
 int express_ring_count = 0;
 int express_ring_sum = 0;
@@ -75,6 +79,7 @@ int RTC_pins[]{0,2,4,12,13,14,15,25,26,27,32,33,34,35,36,37,38,39}; // These are
 bool sw_RTC[NUM_SWITCHES];
 int RTC_present = 0;                            // Number of RTC pins present in the config
 int RTC_1st = -1;
+
 // BUTTONS SECTION ====================================================================
 const unsigned long longPressThreshold = 800;   // the threshold (in milliseconds) before a long press is detected
 const unsigned long autoFireDelay = 120;        // the threshold (in milliseconds) between clicks if autofire is enabled
