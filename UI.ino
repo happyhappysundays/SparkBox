@@ -671,13 +671,14 @@ void textAnimation(const String &s, ulong msDelay, int yShift=0, bool show=true)
 
 // Read the ADC, average the result and set globals: vbat_result, chrg_result
 void readBattery(){
-  static int vbat_ring_count = 0;
-  static int vbat_ring_sum = 0;
   vbat_result = analogRead(VBAT_AIN); // Read battery voltage
+  //Serial.print(vbat_result);
+  //Serial.print(" ");
+  
   // To speed up the display when a battery is connected from scratch
   // ignore/fudge any readings below the lower threshold
-  if (vbat_result < BATTERY_LOW * ADC_COEFF) {
-    vbat_result = BATTERY_LOW * ADC_COEFF;
+  if (vbat_result < BATTERY_FUDGE * ADC_COEFF) {
+    vbat_result = BATTERY_FUDGE * ADC_COEFF;
   }
   // While collecting data
   if (vbat_ring_count < VBAT_NUM) {
@@ -688,11 +689,13 @@ void readBattery(){
   // Once enough is gathered, do a decimating average
   else {
     vbat_ring_sum = (VBAT_NUM-1) * vbat_ring_sum / VBAT_NUM + vbat_result;
-    vbat_result = vbat_ring_sum / VBAT_NUM;
-    #ifndef NOSLEEP
+    vbat_result = vbat_ring_sum / VBAT_NUM;    
+
+  //  I think it best to make saving the LiPo battery NOT optional
+  //  #ifndef NOSLEEP
       #ifndef BATT_CHECK_0
         // Low-battery go to sleep to save the LiPo's life
-        if ((vbat_result < BATTERY_LOW * ADC_COEFF) && (batteryCharging()<=0)) {
+        if ((vbat_result < BATTERY_OFF * ADC_COEFF) && (batteryCharging()<=0)) {
           oled.clear();
           oled.setFont(MEDIUM_FONT);
           oled.setColor(WHITE);
@@ -700,8 +703,9 @@ void readBattery(){
           ESP_off();
         }
       #endif
-    #endif
+  //  #endif
   }
+  
 #ifdef BATT_CHECK_2
   chrg_result = analogRead(CHRG_AIN); // Check state of /CHRG output  
 #else
@@ -712,7 +716,12 @@ void readBattery(){
 
 // Calc the charge percentage
 int batteryPercent(int vbat_value) {
-  return constrain(map(vbat_value, BATTERY_LOW*ADC_COEFF, BATTERY_100*ADC_COEFF, 0, 100), 0, 100);  
+  int vbat = 0; // Debug
+  vbat = constrain(map(vbat_value, BATTERY_LOW*ADC_COEFF, BATTERY_100*ADC_COEFF, 0, 100), 0, 100);  
+  //Serial.print(vbat_value);
+  //Serial.print(" ");
+  //Serial.println(vbat);
+  return vbat;
 }
 
 // Charging or not? Returns -1 if unsupported, 0 if not charging and 1 if charging
