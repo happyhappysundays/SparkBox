@@ -5,7 +5,7 @@
 #include "SparkStructures.h"
 #include "SparkComms.h"
 
-#define MAX_IO_BUFFER 5000
+#define MAX_IO_BUFFER 2048
 
 uint8_t license_key[64];
 
@@ -113,6 +113,7 @@ class MessageIn
     void read_onoff(bool *b);
     void read_float(float *f);
     void read_uint(uint8_t *b);
+    void read_general_uint(uint32_t *b);
     void read_byte(uint8_t *b);
 };
 

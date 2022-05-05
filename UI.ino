@@ -1,6 +1,6 @@
 // Overlay static graphics ============================================================
 void screenOverlay(OLEDDisplay *display, OLEDDisplayUiState* state) {
-  int visibleLeft = (CONN_ICON_WIDTH+1)*2;    // calculate the place to show compact scrolling name at the top line
+  int visibleLeft = (CONN_ICON_WIDTH+1)*CONN_ICONS;    // calculate the place to show compact scrolling name at the top line
   int visibleW = display->width() - BAT_WIDTH - visibleLeft - 1;
   if (isTimeout) {
     readBattery();  // Read analog voltage and average it
@@ -15,117 +15,132 @@ void screenOverlay(OLEDDisplay *display, OLEDDisplayUiState* state) {
   display->fillRect(0, 0, visibleLeft, STATUS_HEIGHT);
   display->fillRect(display->width()-BAT_WIDTH-1, 0, BAT_WIDTH+1, STATUS_HEIGHT);
   mainIcons();
-  
+  /*
+  display->setTextAlignment(TEXT_ALIGN_LEFT);
+  display->setColor(INVERSE);
+  display->setFont(MEDIUM_FONT);
+  display->drawString(0, 17, (String)loopTime);
+  */
 }
 
 // frSomething functions are frame drawing of the UI
 
 // PRESETS MODE =======================================================================
 void frPresets(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t y) {
-  static int scrollStep = -2; // speed of horiz scrolling tone names
+  static uint8_t scrollStep = 2; // speed of horiz scrolling tone names
   static ulong scrollCounter;
-#ifndef STALE_NUMBER
+  display->setColor(WHITE);
+  display->setTextAlignment(TEXT_ALIGN_LEFT);
+  display->setFont(HUGE_FONT);
+  int numW = display->getStringWidth((String)(display_preset_num + 1))+5;
+  display->setFont(BIG_FONT);
+  int nameW = display->getStringWidth(presets[CUR_EDITING].Name)+5;
+  if (numW+nameW <= display->width()) {
+    scroller = ( display->width() - numW ) / 2;
+    display->setTextAlignment(TEXT_ALIGN_CENTER);
+  } else {
     display->setTextAlignment(TEXT_ALIGN_LEFT);
-    display->setFont(HUGE_FONT);
-    int numW = display->getStringWidth(String(display_preset_num + 1))+5;
-    display->setFont(BIG_FONT);
-    int nameW = display->getStringWidth(presets[CUR_EDITING].Name)+5;
-    if (numW+nameW <= display->width()) {
-      scroller = ( display->width() - numW - nameW ) / 2;
-    } else {
-      if ( millis() > scrollCounter ) {
-        scroller = scroller + scrollStep;
-        if (scroller < (int)(display->width())-numW-nameW-numW-nameW) {
-          scroller = scroller + numW + nameW;
-        }
-        scrollCounter = millis() + 20;
+    if ( millis() > scrollCounter ) {
+      scroller = scroller - scrollStep;
+      if (scroller <= 0) {
+        scroller = scroller + nameW;
       }
-      display->setFont(HUGE_FONT);
-      display->drawString( x + scroller + numW + nameW, 11 + y, String(display_preset_num + 1) ); // +1 for humans
-      display->setFont(BIG_FONT);
-      display->drawString(x + scroller + numW + nameW + numW, y + display->height()/2 - 6 ,presets[CUR_EDITING].Name);
-    }
-    display->setFont(HUGE_FONT);
-    display->drawString( x + scroller, 11 + y, String(display_preset_num + 1) ); // +1 for humans
-    display->setFont(BIG_FONT);
-    display->drawString(x + scroller + numW, y + display->height()/2 - 6 ,presets[CUR_EDITING].Name);
-#else
-    display->setTextAlignment(TEXT_ALIGN_LEFT);
-    display->setColor(WHITE);
-    display->setFont(HUGE_FONT);
-    int numW = display->getStringWidth(String(display_preset_num + 1))+5;
-    display->setFont(BIG_FONT);
-    int nameW = display->getStringWidth(presets[CUR_EDITING].Name)+5;
-    if (numW+nameW <= display->width()) {
-      scroller = ( display->width() - numW ) / 2;
-      display->setTextAlignment(TEXT_ALIGN_CENTER);
-    } else {
-      display->setTextAlignment(TEXT_ALIGN_LEFT);
-      if ( millis() > scrollCounter ) {
-        scroller = scroller + scrollStep;
-        if (scroller < 0) {
-          scroller = scroller + nameW;
-        }
-        scrollCounter = millis() + 20;
-      }
-      display->setFont(BIG_FONT);
-      display->drawString( x + scroller - nameW , y + display->height()/2 - 6 ,presets[CUR_EDITING].Name);
+      scrollCounter = millis() + 20;
     }
     display->setFont(BIG_FONT);
-    display->drawString( x + scroller , y + display->height()/2 - 6 ,presets[CUR_EDITING].Name);
-    display->setColor(BLACK);
-    display->fillRect(display->width()-numW+x+2, STATUS_HEIGHT+y, numW-2, display->height()-STATUS_HEIGHT);
-    display->setFont(HUGE_FONT);
-    display->setColor(WHITE);
-    display->setTextAlignment(TEXT_ALIGN_RIGHT);
-    display->drawString( display->width()+x, STATUS_HEIGHT-5+y, String(display_preset_num + 1) ); // +1 for humans
-#endif
+    display->drawString( x + scroller - nameW , y + display->height()/2 - 6 ,presets[CUR_EDITING].Name);
+  }
+  display->setFont(BIG_FONT);
+  display->drawString( x + scroller , y + display->height()/2 - 6 ,presets[CUR_EDITING].Name);
+  display->setColor(BLACK);
+  display->fillRect(display->width()-numW+x+2, STATUS_HEIGHT+y, numW-2, display->height()-STATUS_HEIGHT);
+  display->setFont(HUGE_FONT);
+  display->setColor(WHITE);
+  display->setTextAlignment(TEXT_ALIGN_RIGHT);
+  display->drawString( display->width()+x, STATUS_HEIGHT-7+y, (String)(display_preset_num + 1) ); // +1 for humans
 }
 
 // EFFECTS MODE =======================================================================
 void frEffects(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t y) {
-  static int scrollStep = -1;     // speed of horiz scrolling tone names
+  static uint8_t scrollStep = 1;     // speed of horiz scrolling tone names
   static ulong scrollCounter;
-  int visibleLeft = (CONN_ICON_WIDTH+1)*2;    // calculate the place to show compact scrolling name at the top line
+  int visibleLeft = (CONN_ICON_WIDTH+1)*CONN_ICONS;    // calculate the place to show compact scrolling name at the top line
   int visibleW = display->width() - BAT_WIDTH - visibleLeft - 1;
+  display->setColor(WHITE);
   
   fxHugeIcons(x,y);                              // Big FX icons
   
   display->setTextAlignment(TEXT_ALIGN_LEFT);
   display->setFont(SMALL_FONT);
-  int numW = display->getStringWidth(String(display_preset_num + 1))+5;  // Width of the 1st string representing the preset number
+  int numW = display->getStringWidth((String)(display_preset_num + 1))+5;  // Width of the 1st string representing the preset number
   int nameW = display->getStringWidth(presets[CUR_EDITING].Name)+5;       // Width of the 2nd string representing the name of the preset
   if (numW+nameW <= visibleW) {
     scroller = ( visibleW - numW - nameW ) / 2;
   } else {
     if ( millis() > scrollCounter ) {
-      scroller = scroller + scrollStep;
-      if (scroller < (int)(visibleW)-numW-nameW-numW-nameW) {
-        scroller = scroller + numW + nameW;
+      scroller = scroller - scrollStep;
+      if (scroller <= 0) {
+        scroller = nameW + numW;
       }
       scrollCounter = millis() + 20;
     }
-    
-    display->drawString( visibleLeft + x + scroller + numW + nameW,  y, String(display_preset_num + 1) ); // +1 for humans
-    display->drawString( visibleLeft + x + scroller + numW + nameW + numW, y, presets[CUR_EDITING].Name);
+    display->drawString( visibleLeft + x + scroller - numW - nameW, y, (String)(display_preset_num + 1) ); // +1 for humans
+    display->drawString( visibleLeft + x + scroller - nameW, y, presets[CUR_EDITING].Name);
   }
-  display->drawString( visibleLeft + x + scroller,   y, String(display_preset_num + 1) ); // +1 for humans
+  display->drawString( visibleLeft + x + scroller, y, (String)(display_preset_num + 1) ); // +1 for humans
   display->drawString( visibleLeft + x + scroller + numW, y, presets[CUR_EDITING].Name);
-  // Mask left and right space for the top line status icons
-  display->setColor(BLACK);
-
 }
 
-// SCENES MODE =======================================================================
-void frScenes(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t y) {
+// BANK PLAYER MODE =======================================================================
+void frBanks(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t y) {
+  static int scrollStep = -2; // speed of horiz scrolling tone names
+  static ulong scrollCounter;
+  display->setColor(WHITE);
+  display->setTextAlignment(TEXT_ALIGN_LEFT);
+  display->setFont(HUGE_FONT);
+  int numW = display->getStringWidth((String)(localBankNum + 1));
+  display->setFont(BIG_FONT);
+  int nameW = display->getStringWidth(bankName)+5;
+  if (numW+nameW <= display->width()) {
+    scroller = numW + ( display->width() - numW ) / 2;
+    display->setTextAlignment(TEXT_ALIGN_CENTER);
+  } else {
+    display->setTextAlignment(TEXT_ALIGN_LEFT);
+    if ( millis() > scrollCounter ) {
+      scroller = scroller + scrollStep;
+      if (scroller <= 0) {
+        scroller = scroller + nameW;
+      }
+      scrollCounter = millis() + 20;
+    }
+    display->setFont(BIG_FONT);
+    display->drawString( x + scroller - nameW + numW, y + display->height()/2 - 6, bankName);
+  }
+  display->setFont(BIG_FONT);
+  display->drawString( x + scroller + numW, y + display->height()/2 - 6, bankName);
+  display->setColor(BLACK);
+  display->fillRect(x, STATUS_HEIGHT+y, numW, display->height()-STATUS_HEIGHT);
+  display->setFont(HUGE_FONT);
+  display->setColor(WHITE);
+  display->setTextAlignment(TEXT_ALIGN_LEFT);
+  display->drawString( x, STATUS_HEIGHT-11+y, (String)(localBankNum + 1) ); // +1 for humans
+  hintIcons(x,y);
+}
+
+// BANK CONFIG MODE =======================================================================
+void frConfig(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t y) {
+  
+  hintIcons(x,y);
 }
 
 
 // BYPASS MODE =======================================================================
 void frBypass(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t y) {
+  display->setColor(WHITE);
   display->setFont(BIG_FONT);
   display->setTextAlignment(TEXT_ALIGN_CENTER);
   display->drawString(display->width()/2 + x, 20 + y, "BYPASS" );
+  hintIcons(x,y);
 }
 
 // MESSAGE MODE =======================================================================
@@ -144,7 +159,7 @@ void frMessage(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16
       display->setFont(MEDIUM_FONT);
     }
   }
-  display->drawString((display->width())/2 + x, Y1 + y , String(msgText) );
+  display->drawString((display->width())/2 + x, Y1 + y , (String)(msgText) );
 }
 
 // FX LEVEL MODE ======================================================================
@@ -161,12 +176,13 @@ void frLevel(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t
   if(display->getStringWidth(str)>display->width()) {
     display->setFont(BIG_FONT);
   }
-  display->drawString((display->width())/2 + x, 11 + y , String(str) );
+  display->drawString((display->width())/2 + x, STATUS_HEIGHT- 11 + y , (String)(str) );
+  hintIcons(x,y);
 }
 
 // TUNER MODE =======================================================================
 void frTuner(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t y) {
-  String note_names[] = {"...","C","C#","D","D#","E","F","F#","G","G#","A","A#","B","..."};
+  const String note_names[] = {"...","C","C#","D","D#","E","F","F#","G","G#","A","A#","B","..."};
   //String note_names[] = {"...","Do","Do#","Re","Re#","Mi","Fa","Fa#","Sol","Sol#","La","La#","Si","..."};
   int16_t val_deg = 0;
   int16_t meter_x = 0;
@@ -175,7 +191,7 @@ void frTuner(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t
   int16_t hub_y = 0;
   float    test_val;
   // Show tuner screen when requested by Spark
-  display->clear();
+  display->setColor(WHITE);
   // Default display - draw meter bitmap and label
   display->drawXbm(0+x, Y5+y, tuner_width, tuner_height, tuner_bits); 
   //display->setTextAlignment(TEXT_ALIGN_LEFT);
@@ -209,6 +225,9 @@ void mainIcons() {
   drawStatusIcon(s_bt_bits, s_bt_width, STATUS_HEIGHT, 0,                 0, CONN_ICON_WIDTH, STATUS_HEIGHT, spark_state==SPARK_SYNCED);
   // App connection icon
   drawStatusIcon(a_bt_bits, a_bt_width, STATUS_HEIGHT, CONN_ICON_WIDTH+1, 0, CONN_ICON_WIDTH, STATUS_HEIGHT, conn_status[APP]);
+  // WiFi connection icon
+  //drawStatusIcon(wifi_bits, wifi_width, STATUS_HEIGHT, 2 * (CONN_ICON_WIDTH+1), 0, CONN_ICON_WIDTH, STATUS_HEIGHT, wifi_connected);
+  
   // Battery icon
   drawBatteryH(oled.width()-BAT_WIDTH, 0, BAT_WIDTH, STATUS_HEIGHT, batteryPercent(vbat_result), batteryCharging()); 
 }
@@ -216,26 +235,41 @@ void mainIcons() {
 // Draw fx on/off icons (for the status line)
 void fxIcons() {
   // Drive icon    
-  drawStatusIcon(dr_bits, dr_width, STATUS_HEIGHT, 2*(CONN_ICON_WIDTH+1)+1,                     0, FX_ICON_WIDTH,  STATUS_HEIGHT, presets[CUR_EDITING].effects[FX_DRIVE].OnOff);
+  drawStatusIcon(dr_bits, dr_width, STATUS_HEIGHT, CONN_ICONS*(CONN_ICON_WIDTH+1)+1,                     0, FX_ICON_WIDTH,  STATUS_HEIGHT, presets[CUR_EDITING].effects[FX_DRIVE].OnOff);
   // Mod icon
-  drawStatusIcon(md_bits, md_width, STATUS_HEIGHT, 2*(CONN_ICON_WIDTH+1)+1+FX_ICON_WIDTH+1,     0, FX_ICON_WIDTH,  STATUS_HEIGHT, presets[CUR_EDITING].effects[FX_MOD].OnOff);
+  drawStatusIcon(md_bits, md_width, STATUS_HEIGHT, CONN_ICONS*(CONN_ICON_WIDTH+1)+1+FX_ICON_WIDTH+1,     0, FX_ICON_WIDTH,  STATUS_HEIGHT, presets[CUR_EDITING].effects[FX_MOD].OnOff);
   // Delay icon
-  drawStatusIcon(dy_bits, dy_width, STATUS_HEIGHT, 2*(CONN_ICON_WIDTH+1)+1+(FX_ICON_WIDTH+1)*2, 0, FX_ICON_WIDTH,  STATUS_HEIGHT, presets[CUR_EDITING].effects[FX_DELAY].OnOff);
+  drawStatusIcon(dy_bits, dy_width, STATUS_HEIGHT, CONN_ICONS*(CONN_ICON_WIDTH+1)+1+(FX_ICON_WIDTH+1)*2, 0, FX_ICON_WIDTH,  STATUS_HEIGHT, presets[CUR_EDITING].effects[FX_DELAY].OnOff);
   // Reverb icon
-  drawStatusIcon(rv_bits, rv_width, STATUS_HEIGHT, 2*(CONN_ICON_WIDTH+1)+1+(FX_ICON_WIDTH+1)*3, 0, FX_ICON_WIDTH,  STATUS_HEIGHT, presets[CUR_EDITING].effects[FX_REVERB].OnOff);
+  drawStatusIcon(rv_bits, rv_width, STATUS_HEIGHT, CONN_ICONS*(CONN_ICON_WIDTH+1)+1+(FX_ICON_WIDTH+1)*3, 0, FX_ICON_WIDTH,  STATUS_HEIGHT, presets[CUR_EDITING].effects[FX_REVERB].OnOff);
 }
 
 // Draw the big on/off icons for the EFFECTS mode
 void fxHugeIcons(int x, int y) {
   // Drive icon    
-  drawTextIcon("Dr", x+0,  y+18, 30, 32, presets[CUR_EDITING].effects[FX_DRIVE].OnOff);
+  drawTextIcon("Dr", x+0,  y+18, 30, 32, presets[CUR_EDITING].effects[FX_DRIVE].OnOff, MEDIUM_FONT);
   // Mod icon
-  drawTextIcon("Md", x+32, y+18, 30, 32, presets[CUR_EDITING].effects[FX_MOD].OnOff);
+  drawTextIcon("Md", x+32, y+18, 30, 32, presets[CUR_EDITING].effects[FX_MOD].OnOff, MEDIUM_FONT);
   // Delay icon
-  drawTextIcon("Dy", x+64, y+18, 30, 32, presets[CUR_EDITING].effects[FX_DELAY].OnOff);
+  drawTextIcon("Dy", x+64, y+18, 30, 32, presets[CUR_EDITING].effects[FX_DELAY].OnOff, MEDIUM_FONT);
   // Reverb icon
-  drawTextIcon("Rv", x+96, y+18, 30, 32, presets[CUR_EDITING].effects[FX_REVERB].OnOff);
+  drawTextIcon("Rv", x+96, y+18, 30, 32, presets[CUR_EDITING].effects[FX_REVERB].OnOff, MEDIUM_FONT);
 }
+
+void hintIcons(int x, int y) {
+  int i, k;
+  const int iconH = 8, gap = 2;
+  for  (i = 0; i < NUM_SWITCHES; ++i) {
+    if (strcmp(hints[curMode][i] , "")==0) {break;};
+  }
+  if (i>0) { 
+    int iconW = ( oled.width() - (gap*(i-1)) )/ i;
+    for (k = 0; k < i; ++k) {
+      drawTextIcon(hints[curMode][k], k*(iconW+gap)+x, oled.height()-iconH+y, (iconW), iconH, true, SMALL_FONT);
+    }
+  }    
+}
+
 
 // Print out the requested preset data
 void dump_preset(SparkPreset preset) {
@@ -329,7 +363,7 @@ void doPushButtons(void)
           // if the button press duration exceeds our bounce threshold, then we register a tap
           if (buttonPressDuration[i] > debounceThreshold){
             buttonClick[i] = true;
-            DEBUG("Tap " + String(1<<i));
+            DEBUG("Tap " + (String)(1<<i));
             onTap(1<<i);
           }
         }
@@ -358,19 +392,19 @@ void doPushButtons(void)
     maxFlags = max(maxFlags, ActiveFlags);    
   }
   if (LongPressFlags >0 && LongPressFlags==ActiveFlags && !longPressFired){
-    DEBUG("Long press " + String(LongPressFlags));
+    DEBUG("Long press " + (String)(LongPressFlags));
     longPressFired = true;  // In case when the next function is async and time consuming, 
                             // let's flush it here not to call the function twice or more in a row
     onLongPress(LongPressFlags);  // function to execute on Long Press event 
   } else if (LongPressFlags >0 && LongPressFlags==ActiveFlags && autoFireEnabled) { //Autofire 
     if (autoFireTimer < millis()-autoFireDelay) { 
-      DEBUG("AutoFire " + String(LongPressFlags));
+      DEBUG("AutoFire " + (String)(LongPressFlags));
       autoFireTimer = millis();
       onAutoClick(LongPressFlags);  // function to execute on Long Press event 
     }
   }
   if (ClickFlags > 0 && ActiveFlags ==0){
-    DEBUG("Click " + String(maxFlags));
+    DEBUG("Click " + (String)(maxFlags));
     onClick(maxFlags);      // This will give you multi-button clicks
   //  onClick(clickFlags);  // This will give only single button at a time to be clicked
   }
@@ -398,8 +432,8 @@ void onClick(uint8_t buttonMask) {
       case 32:// ...
       case 64:// ...
         buttonId = log(buttonMask)/log(2); 
-        change_hardware_preset(buttonId);
         display_preset_num = buttonId;
+        change_hardware_preset(display_preset_num);
         break;
       default:
         //no action yet
@@ -431,22 +465,37 @@ void onClick(uint8_t buttonMask) {
     }
     float newVal = (float)level/(float)MAX_LEVEL + 0.005;
   //  DEBUG(newVal);
-   // DEBUG(String(presets[CUR_EDITING].effects[curFx].EffectName) + " " + String(newVal) );
+   // DEBUG((String)(presets[CUR_EDITING].effects[curFx].EffectName) + " " + (String)(newVal) );
     change_generic_param(curFx, curParam, newVal);
     presets[CUR_EDITING].effects[curFx].Parameters[curParam] = newVal;
   } else if (curMode == MODE_LEVEL && buttonMask == 1) {
     changeKnobFx();
+  } else if (curMode == MODE_BANKS && buttonMask == 2) {
+    localBankNum--;
+    setBankName();
+  } else if (curMode == MODE_BANKS && buttonMask == 8) {
+    localBankNum++;
+    setBankName();
   }
 }
 
 // buttonMask is binary mask that has 1 in Nth position, if Nth button is active, 
 // say 0b00000110 (decimal 6) means that your 2nd and 3rd button were pressed
 void onLongPress(uint8_t buttonMask) {
+  switch (curMode) {
+    case MODE_LEVEL:
+    case MODE_BANKS:
+      autoFireEnabled = true;
+      break;
+    default:  
+      autoFireEnabled = false;
+      break;
+  }
   if (isTunerMode) {
-    // bail out
+    // bail out on any long press
     tunerOff();
   } else if (curMode == MODE_BYPASS) {
-    // bail out
+    // bail out on any long press
     bypassOff();
   } else {
     switch (buttonMask) {
@@ -458,7 +507,6 @@ void onLongPress(uint8_t buttonMask) {
         break;
       case 4: // button 3
         if (!tempUI) {
-          autoFireEnabled = true;
           curFx = knobs_order[curKnob].fxSlot;
           curParam = knobs_order[curKnob].fxNumber;
           fxCaption = spark_knobs[curFx][curParam];
@@ -466,7 +514,6 @@ void onLongPress(uint8_t buttonMask) {
           tempFrame(MODE_LEVEL, curMode, FRAME_TIMEOUT); // Master level adj
         } else {
           tempUI=false;
-          autoFireEnabled = false;
           change_custom_preset(&presets[CUR_EDITING], display_preset_num);
           msgCaption = "CHANGES";
           msgText = "SAVED TO AMP";
@@ -492,13 +539,13 @@ void onAutoClick(uint8_t buttonMask) {
 
 // The event is generated right after debouncing
 void onTap(uint8_t buttonMask) {
-  //DEBUG("TAP " + String(buttonMask));
+  //DEBUG("TAP " + (String)(buttonMask));
   //timeToGoBack = millis() + actual_timeout;  
 }
 
-// Cycle through first {NUM_MODES} modes
+// Cycle through the first {CYCLE_MODES} modes in the list
 void cycleModes() {
-  uint8_t iCurMode;
+  uint8_t iCurMode;  
   if (isTunerMode) {
     tunerOff();
   } else if (curMode == MODE_BYPASS) {
@@ -507,11 +554,12 @@ void cycleModes() {
     returnToMainUI();
     iCurMode = static_cast <uint8_t> (curMode);
     iCurMode++;
-    if (iCurMode >= NUM_MODES) {iCurMode = 0;}
+    if (iCurMode >= CYCLE_MODES) {iCurMode = 0;}
     curMode = static_cast <eMode_t> (iCurMode);
     mainMode = curMode;
     updateFxStatuses();
-    DEBUG("Mode: " + String(curMode));
+    setBankName();
+    DEBUG("Mode: " + (String)(curMode));
   }
 }
 
@@ -535,7 +583,7 @@ void refreshUI(void) {
 
   if (isTunerMode) { // If Spark reports that we are in tuner mode
     if (curMode!=MODE_TUNER) { // We have to switch the pedal to tuner also
-      returnMode = curMode;
+      returnMode = mainMode;
       curMode = MODE_TUNER;
     }
   } else {
@@ -557,17 +605,17 @@ void refreshUI(void) {
     }
     setTransition();    
     ui.transitionToFrame(curMode);
-    updateFxStatuses();
     oldMode = curMode;
-    DEBUG("Switch to mode: " + String(curMode));
+    DEBUG("**UI** Switch to mode: " + (String)(curMode));
   }
+  updateFxStatuses();
 /*  
   // if a change has been made or the timer timed out and fully synched...
   if ((isOLEDUpdate || isTimeout) && (spark_state == SPARK_SYNCED)){
     isOLEDUpdate = false;  
   }
 */  
-  if (!connected_sp) {
+  if (!connected_sp && !inWifi) {
     // Show reconnection message
     oled.clear();
     oled.setFont(MEDIUM_FONT);
@@ -595,15 +643,22 @@ void refreshUI(void) {
 // Depending on the old and the new frames, this function sets the appropriate transition direction
 void setTransition() {
   AnimationDirection dir = SLIDE_LEFT;
-  if  (oldMode >= NUM_MODES && curMode < NUM_MODES) {dir = SLIDE_UP;}
-  else if (oldMode < NUM_MODES && curMode >= NUM_MODES) {dir = SLIDE_UP;}
-  else if (oldMode < NUM_MODES && curMode < NUM_MODES) {dir = SLIDE_LEFT;}
-  else if (oldMode >= NUM_MODES && curMode >= NUM_MODES) {dir = SLIDE_LEFT;}
+  if  (oldMode >= CYCLE_MODES && curMode < CYCLE_MODES) {dir = SLIDE_UP;}
+  else if (oldMode < CYCLE_MODES && curMode >= CYCLE_MODES) {dir = SLIDE_UP;}
+  else if (oldMode < CYCLE_MODES && curMode < CYCLE_MODES) {
+    if (oldMode < curMode) { 
+      dir = SLIDE_LEFT;
+    } else {
+      dir = SLIDE_RIGHT;
+    }
+  }
+  else if (oldMode >= CYCLE_MODES && curMode >= CYCLE_MODES) {dir = SLIDE_LEFT;}
+  
   ui.setFrameAnimation(dir);
 }
 
 // Draw an active or inactive icon with a given XBMP in the middle
-void drawStatusIcon(uint8_t* xbmVar, int xbmW, int xbmH, int x, int y, int w, int h, bool active) {
+void drawStatusIcon(const uint8_t* xbmVar, int xbmW, int xbmH, int x, int y, int w, int h, bool active) {
   // draw active or inactive icon placeholder
   oled.setColor(WHITE);
   if (active) {
@@ -618,14 +673,18 @@ void drawStatusIcon(uint8_t* xbmVar, int xbmW, int xbmH, int x, int y, int w, in
 }
 
 // Draw an active or inactive icon tith a given text in the middle
-void drawTextIcon(const String &text, int x, int y, int w, int h, bool active) {
-  int16_t yOffset = -10;
-  oled.setFont(MEDIUM_FONT);
+void drawTextIcon(const String &text, int x, int y, int w, int h, bool active, const uint8_t* font) {
+  int16_t yOffset;
+  oled.setFont(font);
+  int testW = oled.getStringWidth("W") * 0.5 +3;
+  yOffset = -testW;
   oled.setTextAlignment(TEXT_ALIGN_CENTER);
   // draw letters and signs within
   oled.setColor(WHITE);
   oled.drawString(x+w/2, y+h/2+yOffset, text);
-  oled.drawString(1+x+w/2, y+h/2+yOffset, text);
+  if (yOffset<-8) {
+    oled.drawString(x+w/2-1, y+h/2+yOffset, text); // faux bold
+  }
   // draw active or inactive icon placeholder
   oled.setColor(INVERSE);
   if (active) {
@@ -671,9 +730,10 @@ void textAnimation(const String &s, ulong msDelay, int yShift=0, bool show=true)
 
 // Read the ADC, average the result and set globals: vbat_result, chrg_result
 void readBattery(){
+  static int vbat_ring_count = 0;
+  static int vbat_ring_sum = 0;
   vbat_result = analogRead(VBAT_AIN); // Read battery voltage
-  //Serial.print(vbat_result);
-  //Serial.print(" ");
+  //DEBUG(vbat_result);
   
   // To speed up the display when a battery is connected from scratch
   // ignore/fudge any readings below the lower threshold
@@ -690,20 +750,16 @@ void readBattery(){
   else {
     vbat_ring_sum = (VBAT_NUM-1) * vbat_ring_sum / VBAT_NUM + vbat_result;
     vbat_result = vbat_ring_sum / VBAT_NUM;    
-
-  //  I think it best to make saving the LiPo battery NOT optional
-  //  #ifndef NOSLEEP
-      #ifndef BATT_CHECK_0
-        // Low-battery go to sleep to save the LiPo's life
-        if ((vbat_result < BATTERY_OFF * ADC_COEFF) && (batteryCharging()<=0)) {
-          oled.clear();
-          oled.setFont(MEDIUM_FONT);
-          oled.setColor(WHITE);
-          textAnimation("LOW BATTERY", 5000);
-          ESP_off();
-        }
-      #endif
-  //  #endif
+    #ifndef BATT_CHECK_0
+      // Low-battery go to sleep to save the LiPo's life
+      if ((vbat_result < BATTERY_OFF * ADC_COEFF) && (batteryCharging()<=0)) {
+        oled.clear();
+        oled.setFont(MEDIUM_FONT);
+        oled.setColor(WHITE);
+        textAnimation("LOW BATTERY", 5000);
+        ESP_off();
+      }
+    #endif
   }
   
 #ifdef BATT_CHECK_2
@@ -714,14 +770,15 @@ void readBattery(){
   //DEBUG(vbat_result/ADC_COEFF);
 }
 
-// Calc the charge percentage
+// Calc the battery percentage basing on the voltage and the LiPo discharging curve
 int batteryPercent(int vbat_value) {
-  int vbat = 0; // Debug
-  vbat = constrain(map(vbat_value, BATTERY_LOW*ADC_COEFF, BATTERY_100*ADC_COEFF, 0, 100), 0, 100);  
-  //Serial.print(vbat_value);
-  //Serial.print(" ");
-  //Serial.println(vbat);
-  return vbat;
+  // Partly linear discharge function approximation
+  uint8_t percentage = 0;
+  if ( vbat_value >= BATTERY_60*ADC_COEFF ) { percentage = map(vbat_value, BATTERY_60*ADC_COEFF, BATTERY_100*ADC_COEFF, 60, 100); }
+  else if ( vbat_value >= BATTERY_6*ADC_COEFF ) { percentage = map(vbat_value, BATTERY_6*ADC_COEFF, BATTERY_60*ADC_COEFF, 6, 60); } 
+  else { percentage = map(vbat_value, BATTERY_0*ADC_COEFF, BATTERY_6*ADC_COEFF, 0, 6); } 
+  percentage = map(percentage, GAUGE_0, GAUGE_100, 0, 100);
+  return constrain(percentage, 0, 100);
 }
 
 // Charging or not? Returns -1 if unsupported, 0 if not charging and 1 if charging
@@ -752,7 +809,7 @@ int batteryCharging() {
 // Stand-by mode with some fun
 void ESP_off(){
   uint64_t bit_mask=0;
-  String wake_buttons;
+  String wake_buttons = "";
   int deep_sleep_pins;
   int k;
   deep_sleep_pins = Check_RTC();  // Find out if we have RTC pins assigned to buttons allowing deep sleep, otherwise we use light sleep
@@ -760,10 +817,8 @@ void ESP_off(){
   String s = "_________________";
 
   // Debug
-  DEBUG("Deep_sleep_pins = ");
-  DEBUG(deep_sleep_pins);
-  DEBUG(" RTC_present = ");
-  DEBUG(RTC_present);
+  DEBUG("deep_sleep_pins = " + (String)(deep_sleep_pins));
+  DEBUG("RTC_present = " + (String)(RTC_present));
     
   if (deep_sleep_pins > 0){
     oled.clear();
@@ -786,7 +841,7 @@ void ESP_off(){
           gpio_pullup_dis(static_cast <gpio_num_t> (switchPins[i]));
           gpio_pulldown_en(static_cast <gpio_num_t> (switchPins[i]));
           bit_mask += 1<<switchPins[i];
-          wake_buttons += String(i+1) + ",";
+          wake_buttons += (String)(i+1) + ",";
           k = i+1;
         }
       }
@@ -794,7 +849,7 @@ void ESP_off(){
         wake_buttons = "Any button wakes";
       } else {
         if (deep_sleep_pins == 1) {
-          wake_buttons = "Button " + String(k) + " wakes";
+          wake_buttons = "Button " + (String)(k) + " wakes";
         } else {
           wake_buttons = "Buttons " + wake_buttons.substring(0, wake_buttons.length()-1) + " wake";
         }
@@ -803,7 +858,7 @@ void ESP_off(){
       gpio_pulldown_dis(static_cast <gpio_num_t> (switchPins[RTC_1st]));
       gpio_pullup_en(static_cast <gpio_num_t> (switchPins[RTC_1st]));
       bit_mask += 1<<switchPins[RTC_1st];
-      wake_buttons = "Button " + String(RTC_1st+1) + " wakes";
+      wake_buttons = "Button " + (String)(RTC_1st+1) + " wakes";
     #endif
     oled.setFont(MEDIUM_FONT);
     textAnimation(wake_buttons,3000);
@@ -868,12 +923,12 @@ void ESP_on () {
     case ESP_SLEEP_WAKEUP_EXT1 : 
       DEBUG("Wakeup caused by ext1 signal using RTC_CNTL");
       GPIO = log(esp_sleep_get_ext1_wakeup_status() )/log(2); 
-      DEBUG("Waken up by GPIO_" + String(GPIO));
+      DEBUG("Waken up by GPIO_" + (String)(GPIO));
       break;
     case ESP_SLEEP_WAKEUP_TIMER : DEBUG("Wakeup caused by timer"); break;
     case ESP_SLEEP_WAKEUP_TOUCHPAD : DEBUG("Wakeup caused by touchpad"); break;
     case ESP_SLEEP_WAKEUP_ULP : DEBUG("Wakeup caused by ULP program"); break;
-    default : DEBUG("Wakeup was not caused by deep sleep: " + String(wakeup_cause)); break;
+    default : DEBUG("Wakeup was not caused by deep sleep: " + (String)(wakeup_cause)); break;
   }
   oled.displayOn();
   oled.setFont(MEDIUM_FONT);
@@ -936,12 +991,12 @@ int Check_RTC() {
         sw_RTC[i] = true;
         RTC_present++;
         if (RTC_present == 1) {RTC_1st = i;}
-        DEBUG("RTC pin: " + String(switchPins[i]));
+        DEBUG("RTC pin: " + (String)(switchPins[i]));
         break;
       }
     }    
   }
-  DEBUG ("RTC pins present: " + String(RTC_present));
+  DEBUG ("RTC pins present: " + (String)(RTC_present));
   return RTC_present;
 }
 
@@ -994,7 +1049,7 @@ void tunerOn() {
     returnMode = mainMode;
     tempUI = false;
     curMode = MODE_TUNER;
-    DEBUG("Tuner mode ON, return to:" + String(returnMode));
+    DEBUG("Tuner mode ON, return to:" + (String)(returnMode));
   }
 }
 
@@ -1003,7 +1058,7 @@ void tunerOff() {
   if (isTunerMode) {
     spark_msg_out.tuner_on_off(false);
     curMode = returnMode;
-    DEBUG("Tuner mode OFF, return to:" + String(returnMode) + " " + String(isTunerMode));
+    DEBUG("Tuner mode OFF, return to:" + (String)(returnMode) );
   }
 }
 
@@ -1082,6 +1137,57 @@ void updateFxStatuses() {
   }
 }
 
+// Create directories for storing banks of presets
+bool createFolders() {
+  bool noErr;
+  String dirName = "";
+  for (int i=0; i<NUM_BANKS;i++) {
+    dirName = "/bank_" + lz(i, 3);
+    if (!LITTLEFS.exists(dirName)) {
+      noErr = noErr && LITTLEFS.mkdir(dirName);
+      DEBUG("Create folder: " + dirName + " : " + (String)noErr);
+    }
+  }
+  return noErr;
+}
+
+void setPendingBank(int bankNum) {
+    pendingBankNum = bankNum;
+    idleBankCounter = millis() + 200 ; // let's make some idle check before trying to load bank data
+}
+
+
+void uploadPreset(int presetNum) {
+  localPresetNum = presetNum;
+  if (presetNum < HW_PRESETS ) {
+    change_hardware_preset(presetNum);
+    remotePresetNum = presetNum;
+    presets[CUR_EDITING] = presets[presetNum];
+  } else {
+    remotePresetNum = TMP_PRESET_ADDR;
+  //  preset = flashPresets[presetNum-HW_PRESETS];
+    DEBUG(">>>>>uploading '" + (String)(preset.Name) + "' to 0x007f");
+    // change preset.number to 0x007f
+    preset.preset_num = TMP_PRESET_ADDR;
+    presets[TMP_PRESET] = preset;
+    presets[CUR_EDITING] = preset;
+    change_custom_preset(&preset, TMP_PRESET_ADDR);
+  }
+  updateFxStatuses();
+  pendingPresetNum = -2;
+}
+
+void loadPresets(int bankNum) {
+  for (int i=0; i<4; i++) {
+    File jsonFile = LITTLEFS.open("/bank_" + lz(bankNum, 3) + "/" + (String)(i) + ".json");
+    parseJsonPreset(jsonFile, bankPresets[i]);
+    jsonFile.close();
+  }
+  localBankNum = bankNum;
+  pendingBankNum = -2;
+  DEBUG("Changed bank to " + (String)(localBankNum));
+}
+
 // it's useful sometimes not just have an error code, but also some random yet valid data to play with.
 SparkPreset somePreset(const char* substTitle) {
   SparkPreset ret_preset = *my_presets[random(HARD_PRESETS-1)];
@@ -1097,10 +1203,10 @@ SparkPreset loadPresetFromFile(int presetSlot) {
   // open dir bound to the slot number
   String dirName =  "/" + (String)(presetSlot) ;
   String fileName = "";
-  if (!SPIFFS.exists(dirName)) {
+  if (!LITTLEFS.exists(dirName)) {
     return somePreset("(No Such Slot)");
   } else {
-    File dir = SPIFFS.open(dirName);
+    File dir = LITTLEFS.open(dirName);
     while (!fileName.endsWith(".json")) {
       presetFile = dir.openNextFile();
       if (!presetFile) {
@@ -1118,7 +1224,7 @@ SparkPreset loadPresetFromFile(int presetSlot) {
   return retPreset;
 }
 
-// Parse PG format JSON preset file saved in the ESP's flash memory FileSystem
+// Parse PG format JSON preset file saved in the ESP's flash memory FileSystem into retPreset
 void parseJsonPreset(File &presetFile, SparkPreset &retPreset) {
   DynamicJsonDocument doc(3072);
   DeserializationError error = deserializeJson(doc, presetFile);
@@ -1164,31 +1270,31 @@ void parseJsonPreset(File &presetFile, SparkPreset &retPreset) {
 }
 
 // save preset to json file in the format used by PG cloud back-up
-bool savePresetToFile(SparkPreset savedPreset, const String &filePath) {
+bool savePresetToFile(SparkPreset presetToSave, const String &filePath) {
   bool noErr = true;
-  if(strcmp(savedPreset.Name,"(Empty Slot)")==0){
-    strcpy(savedPreset.Name,savedPreset.Description);
+  if(strcmp(presetToSave.Name,"(Empty Slot)")==0){
+    strcpy(presetToSave.Name,presetToSave.Description);
   }
   DynamicJsonDocument doc(3072);
   doc["type"] = "jamup_speaker";
-  doc["bpm"] = savedPreset.BPM;
+  doc["bpm"] = presetToSave.BPM;
   JsonObject meta = doc.createNestedObject("meta");
-  meta["id"] = savedPreset.UUID;
-  meta["version"] = savedPreset.Version;
-  meta["icon"] = savedPreset.Icon;
-  meta["name"] = savedPreset.Name;
-  meta["description"] = savedPreset.Description;
+  meta["id"] = presetToSave.UUID;
+  meta["version"] = presetToSave.Version;
+  meta["icon"] = presetToSave.Icon;
+  meta["name"] = presetToSave.Name;
+  meta["description"] = presetToSave.Description;
   JsonArray sigpath = doc.createNestedArray("sigpath");
   for (int i=0; i<7; i++){
-    for (int j=0; j<savedPreset.effects[i].NumParameters; j++) {
+    for (int j=0; j<presetToSave.effects[i].NumParameters; j++) {
       sigpath[i]["params"][j]["index"] = j;
-      sigpath[i]["params"][j]["value"] = savedPreset.effects[i].Parameters[j];
+      sigpath[i]["params"][j]["value"] = presetToSave.effects[i].Parameters[j];
     }
     sigpath[i]["type"] = "speaker_fx";
-    sigpath[i]["dspId"] = savedPreset.effects[i].EffectName;
-    sigpath[i]["active"] = savedPreset.effects[i].OnOff;
+    sigpath[i]["dspId"] = presetToSave.effects[i].EffectName;
+    sigpath[i]["active"] = presetToSave.effects[i].OnOff;
   }
-  File fJson = SPIFFS.open(filePath,"w");
+  File fJson = LITTLEFS.open(filePath,"w");
   noErr = serializeJson(doc, fJson);
   return noErr;
 }
@@ -1260,11 +1366,11 @@ s_fx_coords fxNumByName(const char* fxName) {
   return {-1,-1}; // unknown situation, unknown effect
 }
 
-// temporarily switching to a different UI frame
+// Temporarily switching to a different UI frame
 void tempFrame(eMode_t tempFrame, eMode_t retFrame, const ulong msTimeout) {
   if (!tempUI) {
     curMode = tempFrame;
-    if (retFrame<NUM_MODES) {
+    if (retFrame<CYCLE_MODES) {
       returnMode = retFrame;
     }
     tempUI = true;
@@ -1286,17 +1392,131 @@ void returnToMainUI() {
   }
 }
 
-AnimationDirection reverseDir(AnimationDirection dir) {
-  switch (dir) {
-    case SLIDE_LEFT:
-      return SLIDE_RIGHT;
-    case SLIDE_RIGHT:
-      return SLIDE_LEFT;
-    case SLIDE_UP:
-      return SLIDE_DOWN;
-    case SLIDE_DOWN:
-      return SLIDE_UP;
-    default:
-      return SLIDE_UP;
+// This method generates a String value for a global var 'bankName'
+void setBankName() {
+  const uint8_t shorten = 5;
+  String name1="", name2="", name3="", name4="";
+  name1 = String(presets[0].Name).substring(0,shorten);
+  name2 = String(presets[1].Name).substring(0,shorten);
+  name3 = String(presets[2].Name).substring(0,shorten);
+  name4 = String(presets[3].Name).substring(0,shorten);
+  name1.trim();
+  name2.trim();
+  name3.trim();
+  name4.trim();
+  bankName = name1 + "." + name2 + "." + name3 + "." + name4 + ".--" ;
+}
+
+// Leading zeroes
+String lz(uint8_t num, uint8_t places) {
+  String tempstr = "00000000000000" + String(num);
+  uint8_t templen = tempstr.length();
+  if (templen > places) {
+    tempstr = tempstr.substring(templen-places);
+  }
+  return tempstr;
+}
+
+// Run web-based filemanager
+void filemanagerRun() {
+  DEB("\n\n**WiFi** cfg SSID:");
+  DEBUG(portalCfg.SSID);
+  DEB("**WiFi** cfg succeed:");
+  DEBUG(portalCfg.succeed);
+  DEB("**WiFi** cfg tried:");
+  DEBUG(portalCfg.tried);
+  curMode = MODE_MESSAGE;
+  msgCaption = "WiFi mode";
+  msgText = "Setting WiFi";
+  ui.switchToFrame(curMode);
+  oled.display();
+  if ((!portalCfg.tried && (String)(portalCfg.SSID) != "") || (portalCfg.tried && portalCfg.succeed ) || (!portalCfg.tried && !portalCfg.succeed ) ){
+    DEBUG("**WiFi** trying to connect to " + (String)(portalCfg.SSID));
+    WiFi.begin(portalCfg.SSID, portalCfg.pass);
+    int oldstatus = -100;
+    int newstatus = WiFi.status();
+    while(newstatus != WL_CONNECTED && newstatus != WL_CONNECT_FAILED && newstatus != WL_DISCONNECTED && newstatus != WL_CONNECTION_LOST){
+      delay(1);
+      if (oldstatus != newstatus) {
+        DEB ("**WiFi** status changed: ");
+        DEBUG (newstatus);
+        oldstatus = newstatus;
+      }
+      newstatus = WiFi.status();
+    }
+    
+    if (WiFi.status() == WL_CONNECTED) {
+      portalCfg.succeed = true;
+      DEBUG("**WiFi**  CONNECTED");
+    } else {
+      portalCfg.succeed = false;
+      DEBUG("**WiFi**  CONNECTION FAILED");
+    }
+
+    portalCfg.tried = true;
+    EEPROM.put(0, portalCfg);
+  }
+  
+  if (portalCfg.tried && !portalCfg.succeed) {
+
+    DEBUG("**WiFi** Running Portal");
+    portalRun(300000);  // run a blocking captive portal with (ms) timeout
+    
+    DEBUG(portalStatus());
+    // status: 0 error, 1 connect, 2 AP, 3 local, 4 exit, 5 timeout
+    
+    switch (portalStatus() ) {
+      case SP_SUBMIT:
+        //save and reboot
+        DEBUG("**WiFi** Got credentials");
+        
+        portalCfg.tried = false;
+        portalCfg.succeed = false;
+        break;
+      case SP_TIMEOUT:
+        DEBUG("**WiFi** Timed out");
+        break;
+      case SP_SWITCH_AP:
+        SP_handleAP();
+        break;
+      case SP_SWITCH_LOCAL:
+        SP_handleLocal();
+        break;
+      case SP_ERROR:
+      case SP_EXIT:
+      default:
+        break;
+    }
+    EEPROM.put(0, portalCfg);
+    EEPROM.end();
+    esp_restart();
+
+  }
+  DEBUG("\n\nESPxFileManager");
+
+  if (WiFi.status() == WL_CONNECTED) {
+    DEB("**WiFi** Open Filemanager with http://");
+    DEB(WiFi.localIP());
+    DEB(":");
+    DEB(filemanagerport);
+    DEB("/");
+    DEBUG();
+  } else {
+    DEBUG("**WiFi** No connection, restarting");
+    EEPROM.end();
+    esp_restart();
+  }
+  
+  filemgr.begin();
+    
+  EEPROM.put(0, portalCfg);
+  EEPROM.end();
+
+  while  (true) { // loop() is probably a better place
+    int remainingTimeBudget = ui.update();
+    filemgr.handleClient();
+    // Process user input
+    doPushButtons();    
+    refreshUI();
   }
 }
