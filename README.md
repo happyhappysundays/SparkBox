@@ -1,14 +1,6 @@
 # SparkBox V0.90 wifi
 SparkBox is a BT pedal for the Positive Grid Spark 40.
 
-# Credits/Thanks
-*   Positive Grid for their Spark 40 Amp. "Positive Grid", "Spark" and other trade marks belong to their respected owners.
-*   David Thompson for the original pedal code https://github.com/happyhappysundays
-*   Paul Hamshere https://github.com/paulhamsh/ for his system approach and a great reverse engineering job. This project is based on forked SparkIO, SparkComms and some of his other classes.
-*   Christopher Cook https://github.com/soundshed for the great desktop app for playing with the amp, and for some code look-up.
-*   Kevin McGladdery for the pedal example
-*   FB spark programming group for their help and support
-
 # What's New
 
 *   Added WiFi support. Holding BUTTON 1 during boot will switch the pedal to WiFi mode.
@@ -19,6 +11,15 @@ SparkBox is a BT pedal for the Positive Grid Spark 40.
 5. If everything is done correctly, holding BUTTON 1 on boot again will connect your pedal to your home WiFi network, and the OLED display on the pedal will show the adress of the filemanager site, so you can access the pedal from any device connected to your local wireless network. 
 
 ![alt text](https://github.com/happyhappysundays/SparkBox/blob/main/Pictures/SparkBox_final.jpg?raw=true)
+
+
+# Credits/Thanks
+*   Positive Grid for their Spark 40 Amp. "Positive Grid", "Spark" and other trade marks belong to their respected owners.
+*   David Thompson for the original pedal code https://github.com/happyhappysundays
+*   Paul Hamshere https://github.com/paulhamsh/ for his system approach and a great reverse engineering job. This project is based on forked SparkIO, SparkComms and some of his other classes.
+*   Christopher Cook https://github.com/soundshed for the great desktop app for playing with the amp, and for some code look-up.
+*   Kevin McGladdery for the pedal example
+*   FB spark programming group for their help and support
 
 # Functions
 - Expression pedal input on GPIO34 for altering the current parameter or on/off switch
