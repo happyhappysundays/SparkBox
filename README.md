@@ -1,5 +1,22 @@
-# SparkBox V0.88
-SparkBox is a BT pedal for the Positive Grid Spark 40.  I only needed the functionality of the simpler BT pedals. However many of them use captured hex chunks to communicate with the Spark, or were Python based. Instead I wanted to use Paul Hamshere's amazing code to create and process real messages. Also I wanted to extend the functionality a bit and make an attractive UI.
+# SparkBox V0.90 wifi
+SparkBox is a BT pedal for the Positive Grid Spark 40.
+
+# Credits/Thanks
+*   Positive Grid for their Spark 40 Amp. "Positive Grid", "Spark" and other trade marks belong to their respected owners.
+*   David Thompson for the original pedal code https://github.com/happyhappysundays
+*   Paul Hamshere https://github.com/paulhamsh/ for his system approach and a great reverse engineering job. This project is based on forked SparkIO, SparkComms and some of his other classes.
+*   Christopher Cook https://github.com/soundshed for the great desktop app for playing with the amp, and for some code look-up.
+*   Kevin McGladdery for the pedal example
+*   FB spark programming group for their help and support
+
+# What's New
+
+*   Added WiFi support. Holding BUTTON 1 during boot will switch the pedal to WiFi mode.
+1. Initially the pedal will launch a WiFi Access Point (AP), SSID is "SparkBox" by default. 
+2. Connect to this WiFi, using your mobile or PC or whatever.
+3. Direct your browser to http://192.168.4.1 
+4. Submit your local WiFi network credentials (SSID and password), so the pedal could connect to your home WiFi.
+5. If everything is done correctly, holding BUTTON 1 on boot again will connect your pedal to your home WiFi network, and the OLED display on the pedal will show the adress of the filemanager site, so you can access the pedal from any device connected to your local wireless network. 
 
 ![alt text](https://github.com/happyhappysundays/SparkBox/blob/main/Pictures/SparkBox_final.jpg?raw=true)
 
