@@ -19,6 +19,8 @@ SparkBox is a BT pedal for the Positive Grid Spark 40.
 *   Paul Hamshere https://github.com/paulhamsh/ for his system approach and a great reverse engineering job. This project is based on forked SparkIO, SparkComms and some of his other classes.
 *   Christopher Cook https://github.com/soundshed for the great desktop app for playing with the amp, and for some code look-up.
 *   Kevin McGladdery for the pedal example
+*   Holger Lembke https://github.com/holgerlembke/ESPxWebFlMgr thanks for the filemanager
+*   Alex Gyver https://github.com/GyverLibs/SimplePortal thanks for the captive portal и вообще
 *   FB spark programming group for their help and support
 
 # Functions
