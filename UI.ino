@@ -1,19 +1,20 @@
 // Overlay static graphics ============================================================
 void screenOverlay(OLEDDisplay *display, OLEDDisplayUiState* state) {
-  int visibleLeft = (CONN_ICON_WIDTH+1)*CONN_ICONS;    // calculate the place to show compact scrolling name at the top line
-  int visibleW = display->width() - BAT_WIDTH - visibleLeft - 1;
+  uint8_t conn_icons = inWifi ? 1 : 2;
+  uint8_t visibleLeft = (CONN_ICON_WIDTH+1)*conn_icons;    // calculate the place to show compact scrolling name at the top line
+  uint8_t visibleW = display->width() - BATT_WIDTH - visibleLeft - 1;
   if (isTimeout) {
     readBattery();  // Read analog voltage and average it
     isTimeout = false;
   }  
   if ( curMode==MODE_PRESETS || curMode==MODE_BYPASS) {
     display->setColor(BLACK);
-    display->fillRect(visibleLeft, 0, display->width()-BAT_WIDTH-visibleLeft, STATUS_HEIGHT);
+    display->fillRect(visibleLeft, 0, display->width()-BATT_WIDTH-visibleLeft, STATUS_HEIGHT);
     fxIcons();
   }
   display->setColor(BLACK);
   display->fillRect(0, 0, visibleLeft, STATUS_HEIGHT);
-  display->fillRect(display->width()-BAT_WIDTH-1, 0, BAT_WIDTH+1, STATUS_HEIGHT);
+  display->fillRect(display->width()-BATT_WIDTH-1, 0, BATT_WIDTH+1, STATUS_HEIGHT);
   mainIcons();
   /*
   display->setTextAlignment(TEXT_ALIGN_LEFT);
@@ -64,8 +65,9 @@ void frPresets(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16
 void frEffects(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t y) {
   static uint8_t scrollStep = 1;     // speed of horiz scrolling tone names
   static ulong scrollCounter;
-  int visibleLeft = (CONN_ICON_WIDTH+1)*CONN_ICONS;    // calculate the place to show compact scrolling name at the top line
-  int visibleW = display->width() - BAT_WIDTH - visibleLeft - 1;
+  uint8_t conn_icons = inWifi ? 1 : 2;
+  int visibleLeft = (CONN_ICON_WIDTH+1)*conn_icons;    // calculate the place to show compact scrolling name at the top line
+  int visibleW = display->width() - BATT_WIDTH - visibleLeft - 1;
   display->setColor(WHITE);
   
   fxHugeIcons(x,y);                              // Big FX icons
@@ -146,20 +148,43 @@ void frBypass(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_
 // MESSAGE MODE =======================================================================
 void frMessage(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t y) {
   // splash screen with a text message
+  int h = 0;
+  int h1 = 0;
   display->setColor(WHITE);
   display->setFont(SMALL_FONT);
   display->setTextAlignment(TEXT_ALIGN_CENTER);
-  display->drawString(display->width()/2 + x,  y, msgCaption);
-  
-  display->setFont(HUGE_FONT);
-  display->setTextAlignment(TEXT_ALIGN_CENTER);
-  if(display->getStringWidth(msgText)>display->width()) {
-    display->setFont(BIG_FONT);
-    if(display->getStringWidth(msgText)>display->width()) {
-      display->setFont(MEDIUM_FONT);
+  if (inWifi) {
+    display->drawString(CONN_ICON_WIDTH + (display->width()-BATT_WIDTH-CONN_ICON_WIDTH) /2 + x,  y, msgCaption);
+  } else {
+    display->drawString(display->width()/2 + x,  y, msgCaption);
+  } 
+  if (msgText1.length()>0) {
+    display->setFont(MEDIUM_FONT);
+    h1 = 12;
+    if(display->getStringWidth(msgText1)>display->width()) {
+      display->setFont(SMALL_FONT);
+      h1 = 4;
     }
+  } else {
+    h1 = 0;
   }
-  display->drawString((display->width())/2 + x, Y1 + y , (String)(msgText) );
+  uint8_t freeH = (oled.height() - STATUS_HEIGHT)/2 - h1 - h1;
+
+  display->drawString((display->width())/2 + x, STATUS_HEIGHT + (oled.height()-STATUS_HEIGHT)/2 + freeH/2 + y, msgText1 );
+
+  if (msgText.length()>0) {
+    display->setFont(MEDIUM_FONT);
+    h = 12;  
+    if(display->getStringWidth(msgText)>display->width()) {
+      display->setFont(SMALL_FONT);
+      h = 4;  
+    }
+  } else {
+    h = 0;
+  }
+  
+  freeH = (oled.height() - STATUS_HEIGHT)/2 - h - h1;
+  display->drawString((display->width())/2 + x, STATUS_HEIGHT + freeH/2 + y , msgText );
 }
 
 // FX LEVEL MODE ======================================================================
@@ -221,27 +246,30 @@ void frTuner(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t
 
 // Draw connection status icons and the battery icon
 void mainIcons() {
-  // Spark Amp BT connection icon
-  drawStatusIcon(s_bt_bits, s_bt_width, STATUS_HEIGHT, 0,                 0, CONN_ICON_WIDTH, STATUS_HEIGHT, spark_state==SPARK_SYNCED);
-  // App connection icon
-  drawStatusIcon(a_bt_bits, a_bt_width, STATUS_HEIGHT, CONN_ICON_WIDTH+1, 0, CONN_ICON_WIDTH, STATUS_HEIGHT, conn_status[APP]);
-  // WiFi connection icon
-  //drawStatusIcon(wifi_bits, wifi_width, STATUS_HEIGHT, 2 * (CONN_ICON_WIDTH+1), 0, CONN_ICON_WIDTH, STATUS_HEIGHT, wifi_connected);
-  
+  if (!inWifi){
+    // Spark Amp BT connection icon
+    drawStatusIcon(s_bt_bits, s_bt_width, STATUS_HEIGHT, 0,                 0, CONN_ICON_WIDTH, STATUS_HEIGHT, spark_state==SPARK_SYNCED);
+    // App connection icon
+    drawStatusIcon(a_bt_bits, a_bt_width, STATUS_HEIGHT, CONN_ICON_WIDTH+1, 0, CONN_ICON_WIDTH, STATUS_HEIGHT, conn_status[APP]);
+  } else {
+    // WiFi connection icon
+    drawStatusIcon(wifi_bits, wifi_width, STATUS_HEIGHT, 0,                 0, CONN_ICON_WIDTH, STATUS_HEIGHT, wifi_connected);
+  }
   // Battery icon
-  drawBatteryH(oled.width()-BAT_WIDTH, 0, BAT_WIDTH, STATUS_HEIGHT, batteryPercent(vbat_result), batteryCharging()); 
+  drawBatteryH(oled.width()-BATT_WIDTH, 0, BATT_WIDTH, STATUS_HEIGHT, batteryPercent(vbat_result), batteryCharging()); 
 }
 
 // Draw fx on/off icons (for the status line)
 void fxIcons() {
+  uint8_t conn_icons = inWifi ? 1 : 2;
   // Drive icon    
-  drawStatusIcon(dr_bits, dr_width, STATUS_HEIGHT, CONN_ICONS*(CONN_ICON_WIDTH+1)+1,                     0, FX_ICON_WIDTH,  STATUS_HEIGHT, presets[CUR_EDITING].effects[FX_DRIVE].OnOff);
+  drawStatusIcon(dr_bits, dr_width, STATUS_HEIGHT, conn_icons*(CONN_ICON_WIDTH+1)+1,                     0, FX_ICON_WIDTH,  STATUS_HEIGHT, presets[CUR_EDITING].effects[FX_DRIVE].OnOff);
   // Mod icon
-  drawStatusIcon(md_bits, md_width, STATUS_HEIGHT, CONN_ICONS*(CONN_ICON_WIDTH+1)+1+FX_ICON_WIDTH+1,     0, FX_ICON_WIDTH,  STATUS_HEIGHT, presets[CUR_EDITING].effects[FX_MOD].OnOff);
+  drawStatusIcon(md_bits, md_width, STATUS_HEIGHT, conn_icons*(CONN_ICON_WIDTH+1)+1+FX_ICON_WIDTH+1,     0, FX_ICON_WIDTH,  STATUS_HEIGHT, presets[CUR_EDITING].effects[FX_MOD].OnOff);
   // Delay icon
-  drawStatusIcon(dy_bits, dy_width, STATUS_HEIGHT, CONN_ICONS*(CONN_ICON_WIDTH+1)+1+(FX_ICON_WIDTH+1)*2, 0, FX_ICON_WIDTH,  STATUS_HEIGHT, presets[CUR_EDITING].effects[FX_DELAY].OnOff);
+  drawStatusIcon(dy_bits, dy_width, STATUS_HEIGHT, conn_icons*(CONN_ICON_WIDTH+1)+1+(FX_ICON_WIDTH+1)*2, 0, FX_ICON_WIDTH,  STATUS_HEIGHT, presets[CUR_EDITING].effects[FX_DELAY].OnOff);
   // Reverb icon
-  drawStatusIcon(rv_bits, rv_width, STATUS_HEIGHT, CONN_ICONS*(CONN_ICON_WIDTH+1)+1+(FX_ICON_WIDTH+1)*3, 0, FX_ICON_WIDTH,  STATUS_HEIGHT, presets[CUR_EDITING].effects[FX_REVERB].OnOff);
+  drawStatusIcon(rv_bits, rv_width, STATUS_HEIGHT, conn_icons*(CONN_ICON_WIDTH+1)+1+(FX_ICON_WIDTH+1)*3, 0, FX_ICON_WIDTH,  STATUS_HEIGHT, presets[CUR_EDITING].effects[FX_REVERB].OnOff);
 }
 
 // Draw the big on/off icons for the EFFECTS mode
@@ -515,9 +543,7 @@ void onLongPress(uint8_t buttonMask) {
         } else {
           tempUI=false;
           change_custom_preset(&presets[CUR_EDITING], display_preset_num);
-          msgCaption = "CHANGES";
-          msgText = "SAVED TO AMP";
-          tempFrame(MODE_MESSAGE, returnMode, 1000);
+          showMessage("DONE!", "CHANGES", "SAVED TO AMP", 1000);
         }
         break;
       case 12: // buttons 2 an 3
@@ -636,7 +662,7 @@ void refreshUI(void) {
 #endif    
 
   } else {
-    time_to_sleep = millis() + (MAX_ATTEMPTS * MILLIS_PER_ATTEMPT);
+    time_to_sleep = millis() + (BT_MAX_ATTEMPTS * MILLIS_PER_ATTEMPT);
   }
 }
 
@@ -1425,12 +1451,18 @@ void filemanagerRun() {
   DEBUG(portalCfg.succeed);
   DEB("**WiFi** cfg tried:");
   DEBUG(portalCfg.tried);
-  curMode = MODE_MESSAGE;
-  msgCaption = "WiFi mode";
-  msgText = "Setting WiFi";
-  ui.switchToFrame(curMode);
-  oled.display();
-  if ((!portalCfg.tried && (String)(portalCfg.SSID) != "") || (portalCfg.tried && portalCfg.succeed ) || (!portalCfg.tried && !portalCfg.succeed ) ){
+  // Prepare WiFi
+  showMessage("Connecting WiFi", "Connecting to: ", portalCfg.SSID, 0);
+  WiFi.softAPdisconnect();
+  delay(1);
+  WiFi.disconnect();
+  delay(1);
+  WiFi.mode(WIFI_STA); // not clean, we have .mode in cfg, but filemanager in AP mode isn't supported yet
+  delay(1);
+  //
+  showMessage("AP Mode", "Connect to AP", "\"" + (String)SP_AP_NAME + "\"", 0);
+  if ((!portalCfg.tried && (String)(portalCfg.SSID) != "") || (portalCfg.tried && portalCfg.succeed ) || (!portalCfg.tried && !portalCfg.succeed ) || (portalCfg.tried && !portalCfg.succeed )){
+  for (int att=1; att <= WIFI_MAX_ATTEMPTS; att++) {
     DEBUG("**WiFi** trying to connect to " + (String)(portalCfg.SSID));
     WiFi.begin(portalCfg.SSID, portalCfg.pass);
     int oldstatus = -100;
@@ -1448,11 +1480,15 @@ void filemanagerRun() {
     if (WiFi.status() == WL_CONNECTED) {
       portalCfg.succeed = true;
       DEBUG("**WiFi**  CONNECTED");
+      break;
     } else {
       portalCfg.succeed = false;
       DEBUG("**WiFi**  CONNECTION FAILED");
+      DEB("**WiFi**  STATUS CODE: ");
+      DEBUG(newstatus);
+      delay(1000);
     }
-
+  }
     portalCfg.tried = true;
     EEPROM.put(0, portalCfg);
   }
@@ -1495,15 +1531,22 @@ void filemanagerRun() {
   DEBUG("\n\nESPxFileManager");
 
   if (WiFi.status() == WL_CONNECTED) {
+    wifi_connected = true;
     DEB("**WiFi** Open Filemanager with http://");
-    DEB(WiFi.localIP());
+    IPAddress IpAddr = WiFi.localIP();
+    DEB(IpAddr);
     DEB(":");
     DEB(filemanagerport);
     DEB("/");
     DEBUG();
+    showMessage("WiFi Connected", "Open site:", "http://" + IpAddr.toString(), 0);
   } else {
+    wifi_connected = false;
     DEBUG("**WiFi** No connection, restarting");
+    portalCfg.tried = true;
+    portalCfg.succeed = false;
     EEPROM.end();
+    delay(10);
     esp_restart();
   }
   
@@ -1519,4 +1562,18 @@ void filemanagerRun() {
     doPushButtons();    
     refreshUI();
   }
+}
+
+void showMessage(const String &capText, const String &text1, const String &text2,  const ulong msTimeout) {
+  returnMode = curMode;
+  curMode = MODE_MESSAGE;
+  msgText = text1;
+  msgText1 = text2;
+  msgCaption = capText;
+  if (msTimeout>0) {
+    tempFrame(curMode, returnMode, msTimeout);
+  } else {
+    ui.switchToFrame(curMode);
+  }    
+  oled.display();    
 }

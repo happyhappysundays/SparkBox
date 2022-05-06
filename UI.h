@@ -27,8 +27,9 @@ OLEDDisplayUi ui(&oled);            // Create UI instance for the display (sligh
 #define VBAT_AIN 32       // Vbat sense GPIO (2:1 divider)
 #define CHRG_AIN 33       // Charge pin sense GPIO (10k pull-up)
 #define EXP_AIN 34        // Expression pedal input GPIO (a pot (usually 10-50kOhm) connected via an additional 1kOhm resistor to 3V3)
-#define MAX_ATTEMPTS 5    // (Re-)Connection attempts before going to sleep
+#define BT_MAX_ATTEMPTS 5 // Bluetooth (re-)connection attempts before going to sleep
 #define MILLIS_PER_ATTEMPT 6000 // milliseconds per connection attempts, this is used when reconnecting, not quite as expected though
+#define WIFI_MAX_ATTEMPTS 10 //WiFi connection attempts before giving up
 
 #define HARD_PRESETS 24   // number of hard-coded presets in SparkPresets.h
 //#define HARD_PRESETS 2   // number of hard-coded presets in SparkPresets.h
@@ -48,9 +49,8 @@ OLEDDisplayUi ui(&oled);            // Create UI instance for the display (sligh
 
 //GUI settings
 #define TRANSITION_TIME 350 // Frame transition time, ms
-#define BAT_WIDTH 26        // Battery icon width
+#define BATT_WIDTH 26        // Battery icon width
 #define CONN_ICON_WIDTH 11  // Connection status icons width
-#define CONN_ICONS 2        // Connection icons number
 #define FX_ICON_WIDTH 18    // Exxects icons width
 #define STATUS_HEIGHT 16    // Status line height
 #define FRAME_TIMEOUT 3000  // (ms) to return to main UI from temporary UI frame 
@@ -80,8 +80,8 @@ OLEDDisplayUi ui(&oled);            // Create UI instance for the display (sligh
 
 // font aliases for quick modding
 
-//#define SMALL_FONT Arimo_Regular_10
-#define SMALL_FONT ArialMT_Plain_10
+#define SMALL_FONT ArialMod_Plain_10 // It has some mods, making it look a bit better
+//#define SMALL_FONT ArialMT_Plain_10
 #define MEDIUM_FONT ArialMT_Plain_16
 #define BIG_FONT ArialMT_Plain_24
 //#define HUGE_FONT Roboto_Mono_Bold_52
@@ -116,7 +116,7 @@ uint8_t ActiveFlags = 0;                        // Write buttons states to one b
 
 // UI SECTION =========================================================================
 int scroller = 0;                               // Variable to keep scrolling offset 
-String msgCaption, msgText;
+String msgCaption = "", msgText = "", msgText1 = "";
 bool tempUI = false;                            // If we are in the temporary frame which returns after a given timeout
 boolean isOLEDUpdate;                           // Flag OLED needs refresh
 unsigned long actual_timeout = FRAME_TIMEOUT;
@@ -141,7 +141,7 @@ bool expression_target = false;     // False = parameter change, true = effect o
 bool effectstate = false;           // Current state of the effect controller by the expression pedal
 bool setting_modified = false;      // Flag that user has modifed a setting
 bool inWifi = false;
-
+bool wifi_connected = false;
 SparkPreset bankPresets[4];
 //SparkPreset flashPresets[NUM_BANKS*4];
 ulong loopTime;                     // millis per loop (performance measure)
@@ -210,5 +210,5 @@ String fxCaption=spark_knobs[curFx][curParam];  // Effect caption for displaying
 // forward declarations
 void doPushButtons();
 void refreshUI();
-
+void showMessage(const String &capText, const String &text1, const String &text2,  const ulong msTimeout) ;
 #endif

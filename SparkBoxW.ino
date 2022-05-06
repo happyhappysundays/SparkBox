@@ -196,7 +196,7 @@ void setup() {
 
   DEBUG("Connecting...");
 
-  while (!scan_result && attempt_count < MAX_ATTEMPTS) {     // Trying to connect
+  while (!scan_result && attempt_count < BT_MAX_ATTEMPTS) {     // Trying to connect
     attempt_count++;
   
     readBattery();
@@ -208,7 +208,7 @@ void setup() {
     oled.drawString(X1, Y3, "Connecting ");
     oled.setFont(MEDIUM_FONT);
     oled.setTextAlignment(TEXT_ALIGN_CENTER);
-    oled.drawString(X1, Y4, "Please wait " + (String)(MAX_ATTEMPTS - attempt_count + 1) + "...");
+    oled.drawString(X1, Y4, "Please wait " + (String)(BT_MAX_ATTEMPTS - attempt_count + 1) + "...");
     mainIcons();
     oled.display();    
     DEBUG("Scanning and connecting");
@@ -227,7 +227,7 @@ void setup() {
   }
   // Proceed if connected
   ui.switchToFrame(curMode);
-  time_to_sleep = millis() + (MAX_ATTEMPTS * MILLIS_PER_ATTEMPT); // Preset timeout 
+  time_to_sleep = millis() + (BT_MAX_ATTEMPTS * MILLIS_PER_ATTEMPT); // Preset timeout 
 }
 
 void loop() {

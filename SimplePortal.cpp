@@ -19,9 +19,9 @@ const char SP_connect_page[] PROGMEM = R"rawliteral(
 <form action="/connect" method="POST">
     <input type="text" name="ssid" placeholder="SSID" id="ssid">
     <input type="text" name="pass" placeholder="Pass" id="pass">
-    <div id="netlist">Scanning networks...</div>
     <input type="submit" value="Submit">
 </form>
+    <div id="netlist">Scanning networks...</div>
 <h3>Switch WiFi mode</h3>
 <form action="/ap" method="POST">
     <input type="submit" value="Access Point">
@@ -66,6 +66,7 @@ void SP_handleConnect() {
 void SP_handleList() {
   listNetworks();
   _SP_server.send(200, "text/html", networks );
+  showMessage("WiFi Setup", "Submit", "Credentials", 0);
 }
 
 void SP_handleAP() {
@@ -119,10 +120,21 @@ void portalStop() {
 
 bool portalTick() {
   int remainingTimeBudget = ui.update();
-  filemgr.handleClient();
+  static bool wifi_conn_old = false;  
+  //filemgr.handleClient();
   // Process user input
  // doPushButtons();
- // refreshUI();
+  wifi_connected = ( WiFi.softAPgetStationNum() > 0 );
+  if (wifi_connected != wifi_conn_old){
+    if (wifi_connected) {
+      IPAddress apIP(SP_AP_IP);
+      showMessage("Connected AP", "Open Site:", "http://" + apIP.toString(), 0);
+    } else {
+      showMessage("AP Mode", "Connect to AP", "\"" + (String)SP_AP_NAME + "\"", 0);
+    }
+    wifi_conn_old = wifi_connected;
+  }
+  refreshUI();
   if (_SP_started) {
     _SP_dnsServer.processNextRequest();
     _SP_server.handleClient();

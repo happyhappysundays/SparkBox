@@ -14,10 +14,6 @@
 #ifndef _SimplePortal_h
 #define _SimplePortal_h
 
-#define SP_AP_NAME "SparkBox"     // название точки
-#define SP_AP_IP 192,168,4,1        // IP точки
-
-
 #include <Arduino.h>
 #include "config.h"
 #include "ESPxWebFlMgr.h"
@@ -37,18 +33,24 @@
 #ifdef SH1106
   #include "SH1106Wire.h"
 #endif
-#include "OLEDDisplayUi.h"          // Include the UI lib
+#include "OLEDDisplayUi.h"
 #include "ESPxWebFlMgr.h"
 
 #ifdef SSD1306
-  extern SSD1306Wire oled;    // Default OLED Screen Definitions - ADDRESS, SDA, SCL
+  extern SSD1306Wire oled;
 #endif
 #ifdef SH1106
-  extern SH1106Wire oled;     // or this line if you are using SSH1106
+  extern SH1106Wire oled;
 #endif
-extern OLEDDisplayUi ui;            // Create UI instance for the display (slightly advanced frame based GUI)
+extern OLEDDisplayUi ui;
 
 extern ESPxWebFlMgr filemgr;
+
+extern bool wifi_connected;
+
+extern void refreshUI();
+extern void doPushButtons();
+extern void showMessage(const String &capText, const String &text1, const String &text2,  const ulong msTimeout) ;
 
 #define SP_ERROR 0
 #define SP_SUBMIT 1

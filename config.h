@@ -32,8 +32,8 @@
 #define HELTEC_WIFI
 //
 // Choose and uncomment the type of OLED display used: 0.96" SSD1306 or 1.3" SH1106 
-#define SSD1306
-//#define SH1106
+//#define SSD1306
+#define SH1106
 //
 // Uncomment if two-colour OLED screens are used. Offsets some text and alternate tuner
 #define TWOCOLOUR
@@ -62,5 +62,8 @@ const uint8_t switchPins[]{25,26,27,14};                      // Switch gpio num
 #define ANIMATION_1
 //#define ANIMATION_2
 //
+//
+#define SP_AP_NAME "SparkBox"     // WiFi Access Point (AP) name
+#define SP_AP_IP 192,168,4,1        // IP Address of the web page for setting up WiFi credentials
 //
 #endif
