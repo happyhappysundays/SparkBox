@@ -10,6 +10,8 @@ SparkBox is a BT pedal for the Positive Grid Spark 40.
 4. Submit your local WiFi network credentials (SSID and password), so the pedal could connect to your home WiFi.
 5. If everything is done correctly, holding BUTTON 1 on boot again will connect your pedal to your home WiFi network, and the OLED display on the pedal will show the adress of the filemanager site, so you can access the pedal from any device connected to your local wireless network. 
 
+*   There's a negative impact on the compiled project size. The program won't fit into a standard APP partition. The cure is easy though: in Arduino IDE choose Tools->Partition Scheme->No-OTA(Large APP), or something that gives you around 2MB APP partition along with enought of SPIFFS space, cause presets are stored there. Note, that some boards in Arduino IDE don't have Partition Scheme settings, in this case it's recommended to choose some other ESP32 board (ESP Dev Module, Heltec WiFi Kit 32, WEMOS LOLIN32, etc.) which has this menu.
+
 ![alt text](https://github.com/happyhappysundays/SparkBox/blob/main/Pictures/SparkBox_final.jpg?raw=true)
 
 
