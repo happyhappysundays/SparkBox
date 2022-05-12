@@ -3,7 +3,9 @@
 #define _UI_h
 
 #include "config.h"
+#include "Banks.h"
 #include "SparkStructures.h"
+
 #ifdef SSD1306
   #include "SSD1306Wire.h"          // https://github.com/ThingPulse/esp8266-oled-ssd1306
 #endif
@@ -23,7 +25,7 @@ OLEDDisplayUi ui(&oled);            // Create UI instance for the display (sligh
 #include "ESPxWebFlMgr.h"
 
 #define NUM_FRAMES 8      // How many UI frames we have
-#define CYCLE_MODES 3     // How many pedal modes (first N frames) switch in cycle when button 1 is long-pressed
+#define CYCLE_MODES 2     // How many pedal modes (first N frames) switch in cycle when button 1 is long-pressed
 #define VBAT_AIN 32       // Vbat sense GPIO (2:1 divider)
 #define CHRG_AIN 33       // Charge pin sense GPIO (10k pull-up)
 #define EXP_AIN 34        // Expression pedal input GPIO (a pot (usually 10-50kOhm) connected via an additional 1kOhm resistor to 3V3)
@@ -79,7 +81,7 @@ OLEDDisplayUi ui(&oled);            // Create UI instance for the display (sligh
 #endif
 
 // font aliases for quick modding
-
+//#define SMALL_FONT Lato_Hairline_11
 #define SMALL_FONT ArialMod_Plain_10 // It has some mods, making it look a bit better
 //#define SMALL_FONT ArialMT_Plain_10
 #define MEDIUM_FONT ArialMT_Plain_16
@@ -132,7 +134,6 @@ typedef struct {
 } s_fx_coords;
 
 
-
 char str[STR_LEN];                  // Used for processing Spark commands from amp
 char param_str[50];                 // 
 int param = -1;
@@ -142,13 +143,9 @@ bool effectstate = false;           // Current state of the effect controller by
 bool setting_modified = false;      // Flag that user has modifed a setting
 bool inWifi = false;
 bool wifi_connected = false;
-SparkPreset bankPresets[4];
+SparkPreset bankPresets[6];
 //SparkPreset flashPresets[NUM_BANKS*4];
 ulong loopTime;                     // millis per loop (performance measure)
-
-const word filemanagerport = 80;	// Web server TCP port
-
-ESPxWebFlMgr filemgr(filemanagerport);	// Filemanager instance
 
 
 // Yeah, we need to maintain this list (((

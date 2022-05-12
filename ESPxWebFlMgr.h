@@ -86,7 +86,7 @@ class ESPxWebFlMgr {
     WebServer * fileManager = NULL;
 #endif
     bool _ViewSysFiles = false;
-    String _SysFileStartPattern = "/.";
+    String _SysFileStartPattern = "/.u";
     File fsUploadFile;
     String _backgroundColor = "dimgray";
 
@@ -100,7 +100,8 @@ class ESPxWebFlMgr {
     void fileManagerJS(void);
     void fileManagerCSS(void);
     void fileManagerGetBackGround(void);
-
+    String extractAttr(const String &attr, const String &fName);
+    
     // javascript xmlhttp includes
     String colorline(int i);
     String dircolorline(int i);

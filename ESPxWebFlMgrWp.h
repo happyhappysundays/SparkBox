@@ -42,7 +42,8 @@ static const char ESPxWebFlMgrWpindexpage[] PROGMEM = R"==x==(
         </div>
 
         <div class="u1">&nbsp;</div>
-        <div class="u2" onclick="downloadall();">Download all files</div>
+ <!--       <div class="u2" onclick="downloadall();">Download all files</div> -->
+        <div class="u2"></div>
         <div class="u3" id="msg">Loading...</div>
         <div class="u4">&nbsp;</div>
         <div class="c" id="fi">
@@ -521,7 +522,7 @@ div {
 
 .gc {
   display: grid;
-  grid-template-columns: repeat(3, max-content);  
+  grid-template-columns: repeat(4, max-content);  
 }  
   )==g==";
 

@@ -1,3 +1,5 @@
+
+extern ESPxWebFlMgr filemgr;  // Filemanager instance
 // Overlay static graphics ============================================================
 void screenOverlay(OLEDDisplay *display, OLEDDisplayUiState* state) {
   uint8_t conn_icons = inWifi ? 1 : 2;
@@ -48,17 +50,22 @@ void frPresets(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16
       }
       scrollCounter = millis() + 20;
     }
-    display->setFont(BIG_FONT);
-    display->drawString( x + scroller - nameW , y + display->height()/2 - 6 ,presets[CUR_EDITING].Name);
+    display->setFont(BIG_FONT); // Draw a preset name
+    display->drawString( x + scroller - nameW , y + STATUS_HEIGHT, presets[CUR_EDITING].Name);
   }
-  display->setFont(BIG_FONT);
-  display->drawString( x + scroller , y + display->height()/2 - 6 ,presets[CUR_EDITING].Name);
+  display->setFont(BIG_FONT); // Draw a preset name
+  display->drawString( x + scroller , y + STATUS_HEIGHT, presets[CUR_EDITING].Name);
   display->setColor(BLACK);
   display->fillRect(display->width()-numW+x+2, STATUS_HEIGHT+y, numW-2, display->height()-STATUS_HEIGHT);
-  display->setFont(HUGE_FONT);
+  display->setFont(HUGE_FONT); // Gonna draw a preset number
   display->setColor(WHITE);
   display->setTextAlignment(TEXT_ALIGN_RIGHT);
   display->drawString( display->width()+x, STATUS_HEIGHT-7+y, (String)(display_preset_num + 1) ); // +1 for humans
+  display->setFont(BIG_FONT); // Draw a bank num
+  display->setTextAlignment(TEXT_ALIGN_LEFT);
+  static String bankN;
+  bankN = localBankNum>0 ? (String)(localBankNum):"HW";
+  display->drawString( x-2, display->height()-23+y, "bnk: " + bankN ); // No +1, cause humans can see these folders in a raw manner
 }
 
 // EFFECTS MODE =======================================================================
@@ -93,16 +100,19 @@ void frEffects(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16
   display->drawString( visibleLeft + x + scroller + numW, y, presets[CUR_EDITING].Name);
 }
 
-// BANK PLAYER MODE =======================================================================
+// BANK SELECT MODE =======================================================================
 void frBanks(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t y) {
+  
+  static String bankN;
+  bankN = pendingBankNum>0 ? (String)(pendingBankNum):"HW";
   static int scrollStep = -2; // speed of horiz scrolling tone names
   static ulong scrollCounter;
   display->setColor(WHITE);
   display->setTextAlignment(TEXT_ALIGN_LEFT);
   display->setFont(HUGE_FONT);
-  int numW = display->getStringWidth((String)(localBankNum + 1));
+  int numW = display->getStringWidth(bankN);
   display->setFont(BIG_FONT);
-  int nameW = display->getStringWidth(bankName)+5;
+  int nameW = display->getStringWidth(bankConfig[pendingBankNum].bank_name)+5;
   if (numW+nameW <= display->width()) {
     scroller = numW + ( display->width() - numW ) / 2;
     display->setTextAlignment(TEXT_ALIGN_CENTER);
@@ -116,16 +126,16 @@ void frBanks(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t
       scrollCounter = millis() + 20;
     }
     display->setFont(BIG_FONT);
-    display->drawString( x + scroller - nameW + numW, y + display->height()/2 - 6, bankName);
+    display->drawString( x + scroller - nameW + numW, y + display->height()/2 - 6, bankConfig[pendingBankNum].bank_name);
   }
   display->setFont(BIG_FONT);
-  display->drawString( x + scroller + numW, y + display->height()/2 - 6, bankName);
+  display->drawString( x + scroller + numW, y + display->height()/2 - 6, bankConfig[pendingBankNum].bank_name);
   display->setColor(BLACK);
   display->fillRect(x, STATUS_HEIGHT+y, numW, display->height()-STATUS_HEIGHT);
   display->setFont(HUGE_FONT);
   display->setColor(WHITE);
   display->setTextAlignment(TEXT_ALIGN_LEFT);
-  display->drawString( x, STATUS_HEIGHT-11+y, (String)(localBankNum + 1) ); // +1 for humans
+  display->drawString( x, STATUS_HEIGHT-11+y, bankN ); // No +1 cause folder names are also accessable via web so just made them 1-based
   hintIcons(x,y);
 }
 
@@ -163,7 +173,7 @@ void frMessage(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16
     h1 = 12;
     if(display->getStringWidth(msgText1)>display->width()) {
       display->setFont(SMALL_FONT);
-      h1 = 4;
+      h1 = 6;
     }
   } else {
     h1 = 0;
@@ -177,7 +187,7 @@ void frMessage(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16
     h = 12;  
     if(display->getStringWidth(msgText)>display->width()) {
       display->setFont(SMALL_FONT);
-      h = 4;  
+      h = 6;  
     }
   } else {
     h = 0;
@@ -298,22 +308,21 @@ void hintIcons(int x, int y) {
   }    
 }
 
-
 // Print out the requested preset data
 void dump_preset(SparkPreset preset) {
   int i,j;
 
-  DEBUG(preset.curr_preset); DEBUG(" ");
-  DEBUG(preset.preset_num); DEBUG(" ");
-  DEBUG(preset.Name); DEBUG(" ");
+  DEB(preset.curr_preset); DEB(" ");
+  DEB(preset.preset_num); DEB(" ");
+  DEB(preset.Name); DEB(" ");
   DEBUG(preset.Description);
 
   for (j=0; j<7; j++) {
-    DEBUG("    ");
-    DEBUG(preset.effects[j].EffectName); DEBUG(" ");
-    if (preset.effects[j].OnOff == true) DEBUG(" On "); else DEBUG (" Off ");
+    DEB("    ");
+    DEB(preset.effects[j].EffectName); DEB(" ");
+    if (preset.effects[j].OnOff == true) DEB(" On "); else DEB (" Off ");
     for (i = 0; i < preset.effects[j].NumParameters; i++) {
-      DEBUG(preset.effects[j].Parameters[i]); DEBUG(" ");
+      DEB(preset.effects[j].Parameters[i]); DEB(" ");
     }
     DEBUG();
   }
@@ -458,7 +467,8 @@ void onClick(uint8_t buttonMask) {
       case 8: // button 4      
       case 16:// ...
       case 32:// ...
-      case 64:// ...
+      case 64:// any single button click
+      case 128:// ...
         buttonId = log(buttonMask)/log(2); 
         display_preset_num = buttonId;
         change_hardware_preset(display_preset_num);
@@ -499,67 +509,86 @@ void onClick(uint8_t buttonMask) {
   } else if (curMode == MODE_LEVEL && buttonMask == 1) {
     changeKnobFx();
   } else if (curMode == MODE_BANKS && buttonMask == 2) {
-    localBankNum--;
-    setBankName();
+    pendingBankNum--;
+    pendingBankNum = constrain(pendingBankNum, 0, NUM_BANKS);
+
   } else if (curMode == MODE_BANKS && buttonMask == 8) {
-    localBankNum++;
-    setBankName();
+    pendingBankNum++;
+    pendingBankNum = constrain(pendingBankNum, 0, NUM_BANKS);
+
   }
 }
 
 // buttonMask is binary mask that has 1 in Nth position, if Nth button is active, 
 // say 0b00000110 (decimal 6) means that your 2nd and 3rd button were pressed
 void onLongPress(uint8_t buttonMask) {
-  switch (curMode) {
-    case MODE_LEVEL:
-    case MODE_BANKS:
-      autoFireEnabled = true;
-      break;
-    default:  
-      autoFireEnabled = false;
-      break;
-  }
-  if (isTunerMode) {
-    // bail out on any long press
-    tunerOff();
-  } else if (curMode == MODE_BYPASS) {
-    // bail out on any long press
-    bypassOff();
+  if (inWifi) {
+    if (buttonMask == 6) {
+      esp_restart(); // A way to restart w/o power-cycling   
+    }
   } else {
-    switch (buttonMask) {
-      case 1: // button 1
-        cycleModes(); // Change current mode in cycle
+    if (buttonMask == 6) {
+      ESP_off(); // A way to make it sleep
+    }
+    switch (curMode) {
+      case MODE_LEVEL:
+      case MODE_BANKS:
+        autoFireEnabled = true;
         break;
-      case 3: // buttons 1 an 2
-        toggleTuner();
-        break;
-      case 4: // button 3
-        if (!tempUI) {
-          curFx = knobs_order[curKnob].fxSlot;
-          curParam = knobs_order[curKnob].fxNumber;
-          fxCaption = spark_knobs[curFx][curParam];
-          level = presets[CUR_EDITING].effects[curFx].Parameters[curParam] * MAX_LEVEL;
-          tempFrame(MODE_LEVEL, curMode, FRAME_TIMEOUT); // Master level adj
+      case MODE_PRESETS:
+        if (buttonMask == 2 || buttonMask == 8) {
+          autoFireEnabled = true;
+          tempFrame(MODE_BANKS, curMode, FRAME_TIMEOUT); // Begin surfing thru banks
         } else {
-          tempUI=false;
-          change_custom_preset(&presets[CUR_EDITING], display_preset_num);
-          showMessage("DONE!", "CHANGES", "SAVED TO AMP", 1000);
+          autoFireEnabled = false;
         }
         break;
-      case 12: // buttons 2 an 3
-        toggleBypass();
+      default:  
+        autoFireEnabled = false;
         break;
-      default:
-        //no action yet
-        break;
+    }
+    if (isTunerMode) {
+      // bail out on any long press
+      tunerOff();
+    } else if (curMode == MODE_BYPASS) {
+      // bail out on any long press
+      bypassOff();
+    } else {
+      switch (buttonMask) {
+        case 1: // button 1
+          cycleModes(); // Change current mode in cycle
+          break;
+        case 3: // buttons 1 an 2
+          toggleTuner();
+          break;
+        case 4: // button 3
+          if (!tempUI) {
+            curFx = knobs_order[curKnob].fxSlot;
+            curParam = knobs_order[curKnob].fxNumber;
+            fxCaption = spark_knobs[curFx][curParam];
+            level = presets[CUR_EDITING].effects[curFx].Parameters[curParam] * MAX_LEVEL;
+            tempFrame(MODE_LEVEL, curMode, FRAME_TIMEOUT); // Master level adj
+          } else {
+            tempUI=false;
+            change_custom_preset(&presets[CUR_EDITING], display_preset_num);
+            showMessage("DONE!", "CHANGES", "SAVED TO AMP", 1000);
+          }
+          break;
+        case 12: // buttons 3 an 4
+          toggleBypass();
+          break;
+        default:
+          //no action yet
+          break;
+      }
     }
   }
 }
 
 // Repeating event autogenerated (if AutoClickEnabled == true) after a long press the interval is in the defines
 void onAutoClick(uint8_t buttonMask) {
-  if (curMode==MODE_LEVEL && (buttonMask==2 || buttonMask==8)) {
-    onClick(buttonMask);    // inc/dec fx level with buttons 2 and 4
+  if ((curMode == MODE_BANKS || curMode == MODE_LEVEL) && (buttonMask==2 || buttonMask==8)) {
+    onClick(buttonMask);    // inc/dec with buttons 2 and 4
   }
 }
 
@@ -584,7 +613,7 @@ void cycleModes() {
     curMode = static_cast <eMode_t> (iCurMode);
     mainMode = curMode;
     updateFxStatuses();
-    setBankName();
+
     DEBUG("Mode: " + (String)(curMode));
   }
 }
@@ -1075,7 +1104,8 @@ void tunerOn() {
     returnMode = mainMode;
     tempUI = false;
     curMode = MODE_TUNER;
-    DEBUG("Tuner mode ON, return to:" + (String)(returnMode));
+    DEBUG("Tuner mode ON, return to: ");
+    DEBUG(returnMode);
   }
 }
 
@@ -1084,7 +1114,8 @@ void tunerOff() {
   if (isTunerMode) {
     spark_msg_out.tuner_on_off(false);
     curMode = returnMode;
-    DEBUG("Tuner mode OFF, return to:" + (String)(returnMode) );
+    DEB("Tuner mode OFF, return to: ");
+    DEBUG(returnMode);
   }
 }
 
@@ -1119,9 +1150,9 @@ void doExpressionPedal() {
     if (effect_volume > 1.0) effect_volume = 1.0;
     if (effect_volume < 0.0) effect_volume = 0.0;
 #ifdef DUMP_ON
-    DEBUG("Pedal data: ");
-    DEBUG(express_result);
-    DEBUG(" : ");
+    DEB("Pedal data: ");
+    DEB(express_result);
+    DEB(" : ");
     DEBUG(effect_volume);
 #endif
     // If effect on/off
@@ -1129,8 +1160,8 @@ void doExpressionPedal() {
         // Send effect ON state to Spark and App only if OFF
         if ((effect_volume > 0.5)&&(!effectstate)) {
           change_generic_onoff(get_effect_index(msg.str1),true);
-          DEBUG("Turning effect ");
-          DEBUG(msg.str1);
+          DEB("Turning effect ");
+          DEB(msg.str1);
           DEBUG(" ON via pedal");
           effectstate = true;
         }
@@ -1138,8 +1169,8 @@ void doExpressionPedal() {
         else if ((effect_volume < 0.3)&&(effectstate))
         {
           change_generic_onoff(get_effect_index(msg.str1),false);
-          DEBUG("Turning effect ");
-          DEBUG(msg.str1);
+          DEB("Turning effect ");
+          DEB(msg.str1);
           DEBUG(" OFF via pedal");
           effectstate = false;
         }
@@ -1167,7 +1198,7 @@ void updateFxStatuses() {
 bool createFolders() {
   bool noErr;
   String dirName = "";
-  for (int i=0; i<NUM_BANKS;i++) {
+  for (int i=1; i<=NUM_BANKS;i++) {
     dirName = "/bank_" + lz(i, 3);
     if (!LITTLEFS.exists(dirName)) {
       noErr = noErr && LITTLEFS.mkdir(dirName);
@@ -1176,12 +1207,6 @@ bool createFolders() {
   }
   return noErr;
 }
-
-void setPendingBank(int bankNum) {
-    pendingBankNum = bankNum;
-    idleBankCounter = millis() + 200 ; // let's make some idle check before trying to load bank data
-}
-
 
 void uploadPreset(int presetNum) {
   localPresetNum = presetNum;
@@ -1203,15 +1228,44 @@ void uploadPreset(int presetNum) {
   pendingPresetNum = -2;
 }
 
-void loadPresets(int bankNum) {
-  for (int i=0; i<4; i++) {
-    File jsonFile = LITTLEFS.open("/bank_" + lz(bankNum, 3) + "/" + (String)(i) + ".json");
-    parseJsonPreset(jsonFile, bankPresets[i]);
-    jsonFile.close();
+void loadBankPresets(int bankNum) {
+  if (bankNum>0) {
+  bool noErr = true;
+    String dirName = "/bank_" + lz(bankNum, 3) + "/";
+    File root = LITTLEFS.open(dirName);
+    if(!root){
+      DEBUG("- failed to open directory");
+      exit;
+    }
+    if(!root.isDirectory()){
+      DEBUG(" - not a directory");
+      exit;
+    }
+    int i = 0;
+    File file = root.openNextFile();
+    while(file && i<4){
+      if(!file.isDirectory()){
+        if (String(file.name()).endsWith(".json")) {
+          DEB(i);
+          DEBUG(": parsing preset");
+          parseJsonPreset(file, bankPresets[i]);
+          i++;
+          file.close();
+        }
+      } else {
+        // nothing matters
+      }
+      file = root.openNextFile();
+    }
+  } else {
+    for (int i = 0; i < 5 ; i++) {
+      bankPresets[i] = presets[i];
+    }
   }
   localBankNum = bankNum;
   pendingBankNum = -2;
-  DEBUG("Changed bank to " + (String)(localBankNum));
+  DEB("Changed bank to ");
+  DEBUG(localBankNum);
 }
 
 // it's useful sometimes not just have an error code, but also some random yet valid data to play with.
@@ -1252,6 +1306,7 @@ SparkPreset loadPresetFromFile(int presetSlot) {
 
 // Parse PG format JSON preset file saved in the ESP's flash memory FileSystem into retPreset
 void parseJsonPreset(File &presetFile, SparkPreset &retPreset) {
+  DEBUG(presetFile.name());
   DynamicJsonDocument doc(3072);
   DeserializationError error = deserializeJson(doc, presetFile);
   if (error) {
@@ -1408,6 +1463,10 @@ void tempFrame(eMode_t tempFrame, eMode_t retFrame, const ulong msTimeout) {
 // Returning from a temp UI frame
 void returnToMainUI() {
   if (tempUI) {
+    if (curMode == MODE_BANKS) {
+      // We have to select the pending bank now
+      selectBank(pendingBankNum);
+    }
     curMode = returnMode;
     timeToGoBack = millis();
     tempUI = false;
@@ -1418,19 +1477,12 @@ void returnToMainUI() {
   }
 }
 
-// This method generates a String value for a global var 'bankName'
-void setBankName() {
-  const uint8_t shorten = 5;
-  String name1="", name2="", name3="", name4="";
-  name1 = String(presets[0].Name).substring(0,shorten);
-  name2 = String(presets[1].Name).substring(0,shorten);
-  name3 = String(presets[2].Name).substring(0,shorten);
-  name4 = String(presets[3].Name).substring(0,shorten);
-  name1.trim();
-  name2.trim();
-  name3.trim();
-  name4.trim();
-  bankName = name1 + "." + name2 + "." + name3 + "." + name4 + ".--" ;
+void selectBank(int bankNum) {
+  pendingBankNum = -1;
+  if (bankNum != localBankNum) {
+    localBankNum = bankNum;
+    loadBankPresets(bankNum);
+  }
 }
 
 // Leading zeroes
@@ -1452,7 +1504,9 @@ void filemanagerRun() {
   DEB("**WiFi** cfg tried:");
   DEBUG(portalCfg.tried);
   // Prepare WiFi
-  showMessage("Connecting WiFi", "Connecting to: ", portalCfg.SSID, 0);
+  showMessage("Starting WiFi", "Connecting to: ", portalCfg.SSID, 0);
+  ui.update();
+  refreshUI();
   WiFi.softAPdisconnect();
   delay(1);
   WiFi.disconnect();
@@ -1460,7 +1514,6 @@ void filemanagerRun() {
   WiFi.mode(WIFI_STA); // not clean, we have .mode in cfg, but filemanager in AP mode isn't supported yet
   delay(1);
   //
-  showMessage("AP Mode", "Connect to AP", "\"" + (String)SP_AP_NAME + "\"", 0);
   if ((!portalCfg.tried && (String)(portalCfg.SSID) != "") || (portalCfg.tried && portalCfg.succeed ) || (!portalCfg.tried && !portalCfg.succeed ) || (portalCfg.tried && !portalCfg.succeed )){
   for (int att=1; att <= WIFI_MAX_ATTEMPTS; att++) {
     DEBUG("**WiFi** trying to connect to " + (String)(portalCfg.SSID));
@@ -1495,6 +1548,10 @@ void filemanagerRun() {
   
   if (portalCfg.tried && !portalCfg.succeed) {
 
+  showMessage("AP Mode", "Connect to AP", "\"" + (String)SP_AP_NAME + "\"", 0);
+  refreshUI();
+  ui.update();
+  
     DEBUG("**WiFi** Running Portal");
     portalRun(300000);  // run a blocking captive portal with (ms) timeout
     
@@ -1535,11 +1592,9 @@ void filemanagerRun() {
     DEB("**WiFi** Open Filemanager with http://");
     IPAddress IpAddr = WiFi.localIP();
     DEB(IpAddr);
-    DEB(":");
-    DEB(filemanagerport);
     DEB("/");
     DEBUG();
-    showMessage("WiFi Connected", "Open site:", "http://" + IpAddr.toString(), 0);
+    showMessage(portalCfg.SSID, "Open site:", "//" + IpAddr.toString(), 0);
   } else {
     wifi_connected = false;
     DEBUG("**WiFi** No connection, restarting");
@@ -1564,8 +1619,12 @@ void filemanagerRun() {
   }
 }
 
-void showMessage(const String &capText, const String &text1, const String &text2,  const ulong msTimeout) {
-  returnMode = curMode;
+void showMessage(const String &capText, const String &text1, const String &text2, const ulong msTimeout) {
+  showMessage(capText, text1, text2, msTimeout, mainMode);
+}
+
+void showMessage(const String &capText, const String &text1, const String &text2, const ulong msTimeout, eMode_t retFrame) {
+  returnMode = retFrame;
   curMode = MODE_MESSAGE;
   msgText = text1;
   msgText1 = text2;
@@ -1576,4 +1635,69 @@ void showMessage(const String &capText, const String &text1, const String &text2
     ui.switchToFrame(curMode);
   }    
   oled.display();    
+}
+
+
+
+// Loads the configuration from a file
+ void loadConfiguration(const String filename, tBankConfig (&conf)[NUM_BANKS+1]) {
+  // Open file for reading
+  File fJson = LITTLEFS.open(filename);
+  // Allocate a temporary JsonDocument
+  StaticJsonDocument<JSON_SIZE> doc;
+  // Deserialize the JSON document
+  DeserializationError error = deserializeJson(doc, fJson);
+  if (error) {
+    DEB("deserializeJson() failed: ");
+    DEBUG(error.c_str());
+    return;
+  }
+  for (JsonObject param : doc["params"].as<JsonArray>()) {
+    uint8_t param_id = param["id"]; // 1, 2, 3, 4, 5, ...
+    conf[param_id].active_chan = param["active_chan"]; //1,2,3,4
+    // "Bank 001", "Bank 002", ...  
+    strlcpy(conf[param_id].bank_name,         // <- destination
+          param["bank_name"] | ("Bank " + lz(param_id, 3)).c_str(),            // <- source
+          sizeof(conf[param_id].bank_name));  // <- destination's capacity
+  }
+  fJson.close();
+}
+
+
+// Saves the configuration to a file
+void saveConfiguration(const String filename, const tBankConfig (&conf)[NUM_BANKS+1]) {
+  // Open file for writing
+  File fJson = LITTLEFS.open(filename,"w");
+  if (!fJson) {
+    DEBUG(F("Failed to create file"));
+    return;
+  }
+  StaticJsonDocument<JSON_SIZE> doc;
+  JsonArray params = doc.createNestedArray("params");
+  for (int i=0; i<=NUM_BANKS; i++){
+    params[i]["id"] = i;
+    params[i]["active_chan"] = conf[i].active_chan;
+    params[i]["bank_name"] = conf[i].bank_name;
+  }
+  bool noErr = serializeJson(doc, fJson);
+  // Close the file
+  fJson.close();
+}
+
+
+// Prints the content of a file to the Serial
+void printFile(const String filename) {
+  // Open file for reading
+  File file = LITTLEFS.open(filename);
+  if (!file) {
+    DEBUG(F("Failed to read file"));
+    return;
+  }
+  // Extract each characters by one by one
+  while (file.available()) {
+    DEB((char)file.read());
+  }
+  DEBUG();
+  // Close the file
+  file.close();
 }

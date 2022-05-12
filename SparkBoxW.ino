@@ -11,6 +11,10 @@
 
 #define FORMAT_LITTLEFS_IF_FAILED true
 #include "config.h"
+#include "Banks.h"
+extern tBankConfig bankConfig[NUM_BANKS+1];
+extern String bankConfigFile;
+
 #include "Spark.h"                  // Paul Hamshere's SparkIO library https://github.com/paulhamsh/Spark/tree/main/Spark
 #include "SparkIO.h"                // "
 #include "SparkComms.h"             // "
@@ -35,7 +39,7 @@
 
 
 #define PGM_NAME "SparkBox"
-#define VERSION "V0.90 wifi" 
+#define VERSION "V0.91 wifi" 
 
 
 
@@ -119,11 +123,24 @@ void setup() {
     DEBUG("LITTLEFS Mount Completed");    
   }
   // A bit of cheating here, we only check one last folder 
-   if( !LITTLEFS.exists("/bank_" + lz(NUM_BANKS-1, 3)) ) {
+   if( !LITTLEFS.exists("/bank_" + lz(NUM_BANKS, 3)) ) {
     createFolders();
   } else {
     DEBUG("Bank folders exist");
   }
+
+  //first launch init
+  if (bankConfig[1].active_chan == 255) {
+    for (int i = 0 ; i <= NUM_BANKS; i++) {
+      bankConfig[i].active_chan = 0;
+      strlcpy(bankConfig[i].bank_name , ("Bank " + lz(i, 3) ).c_str(), sizeof(bankConfig[i].bank_name));
+    }
+  }
+
+  loadConfiguration(bankConfigFile, bankConfig);
+  strlcpy(bankConfig[0].bank_name , "SPARK", sizeof("SPARK"));
+  saveConfiguration(bankConfigFile, bankConfig);
+
   
   // Debug - On my Heltec module, leaving this unconnected pin hanging causes
   // a display issue where the screen dims, returning if touched.

@@ -1,6 +1,10 @@
 
 #include <Arduino.h>
 #include <inttypes.h>
+
+#include "banks.h"
+extern tBankConfig bankConfig[NUM_BANKS+1];
+
 #include "ESPxWebFlMgr.h"
 #include "ESPxWebFlMgrWp.h"
 #include "ESPxWebFlMgrWpF.h"
@@ -313,15 +317,17 @@ void ESPxWebFlMgr::fileManagerFileListInsert(void) {
   uint8_t dirlen = String(dir.name()).length();
   
   if (dirlen > 1) {
-            fc = "<div "
-                  "class=\"ccl " + dircolorline(i) + "\""
-                  "onclick=\"changedir('" + pdn + "')\""
-                  ">" + pdn + "</div>";
-            fc += "<div class=\"cct " + dircolorline(i) + "\">&lt;DIR&gt;</div>";
-            fc += "<div class=\"ccr " + dircolorline(i) + "\">";
-            fc += "</div>";
+    dirlen++;
+    fc = "<div "
+          "class=\"ccl " + dircolorline(i) + "\""
+          "onclick=\"changedir('" + pdn + "')\""
+          ">" + pdn + "</div>";
+    fc += "<div class=\"cct " + dircolorline(i) + "\">&lt;DIR&gt;</div>";
+    fc += "<div class=\"cct " + dircolorline(i) + "\">Upper level</div>";
+    fc += "<div class=\"ccr " + dircolorline(i) + "\">";
+    fc += "</div>";
     fileManager->sendContent(fc);
-i++;    
+    i++;    
   }
   File file = dir.openNextFile();
   while (file) {
@@ -331,11 +337,18 @@ i++;
     if ( (_ViewSysFiles) || (allowAccessToThisFile(fn)) ) {
 
       if (file.isDirectory()) {
+        uint8_t dirId;
+        if (fnn.startsWith("bank_")) {
+          dirId = (fnn.substring(5,8)).toInt();
+        } else {
+          dirId = 0;
+        }
             fc = "<div "
                   "class=\"ccl " + dircolorline(i) + "\""
                   "onclick=\"changedir('" + fn + "')\""
                   ">" + fnn + "/</div>";
             fc += "<div class=\"cct " + dircolorline(i) + "\">&lt;DIR&gt;</div>";
+            fc += "<div class=\"cct " + dircolorline(i) + "\">" + bankConfig[dirId].bank_name + "</div>";
             fc += "<div class=\"ccr " + dircolorline(i) + "\">"
                   "<button title=\"Delete\" onclick=\"deletefile('" + fn + "')\" class=\"b\">D</button> "
                   "<button title=\"Rename\" onclick=\"renamefile('" + fn + "')\" class=\"b\">R</button> ";
@@ -346,6 +359,7 @@ i++;
                         "onclick=\"downloadfile('" + fn + "')\""
                         ">" + fnn + "</div>";
             fc += "<div class=\"cct " + colorline(i) + "\">" + dispIntDotted(file.size()) + "b</div>";
+            fc += "<div class=\"cct " + colorline(i) + "\">" + extractAttr("name",file.name()) + "</div>";
             fc += "<div class=\"ccr " + colorline(i) + "\">"
                   "<button title=\"Delete\" onclick=\"deletefile('" + fn + "')\" class=\"b\">D</button> "
                   "<button title=\"Rename\" onclick=\"renamefile('" + fn + "')\" class=\"b\">R</button> ";
@@ -840,3 +854,22 @@ void ESPxWebFlMgr::fileManagerCommandExecutor(void) {
   delay(1);
 }
 
+//-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+String ESPxWebFlMgr::extractAttr(const String& attr, const String& fName) {
+  if (fName.endsWith(".json") ) {
+    File _fileObj = LITTLEFS.open(fName, "r");
+    String testStr = "\"" + attr + "\"";
+    while(_fileObj.available()>0) {
+      if(_fileObj.find(testStr.c_str(),testStr.length())) {
+        _fileObj.readStringUntil('"');
+        testStr = _fileObj.readStringUntil('"');
+        break;
+      }
+    } 
+    return testStr;
+  } else {
+    return "";
+  }
+}
+
+ESPxWebFlMgr filemgr(80);  // Filemanager instance

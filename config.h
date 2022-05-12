@@ -23,7 +23,7 @@
 //#define EXPRESSION_PEDAL
 //
 // Dump preset define. Comment out if you'd prefer to not see so much text output
-#define DUMP_ON
+//#define DUMP_ON
 //
 // Uncomment for better Bluetooth compatibility with Android devices
 #define CLASSIC
@@ -32,8 +32,8 @@
 #define HELTEC_WIFI
 //
 // Choose and uncomment the type of OLED display used: 0.96" SSD1306 or 1.3" SH1106 
-//#define SSD1306
-#define SH1106
+#define SSD1306
+//#define SH1106
 //
 // Uncomment if two-colour OLED screens are used. Offsets some text and alternate tuner
 #define TWOCOLOUR
@@ -49,7 +49,7 @@
 #define ACTIVE_HIGH
 //
 // How many pieces do you wish?
-#define NUM_BANKS 10
+#define NUM_BANKS 12
 //
 // How many switches do we have
 #define NUM_SWITCHES 4
