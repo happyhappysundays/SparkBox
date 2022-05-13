@@ -84,10 +84,6 @@ Expression pedal define. Comment this out if you DO NOT have the expression peda
 
 Dump preset define. Comment out if you'd prefer to not see so much text output
 
-- **define CLASSIC**
-
-Uncomment for better Bluetooth compatibility with Android devices
-
 - **define HELTEC_WIFI**
 
 Uncomment when using a Heltec module as their implementation doesn't support setMTU()
