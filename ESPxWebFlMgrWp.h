@@ -320,6 +320,10 @@ window.onload = getfileinsert;
 //*****************************************************************************************************
 static const char ESPxWebFlMgrWpcss[] PROGMEM = R"==g==(
 
+body, button, div {
+    font-size: 19px;
+}
+
 div {
   margin: 0 1px 1px 0;
   font-family: 'Segoe UI', Verdana, sans-serif;
@@ -328,7 +332,7 @@ div {
 #gc {
   display: grid;
   grid-template-columns: 80px 25% auto 30px;
-  grid-template-rows: 20px 30px auto 30px 20px;
+  grid-template-rows: 3vw 30px auto 30px 20px;
   grid-template-areas: "o1 o2 o3 o4" "m1 c c c" "m2 c c c" "m3 c c c" "u1 u2 u3 u4";
 }
 
@@ -481,7 +485,7 @@ div {
   min-width: 65px;
 }
 
-.ccg, ccu, dcu, dcg {
+.ccg, .ccu, .dcu, .dcg {
   height: 1.5em;
 }
 
@@ -520,9 +524,12 @@ div {
   text-align: right;
 }
 
-.gc {
+#tect {
+  font-size: 17px;
+}
+.gc {    
   display: grid;
-  grid-template-columns: repeat(4, max-content);  
+  grid-template-columns: 11em 6em 13em 7em; 
 }  
   )==g==";
 

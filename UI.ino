@@ -502,8 +502,6 @@ void onClick(uint8_t buttonMask) {
       if (level<0) {level=0;}
     }
     float newVal = (float)level/(float)MAX_LEVEL + 0.005;
-  //  DEBUG(newVal);
-   // DEBUG((String)(presets[CUR_EDITING].effects[curFx].EffectName) + " " + (String)(newVal) );
     change_generic_param(curFx, curParam, newVal);
     presets[CUR_EDITING].effects[curFx].Parameters[curParam] = newVal;
   } else if (curMode == MODE_LEVEL && buttonMask == 1) {
@@ -511,7 +509,6 @@ void onClick(uint8_t buttonMask) {
   } else if (curMode == MODE_BANKS && buttonMask == 2) {
     pendingBankNum--;
     pendingBankNum = constrain(pendingBankNum, 0, NUM_BANKS);
-
   } else if (curMode == MODE_BANKS && buttonMask == 8) {
     pendingBankNum++;
     pendingBankNum = constrain(pendingBankNum, 0, NUM_BANKS);
@@ -538,6 +535,7 @@ void onLongPress(uint8_t buttonMask) {
       case MODE_PRESETS:
         if (buttonMask == 2 || buttonMask == 8) {
           autoFireEnabled = true;
+          pendingBankNum = localBankNum;
           tempFrame(MODE_BANKS, curMode, FRAME_TIMEOUT); // Begin surfing thru banks
         } else {
           autoFireEnabled = false;
@@ -556,7 +554,15 @@ void onLongPress(uint8_t buttonMask) {
     } else {
       switch (buttonMask) {
         case 1: // button 1
-          cycleModes(); // Change current mode in cycle
+          if (curMode < CYCLE_MODES) {
+            // Change current mode in cycle
+            cycleModes();
+            break;
+          }
+          if (curMode == MODE_BANKS) {
+            // Receive presets from the Spark Amp and save them to the bank
+            break;
+          }
           break;
         case 3: // buttons 1 an 2
           toggleTuner();
@@ -1228,6 +1234,29 @@ void uploadPreset(int presetNum) {
   pendingPresetNum = -2;
 }
 
+void uploadBankPresets(int bankNum) {
+  if (bankNum >= 0) {
+    for (int i=0; i<4; i++) {
+      preset = presets[i];
+      preset.preset_num = i;
+      DEB("Sending Preset ");
+      DEBUG(i);
+      change_custom_preset(&preset, i);
+    }
+    display_preset_num = bankConfig[bankNum].active_chan;
+    preset = presets[display_preset_num];
+    presets[TMP_PRESET] = preset;
+    presets[CUR_EDITING] = preset;
+    DEB("Sending Preset ");
+    DEBUG(TMP_PRESET_ADDR);
+    change_custom_preset(&preset, TMP_PRESET_ADDR);
+    change_hardware_preset(display_preset_num);
+  }
+  updateFxStatuses();
+  pendingPresetNum = -2;
+}
+
+// Load presets from bank files #bankNum into the array of presets presets[]
 void loadBankPresets(int bankNum) {
   if (bankNum>0) {
   bool noErr = true;
@@ -1247,8 +1276,9 @@ void loadBankPresets(int bankNum) {
       if(!file.isDirectory()){
         if (String(file.name()).endsWith(".json")) {
           DEB(i);
-          DEBUG(": parsing preset");
-          parseJsonPreset(file, bankPresets[i]);
+          DEB(": parsing preset ");
+          parseJsonPreset(file, presets[i]);
+          bankPresetFiles[i] = file.name();
           i++;
           file.close();
         }
@@ -1257,51 +1287,32 @@ void loadBankPresets(int bankNum) {
       }
       file = root.openNextFile();
     }
+    // if there're not enough json presets in the bank folder
+    while (i<4) {
+      presets[i] = somePreset("rnd_");
+      bankPresetFiles[i] = "rnd_chn_" + String(i) + ".json";
+      savePresetToFile(presets[i], bankPresetFiles[i]);
+      i++;
+    }
   } else {
     for (int i = 0; i < 5 ; i++) {
-      bankPresets[i] = presets[i];
+      presets[i] = presets[i];
     }
   }
   localBankNum = bankNum;
   pendingBankNum = -2;
   DEB("Changed bank to ");
   DEBUG(localBankNum);
+  //send tone presets to the Spark Amp
+  uploadBankPresets(bankNum);
 }
 
-// it's useful sometimes not just have an error code, but also some random yet valid data to play with.
+// it's useful sometimes not just to have an error code, but also some random yet valid data to play with.
 SparkPreset somePreset(const char* substTitle) {
   SparkPreset ret_preset = *my_presets[random(HARD_PRESETS-1)];
   strcpy(ret_preset.Description, ret_preset.Name);
-  strcpy(ret_preset.Name, substTitle);
+  strcpy(ret_preset.Name, (String(substTitle) + String(ret_preset.Name)).c_str());
   return ret_preset;
-}
-
-// load preset from json file in the format used by PG cloud back-up
-SparkPreset loadPresetFromFile(int presetSlot) {
-  SparkPreset retPreset;
-  File presetFile;
-  // open dir bound to the slot number
-  String dirName =  "/" + (String)(presetSlot) ;
-  String fileName = "";
-  if (!LITTLEFS.exists(dirName)) {
-    return somePreset("(No Such Slot)");
-  } else {
-    File dir = LITTLEFS.open(dirName);
-    while (!fileName.endsWith(".json")) {
-      presetFile = dir.openNextFile();
-      if (!presetFile) {
-        // no preset found in current slot directory, let's substitute a random one
-        DEBUG(">>>> '" + dirName + "' Empty Slot < Random");
-        return somePreset("(Empty Slot)");
-      }
-      fileName = presetFile.name();
-      DEBUG(">>>>>>>>>>>>>>>>>> '" + fileName + "'");
-    }
-    dir.close();
-    parseJsonPreset(presetFile, retPreset);
-  }
-  presetFile.close();
-  return retPreset;
 }
 
 // Parse PG format JSON preset file saved in the ESP's flash memory FileSystem into retPreset
@@ -1353,9 +1364,6 @@ void parseJsonPreset(File &presetFile, SparkPreset &retPreset) {
 // save preset to json file in the format used by PG cloud back-up
 bool savePresetToFile(SparkPreset presetToSave, const String &filePath) {
   bool noErr = true;
-  if(strcmp(presetToSave.Name,"(Empty Slot)")==0){
-    strcpy(presetToSave.Name,presetToSave.Description);
-  }
   DynamicJsonDocument doc(3072);
   doc["type"] = "jamup_speaker";
   doc["bpm"] = presetToSave.BPM;

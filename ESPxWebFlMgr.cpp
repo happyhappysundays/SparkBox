@@ -4,6 +4,8 @@
 
 #include "banks.h"
 extern tBankConfig bankConfig[NUM_BANKS+1];
+extern String bankConfigFile;
+void loadConfiguration(const String filename, tBankConfig (&conf)[NUM_BANKS+1]);
 
 #include "ESPxWebFlMgr.h"
 #include "ESPxWebFlMgrWp.h"
@@ -290,6 +292,7 @@ File ESPxWebFlMgr::firstFile(Dir &dir) {
 
 //*****************************************************************************************************
 void ESPxWebFlMgr::fileManagerFileListInsert(void) {
+  loadConfiguration(bankConfigFile, bankConfig);
   String fc = "";
   fileManager->setContentLength(CONTENT_LENGTH_UNKNOWN);
   fileManager->send(200, F("text/html"), String());
@@ -856,7 +859,9 @@ void ESPxWebFlMgr::fileManagerCommandExecutor(void) {
 
 //-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
 String ESPxWebFlMgr::extractAttr(const String& attr, const String& fName) {
-  if (fName.endsWith(".json") ) {
+  if (fName.endsWith(bankConfigFile.substring(2))) {
+    return "banks config file";
+  } else if (fName.endsWith(".json") ) {
     File _fileObj = LITTLEFS.open(fName, "r");
     String testStr = "\"" + attr + "\"";
     while(_fileObj.available()>0) {

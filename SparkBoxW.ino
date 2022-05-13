@@ -1,13 +1,20 @@
 //******************************************************************************************
 // SparkBox - BT pedal board for the Spark 40 amp - David Thompson 2022
-// Supports four-switch pedals. Hold any of the effect buttons down for 1s to switch
+// Supports four-switch pedals. Hold the 1st button down for 1s to switch
 // between Preset mode (1 to 4) and Effect mode (Drive, Mod, Delay, Reverb).
 // Hold down all four buttons to activate/deactivate the tuner.
 // Added an expression pedal to modify the current selected effect or toggle an effect. 
 //******************************************************************************************
-//
-
-////******************************************************************************************
+// A bit of enchancements by copych 2022:
+// *OLED display library changed to ThingPulse's, supporting most common DIY display types;
+// *minor button routines improvements
+// *minor interface improvements;
+// *ESP32 deep/light sleep ability added;
+// *LITTLEFS support added;
+// *Preset banks functionality added;
+// *WiFi support added with AP/WLAN config, stored in EEPROM (hold BUTTON1 while booting);
+// *Web-based preset file manager added.
+//******************************************************************************************
 
 #define FORMAT_LITTLEFS_IF_FAILED true
 #include "config.h"
@@ -39,8 +46,7 @@ extern String bankConfigFile;
 
 
 #define PGM_NAME "SparkBox"
-#define VERSION "V0.91 wifi" 
-
+#define VERSION "V0.92 wifi" 
 
 
 // Variables required to track spark state and also for communications generally
@@ -129,17 +135,17 @@ void setup() {
     DEBUG("Bank folders exist");
   }
 
-  //first launch init
-  if (bankConfig[1].active_chan == 255) {
+  // First launch init for bankConfig
+  if (bankConfig[1].active_chan == 255) {                        // It is 255 (-1) by default and 0/1 after initializing
     for (int i = 0 ; i <= NUM_BANKS; i++) {
       bankConfig[i].active_chan = 0;
       strlcpy(bankConfig[i].bank_name , ("Bank " + lz(i, 3) ).c_str(), sizeof(bankConfig[i].bank_name));
     }
   }
 
-  loadConfiguration(bankConfigFile, bankConfig);
-  strlcpy(bankConfig[0].bank_name , "SPARK", sizeof("SPARK"));
-  saveConfiguration(bankConfigFile, bankConfig);
+  loadConfiguration(bankConfigFile, bankConfig);                // Load, or init w/default values
+  strlcpy(bankConfig[0].bank_name , "SPARK", sizeof("SPARK"));  // Always be by that name
+  saveConfiguration(bankConfigFile, bankConfig);                // Save to FS
 
   
   // Debug - On my Heltec module, leaving this unconnected pin hanging causes
@@ -165,10 +171,10 @@ void setup() {
   // Initialising the UI will init the display too.
   ui.init();
   //oled.init();
-  oled.flipScreenVertically();
-  ESP_on();
+  oled.flipScreenVertically();  // This allows to flip all the UI upside down depending on your h/w components palacement
+  ESP_on();                     // Show startup animation
   
-  // Set pushbutton inputs to pull-downs
+  // Set pushbutton inputs to pull-downs or pull-ups depending on h/w variant
   for (i = 0; i < NUM_SWITCHES; i++) {    
     #ifdef ACTIVE_HIGH
       pinMode(switchPins[i], INPUT_PULLDOWN);
@@ -177,9 +183,9 @@ void setup() {
     #endif
   }
 
-  // Avg battery voltage
+  // Accumulate battery voltage measurements to average the result
   for(i=0; i<VBAT_NUM; ++i) {
-    delay(10);
+    delay(10);                                // Warm analog delay
     readBattery();
   }
 

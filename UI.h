@@ -34,7 +34,6 @@ OLEDDisplayUi ui(&oled);            // Create UI instance for the display (sligh
 #define WIFI_MAX_ATTEMPTS 10 //WiFi connection attempts before giving up
 
 #define HARD_PRESETS 24   // number of hard-coded presets in SparkPresets.h
-//#define HARD_PRESETS 2   // number of hard-coded presets in SparkPresets.h
 #define HW_PRESETS 5      // 4 hardware presets + 1 temporary in amp presets
 //
 #define ADC_COEFF 573     // Multiplier to get ADC value out of voltage
@@ -143,8 +142,7 @@ bool effectstate = false;           // Current state of the effect controller by
 bool setting_modified = false;      // Flag that user has modifed a setting
 bool inWifi = false;
 bool wifi_connected = false;
-SparkPreset bankPresets[6];
-//SparkPreset flashPresets[NUM_BANKS*4];
+String bankPresetFiles[4];
 ulong loopTime;                     // millis per loop (performance measure)
 
 
@@ -208,4 +206,5 @@ String fxCaption=spark_knobs[curFx][curParam];  // Effect caption for displaying
 void doPushButtons();
 void refreshUI();
 void showMessage(const String &capText, const String &text1, const String &text2,  const ulong msTimeout) ;
+void loadConfiguration(const String filename, tBankConfig (&conf)[NUM_BANKS+1]);
 #endif
