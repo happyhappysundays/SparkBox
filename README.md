@@ -56,6 +56,7 @@ Under Tools->Board->Board manager ensure that you have the following version:
 Under Tools->Manage Libraries ensure that you have the following libraries and versions:
 - ThingPulse SSD1306 driver 4.2.1 (ESP32)
 - NimBLE-Arduino 1.3.6
+- LittleFS_esp32 by lorol 1.0.6 (search "core-provided littlefs" , this should bring the only result "LittleFS_esp32 by lorol") someday this lib is promised to be the core component, and may change name from LITTLEFS to LittleFS, or may not, cause it's a little mess. 
 
 # Compile options
 
