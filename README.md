@@ -49,9 +49,11 @@ Under Files->Preferences->Additional Boards Manager URLs, enter the following:
 - https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
 - https://github.com/Heltec-Aaron-Lee/WiFi_Kit_series/releases/download/0.0.5/package_heltec_esp32_index.json
 
-Under Tools->Board->Board manager ensure that you have the following version:
-- Heltec ESP32 Dev-Boards 0.0.5 (Heltec - WiFi Kit 32) **OR**
-- ESP32 by Espressif 2.0.2 (ESP32)
+Under Tools->Board->Board manager ensure that you have some of the following versions:
+- ESP Dev Module 
+- Heltec WiFi Kit 32
+- WEMOS LOLIN32
+or some other ESP32 module which gives you the "Tools->Partition Scheme" menu
 
 Under Tools->Manage Libraries ensure that you have the following libraries and versions:
 - ThingPulse SSD1306 driver 4.2.1 (ESP32)
