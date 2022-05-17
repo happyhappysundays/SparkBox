@@ -10,7 +10,7 @@
 // *minor button routines improvements
 // *minor interface improvements;
 // *ESP32 deep/light sleep ability added;
-// *LITTLEFS support added;
+// *LittleFS support added;
 // *Preset banks functionality added;
 // *WiFi support added with AP/WLAN config, stored in EEPROM (hold BUTTON1 while booting);
 // *Web-based preset file manager added.
@@ -31,7 +31,7 @@ extern String bankConfigFile;
 #include "UI.h"                     // Any UI-related defines
 //
 #include "FS.h"
-#include "LITTLEFS.h"
+#include "LittleFS.h"
 #include "BluetoothSerial.h"
 #define ARDUINOJSON_USE_DOUBLE 1
 #include "ArduinoJson.h"            // Should be installed already https://github.com/bblanchon/ArduinoJson
@@ -46,8 +46,12 @@ extern String bankConfigFile;
 
 
 #define PGM_NAME "SparkBox"
-#define VERSION "V0.92 wifi" 
+#define VERSION "V0.93" 
 
+extern eMode_t curMode;
+extern eMode_t oldMode;
+extern eMode_t returnMode;
+extern eMode_t mainMode;
 
 // Variables required to track spark state and also for communications generally
 bool got_presets;
@@ -57,11 +61,6 @@ int count;                          // "
 bool flash_GUI;                     // Flash GUI items if true
 bool isTunerMode;                   // Tuner mode flag
 bool scan_result = false;           // Connection attempt result
-enum eMode_t {MODE_PRESETS, MODE_EFFECTS, MODE_BANKS, MODE_CONFIG, MODE_TUNER, MODE_BYPASS, MODE_MESSAGE, MODE_LEVEL};
-eMode_t curMode = MODE_PRESETS;
-eMode_t oldMode = MODE_PRESETS;
-eMode_t returnMode = MODE_PRESETS;
-eMode_t mainMode = MODE_PRESETS;
 enum ePresets_t {HW_PRESET_0, HW_PRESET_1, HW_PRESET_2, HW_PRESET_3, TMP_PRESET, CUR_EDITING, TMP_PRESET_ADDR=0x007f};
 enum eEffects_t {FX_GATE, FX_COMP, FX_DRIVE, FX_AMP, FX_MOD, FX_DELAY, FX_REVERB};
 #ifdef ACTIVE_HIGH
@@ -122,23 +121,23 @@ void setup() {
   display_preset_num = 0;
   
   // Check FS
-  if(!LITTLEFS.begin(FORMAT_LITTLEFS_IF_FAILED)){
-    Serial.println("LITTLEFS Mount Failed");
+  if(!LittleFS.begin(FORMAT_LITTLEFS_IF_FAILED)){
+    Serial.println("LittleFS Mount Failed");
     return;
   } else {
-    DEBUG("LITTLEFS Mount Completed");    
+    DEBUG("LittleFS Mount Completed");    
   }
   // A bit of cheating here, we only check one last folder 
-   if( !LITTLEFS.exists("/bank_" + lz(NUM_BANKS, 3)) ) {
+   if( !LittleFS.exists("/bank_" + lz(NUM_BANKS, 3)) || !LittleFS.exists("/bank_000")) {
     createFolders();
   } else {
     DEBUG("Bank folders exist");
   }
 
   // First launch init for bankConfig
-  if (bankConfig[1].active_chan == 255) {                        // It is 255 (-1) by default and 0/1 after initializing
-    for (int i = 0 ; i <= NUM_BANKS; i++) {
-      bankConfig[i].active_chan = 0;
+  if (bankConfig[1].start_chan == 255) {                        // It is 255 (-1) by default and 0/1 after initializing
+    for (int i = 0; i <= NUM_BANKS; i++) {
+      bankConfig[i].start_chan = 0;
       strlcpy(bankConfig[i].bank_name , ("Bank " + lz(i, 3) ).c_str(), sizeof(bankConfig[i].bank_name));
     }
   }
@@ -221,9 +220,10 @@ void setup() {
 
   while (!scan_result && attempt_count < BT_MAX_ATTEMPTS) {     // Trying to connect
     attempt_count++;
-  
+    //
     readBattery();
-    
+    // Process user input
+    doPushButtons();
     // Show connection message
     oled.clear();
     oled.setFont(BIG_FONT);

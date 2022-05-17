@@ -17,8 +17,8 @@
 /*
   Changes
     V1.03
-     x removed all SPIFFS from ESP32 version, switched fully to LITTLEFS
-     x fixed rename+delete for ESP32+LITTLEFS (added  /")
+     x removed all SPIFFS from ESP32 version, switched fully to LittleFS
+     x fixed rename+delete for ESP32+LittleFS (added  /")
 
     V1.02
      x fixed the way to select the file system by conditional defines
@@ -29,10 +29,10 @@
 
     V1.00
      + out of V0.9998...
-     + ESP8266: LITTLEFS is default 
+     + ESP8266: LittleFS is default 
      + javascript: added "msgline();"
      + javascript: added "Loading..." as a not-working-hint to show that Javascript is disabled
-     + cleaning up the "/"-stuff (from SPIFF with leading "/" to LITTLEFS without...)
+     + cleaning up the "/"-stuff (from SPIFF with leading "/" to LittleFS without...)
      + Warning: esp8266 2.7.4 has an error in mime::getContentType(path) for .TXT. Fix line 65 is { kTxtSuffix, kTxt },
      + review of "edit file", moved some stuff to ESPxWebFlMgrWpF.h
 */
@@ -40,15 +40,15 @@
 #include <Arduino.h>
 #include <inttypes.h>
 
-// file system default for esp8266 is LITTLEFS, for ESP32 it is SPIFFS (no time to check...)
+// file system default for esp8266 is LittleFS, for ESP32 it is SPIFFS (no time to check...)
 
 #ifdef ESP8266
   #include <ESP8266WiFi.h>
   #include <ESP8266WebServer.h>
   #include <FS.h>
   //
-  #include <LITTLEFS.h>
-  #define ESPxWebFlMgr_FileSystem LITTLEFS
+  #include "LittleFS.h"
+  #define ESPxWebFlMgr_FileSystem LittleFS
 
 #endif
 
@@ -58,8 +58,8 @@
   #include "RequestHandlersImpl.h"
   #include "mimetable.h"
   #include <FS.h>
-  #include <LITTLEFS.h>
-  #define ESPxWebFlMgr_FileSystem LITTLEFS
+  #include <LittleFS.h>
+  #define ESPxWebFlMgr_FileSystem LittleFS
 #endif
 
 
@@ -168,6 +168,6 @@ class ESPxWebFlMgr {
 
       Things to do
 
-        ?? unify file system access for SPIFFS, LITTLEFS and SDFS
+        ?? unify file system access for SPIFFS, LittleFS and SDFS
 
 */

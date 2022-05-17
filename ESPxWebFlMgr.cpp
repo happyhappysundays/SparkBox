@@ -21,7 +21,7 @@ void loadConfiguration(const String filename, tBankConfig (&conf)[NUM_BANKS+1]);
 #ifdef ESP32
 #include "WebServer.h"
 #include <FS.h>
-#include <LITTLEFS.h>
+#include <LittleFS.h>
 #include "RequestHandlersImpl.h"
 #endif
 
@@ -234,7 +234,7 @@ void ESPxWebFlMgr::fileManagerCSS(void) {
 
 //*****************************************************************************************************
 String ESPxWebFlMgr::CheckFileNameLengthLimit(String fn) {
-  // SPIFFS file name limit. Is there a way to get the max length from SPIFFS/LITTLEFS?
+  // SPIFFS file name limit. Is there a way to get the max length from SPIFFS/LittleFS?
   //                                      SPIFFS_OBJ_NAME_LEN is spiffs.... but not very clean.
   if (fn.length() > 32) {
     int len = fn.length();
@@ -862,7 +862,7 @@ String ESPxWebFlMgr::extractAttr(const String& attr, const String& fName) {
   if (fName.endsWith(bankConfigFile.substring(2))) {
     return "banks config file";
   } else if (fName.endsWith(".json") ) {
-    File _fileObj = LITTLEFS.open(fName, "r");
+    File _fileObj = LittleFS.open(fName, "r");
     String testStr = "\"" + attr + "\"";
     while(_fileObj.available()>0) {
       if(_fileObj.find(testStr.c_str(),testStr.length())) {

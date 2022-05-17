@@ -248,6 +248,11 @@ void frTuner(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t
     hub_x = (tuner_width/2) - (tuner_width/2/4)*sin(radians(90-val_deg));
     hub_y = (display->height()) - (display->height()/4)*cos(radians(90-val_deg)) ;
     display->drawLine(meter_x+x, meter_y+y, hub_x+x, hub_y+y); // Draw line from hub to meter edge
+    if (meter_x >= hub_x-1 && meter_x <= hub_x+1) {
+      // Fine tune signaling
+      display->setColor(INVERSE);
+      display->fillRect(0,0,display->width(),STATUS_HEIGHT);  
+    }
   } else {
     // Nothing to show
     display->drawString(display->width()/2+x,note_y+y,"..."); // Not detected
@@ -1204,10 +1209,10 @@ void updateFxStatuses() {
 bool createFolders() {
   bool noErr;
   String dirName = "";
-  for (int i=1; i<=NUM_BANKS;i++) {
+  for (int i=0; i<=NUM_BANKS;i++) {
     dirName = "/bank_" + lz(i, 3);
-    if (!LITTLEFS.exists(dirName)) {
-      noErr = noErr && LITTLEFS.mkdir(dirName);
+    if (!LittleFS.exists(dirName)) {
+      noErr = noErr && LittleFS.mkdir(dirName);
       DEBUG("Create folder: " + dirName + " : " + (String)noErr);
     }
   }
@@ -1243,7 +1248,7 @@ void uploadBankPresets(int bankNum) {
       DEBUG(i);
       change_custom_preset(&preset, i);
     }
-    display_preset_num = bankConfig[bankNum].active_chan;
+    display_preset_num = bankConfig[bankNum].start_chan;
     preset = presets[display_preset_num];
     presets[TMP_PRESET] = preset;
     presets[CUR_EDITING] = preset;
@@ -1261,7 +1266,7 @@ void loadBankPresets(int bankNum) {
   if (bankNum>0) {
   bool noErr = true;
     String dirName = "/bank_" + lz(bankNum, 3) + "/";
-    File root = LITTLEFS.open(dirName);
+    File root = LittleFS.open(dirName);
     if(!root){
       DEBUG("- failed to open directory");
       exit;
@@ -1383,7 +1388,7 @@ bool savePresetToFile(SparkPreset presetToSave, const String &filePath) {
     sigpath[i]["dspId"] = presetToSave.effects[i].EffectName;
     sigpath[i]["active"] = presetToSave.effects[i].OnOff;
   }
-  File fJson = LITTLEFS.open(filePath,"w");
+  File fJson = LittleFS.open(filePath,"w");
   noErr = serializeJson(doc, fJson);
   return noErr;
 }
@@ -1597,7 +1602,7 @@ void filemanagerRun() {
 
   if (WiFi.status() == WL_CONNECTED) {
     wifi_connected = true;
-    DEB("**WiFi** Open Filemanager with http://");
+    DEB("**WiFi** Open Filemanager at http://");
     IPAddress IpAddr = WiFi.localIP();
     DEB(IpAddr);
     DEB("/");
@@ -1650,7 +1655,7 @@ void showMessage(const String &capText, const String &text1, const String &text2
 // Loads the configuration from a file
  void loadConfiguration(const String filename, tBankConfig (&conf)[NUM_BANKS+1]) {
   // Open file for reading
-  File fJson = LITTLEFS.open(filename);
+  File fJson = LittleFS.open(filename);
   // Allocate a temporary JsonDocument
   StaticJsonDocument<JSON_SIZE> doc;
   // Deserialize the JSON document
@@ -1662,7 +1667,7 @@ void showMessage(const String &capText, const String &text1, const String &text2
   }
   for (JsonObject param : doc["params"].as<JsonArray>()) {
     uint8_t param_id = param["id"]; // 1, 2, 3, 4, 5, ...
-    conf[param_id].active_chan = param["active_chan"]; //1,2,3,4
+    conf[param_id].start_chan = param["start_chan"]; //1,2,3,4
     // "Bank 001", "Bank 002", ...  
     strlcpy(conf[param_id].bank_name,         // <- destination
           param["bank_name"] | ("Bank " + lz(param_id, 3)).c_str(),            // <- source
@@ -1675,7 +1680,7 @@ void showMessage(const String &capText, const String &text1, const String &text2
 // Saves the configuration to a file
 void saveConfiguration(const String filename, const tBankConfig (&conf)[NUM_BANKS+1]) {
   // Open file for writing
-  File fJson = LITTLEFS.open(filename,"w");
+  File fJson = LittleFS.open(filename,"w");
   if (!fJson) {
     DEBUG(F("Failed to create file"));
     return;
@@ -1684,7 +1689,7 @@ void saveConfiguration(const String filename, const tBankConfig (&conf)[NUM_BANK
   JsonArray params = doc.createNestedArray("params");
   for (int i=0; i<=NUM_BANKS; i++){
     params[i]["id"] = i;
-    params[i]["active_chan"] = conf[i].active_chan;
+    params[i]["start_chan"] = conf[i].start_chan;
     params[i]["bank_name"] = conf[i].bank_name;
   }
   bool noErr = serializeJson(doc, fJson);
@@ -1696,7 +1701,7 @@ void saveConfiguration(const String filename, const tBankConfig (&conf)[NUM_BANK
 // Prints the content of a file to the Serial
 void printFile(const String filename) {
   // Open file for reading
-  File file = LITTLEFS.open(filename);
+  File file = LittleFS.open(filename);
   if (!file) {
     DEBUG(F("Failed to read file"));
     return;
