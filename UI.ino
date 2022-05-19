@@ -520,7 +520,6 @@ void onClick(uint8_t buttonMask) {
   } else if (curMode == MODE_BANKS && buttonMask == 8) {
     pendingBankNum++;
     pendingBankNum = constrain(pendingBankNum, 0, NUM_BANKS);
-
   }
 }
 
@@ -1264,7 +1263,7 @@ void uploadBankPresets(int bankNum) {
 
 // Load presets from bank files #bankNum into the array of presets presets[]
 void loadBankPresets(int bankNum) {
-  if (bankNum>0) {
+  if (bankNum>=0) {
   bool noErr = true;
     String dirName = "/bank_" + lz(bankNum, 3) + "/";
     File root = LittleFS.open(dirName);
