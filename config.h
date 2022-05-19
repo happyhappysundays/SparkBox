@@ -26,10 +26,10 @@
 //#define DUMP_ON
 //
 // Uncomment for better Bluetooth compatibility with Android devices
-#define CLASSIC
+//#define CLASSIC
 //
 // Uncomment when using a Heltec module as their implementation doesn't support setMTU()
-#define HELTEC_WIFI
+//#define HELTEC_WIFI
 //
 // Choose and uncomment the type of OLED display used: 0.96" SSD1306 or 1.3" SH1106 
 #define SSD1306
@@ -55,8 +55,8 @@
 #define NUM_SWITCHES 4
 //
 // GPIOs of the buttons in your setup in the form of switchPins[]{GPIO_for_button1, GPIO_for_button2, GPIO_for_button3, GPIO_for_button4, ... }
-// const uint8_t switchPins[]{17,5,18,23};                     // Switch gpio numbers (for those who already has built a pedal with these pins)
-const uint8_t switchPins[]{25,26,27,14};                      // Switch gpio numbers (recommended for those who is building a pedal, these pins allow deep sleep)
+const uint8_t switchPins[]{17,5,18,23};                     // Switch gpio numbers (for those who already has built a pedal with these pins)
+//const uint8_t switchPins[]{25,26,27,14};                      // Switch gpio numbers (recommended for those who is building a pedal, these pins allow deep sleep)
 //
 // Startup splash animation
 #define ANIMATION_1
