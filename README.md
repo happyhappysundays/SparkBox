@@ -3,7 +3,7 @@ SparkBox is a BT pedal for the Positive Grid Spark 40.
 
 # What's New
 
-*   Added banks support. "Bank" is a set of four tone presets, stored in ESP32's flash memory in a separate folder.
+*   Added banks support. "Banks" are sets of four tone presets, stored in ESP32's flash memory, each bank in a corresponding folder.
 1. Long pressing BUTTON 2 or BUTTON 4 invokes Bank Select manu, continue using BUTTONS 2 and 4 to decrease/increase bank number. If you stop scrolling for a few seconds, the selected bank will be uploaded to the amp.
 2. On the first run your current set of hardware presets will be saved to the bank 000.
 
