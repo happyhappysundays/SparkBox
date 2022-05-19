@@ -1520,21 +1520,22 @@ void filemanagerRun() {
   showMessage("Starting WiFi", "Connecting to: ", portalCfg.SSID, 0);
   ui.update();
   refreshUI();
-  WiFi.softAPdisconnect();
+//  WiFi.softAPdisconnect();
   delay(1);
-  WiFi.disconnect();
+//  WiFi.disconnect();
   delay(1);
-  WiFi.mode(WIFI_STA); // not clean, we have .mode in cfg, but filemanager in AP mode isn't supported yet
+ // WiFi.mode(WIFI_STA); // not clean, we have .mode in cfg, but filemanager in AP mode isn't supported yet
   delay(1);
   //
   if ((!portalCfg.tried && (String)(portalCfg.SSID) != "") || (portalCfg.tried && portalCfg.succeed ) || (!portalCfg.tried && !portalCfg.succeed ) || (portalCfg.tried && !portalCfg.succeed )){
+  
+  WiFi.begin(portalCfg.SSID, portalCfg.pass);
   for (int att=1; att <= WIFI_MAX_ATTEMPTS; att++) {
     DEBUG("**WiFi** trying to connect to " + (String)(portalCfg.SSID));
-    WiFi.begin(portalCfg.SSID, portalCfg.pass);
     int oldstatus = -100;
     int newstatus = WiFi.status();
     while(newstatus != WL_CONNECTED && newstatus != WL_CONNECT_FAILED && newstatus != WL_DISCONNECTED && newstatus != WL_CONNECTION_LOST){
-      delay(1);
+      delay(500);
       if (oldstatus != newstatus) {
         DEB ("**WiFi** status changed: ");
         DEBUG (newstatus);
@@ -1551,9 +1552,36 @@ void filemanagerRun() {
       portalCfg.succeed = false;
       DEBUG("**WiFi**  CONNECTION FAILED");
       DEB("**WiFi**  STATUS CODE: ");
-      DEBUG(newstatus);
-      delay(1000);
+      DEB(newstatus);
+      switch (newstatus) {
+        case 255:
+          DEB(" (NO_SHIELD)");
+          break;
+        case 0:
+          DEB(" (IDLE)");
+          break;
+        case 1:
+          DEB(" (NO SSID AVAIL)");
+          break;
+        case 2:
+          DEB(" (SCAN COMPLETED)");
+          break;
+        case 3:
+          DEB(" (CONNECTED)");
+          break;
+        case 4:
+          DEB(" (CONNECT FAILED)");
+          break;
+        case 5:
+          DEB(" (CONNECTION LOST)");
+          break;
+        case 6:
+          DEB(" (DISCONNECTED)");
+          break;
+      }
     }
+    DEBUG("");
+    delay(1000);
   }
     portalCfg.tried = true;
     EEPROM.put(0, portalCfg);
@@ -1595,6 +1623,7 @@ void filemanagerRun() {
     }
     EEPROM.put(0, portalCfg);
     EEPROM.end();
+    delay(30);
     esp_restart();
 
   }
@@ -1614,7 +1643,7 @@ void filemanagerRun() {
     portalCfg.tried = true;
     portalCfg.succeed = false;
     EEPROM.end();
-    delay(10);
+    delay(30);
     esp_restart();
   }
   
@@ -1623,6 +1652,7 @@ void filemanagerRun() {
   EEPROM.put(0, portalCfg);
   EEPROM.end();
 
+  // LOOP|loop|LOOP|loop|LOOP|loop|LOOP|loop|LOOP|loop|LOOP|loop|LOOP|loop|LOOP|loop|LOOP|loop|LOOP|loop|
   while  (true) { // loop() is probably a better place
     int remainingTimeBudget = ui.update();
     filemgr.handleClient();
