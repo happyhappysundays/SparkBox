@@ -1,14 +1,20 @@
-# SparkBox V0.90 wifi
+# SparkBox V0.93 wifi + banks
 SparkBox is a BT pedal for the Positive Grid Spark 40.
 
 # What's New
 
-*   Added WiFi support. Holding BUTTON 1 during boot will switch the pedal to WiFi mode.
+*   Added banks support. "Bank" is a set of four tone presets, stored in ESP32's flash memory in a separate folder.
+1. Long pressing BUTTON 2 or BUTTON 4 invokes Bank Select manu, continue using BUTTONS 2 and 4 to decrease/increase bank number. If you stop scrolling for a few seconds, the selected bank will be uploaded to the amp.
+2. On the first run your current set of hardware presets will be saved to the bank 000.
+
+*   Added WiFi support w/file manager. Holding BUTTON 1 during boot will switch the pedal to WiFi mode.
 1. Initially the pedal will launch a WiFi Access Point (AP), SSID is "SparkBox" by default. 
 2. Connect to this WiFi, using your mobile or PC or whatever.
 3. Direct your browser to http://192.168.4.1 
 4. Submit your local WiFi network credentials (SSID and password), so the pedal could connect to your home WiFi.
-5. If everything is done correctly, holding BUTTON 1 on boot again will connect your pedal to your home WiFi network, and the OLED display on the pedal will show the adress of the filemanager site, so you can access the pedal from any device connected to your local wireless network. 
+5. If everything is done correctly, holding BUTTON 1 on boot again will connect your pedal to your home WiFi network, and the OLED display on the pedal will show the adress of the filemanager site, so you can access the pedal from any device connected to your local wireless network.
+6. Use the filemanager to upload your tone presets to the banks folders, 4 presets per folder.
+7. Format of \*.json preset files is the same as backed up files, used by the Spark app (usually you can find them zipped in your Dropbox).
 
 *   There's a negative impact on the compiled project size. The program won't fit into a standard APP partition. The cure is easy though: in Arduino IDE choose **Tools->Partition Scheme->No-OTA(Large APP)**, or something that gives you around 2MB APP partition along with enough (also 2MB) of SPIFFS space, cause presets are stored there. Note, that some boards in Arduino IDE don't have Partition Scheme settings, in this case it's recommended to choose some other ESP32 board (ESP Dev Module, Heltec WiFi Kit 32, WEMOS LOLIN32, etc.) which has this menu.
 
