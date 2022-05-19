@@ -334,9 +334,19 @@ void ESPxWebFlMgr::fileManagerFileListInsert(void) {
   }
   File file = dir.openNextFile();
   while (file) {
-    String fn = file.name();
-    String fnn = fn.substring(dirlen);
-
+    String fnn = file.name();
+    String fn = "";
+    if (dn!="/") { 
+      fn = dn + "/" + fnn;
+    } else {
+      fn = dn + fnn;
+    }
+    DEB( "dn fn fnn: " );
+    DEB( dn);
+    DEB(", ");
+    DEB( fn);
+    DEB(", ");
+    DEBUG(fnn);
     if ( (_ViewSysFiles) || (allowAccessToThisFile(fn)) ) {
 
       if (file.isDirectory()) {
@@ -346,31 +356,26 @@ void ESPxWebFlMgr::fileManagerFileListInsert(void) {
         } else {
           dirId = 0;
         }
-            fc = "<div "
-                  "class=\"ccl " + dircolorline(i) + "\""
-                  "onclick=\"changedir('" + fn + "')\""
-                  ">" + fnn + "/</div>";
-            fc += "<div class=\"cct " + dircolorline(i) + "\">&lt;DIR&gt;</div>";
-            fc += "<div class=\"cct " + dircolorline(i) + "\">" + bankConfig[dirId].bank_name + "</div>";
-            fc += "<div class=\"ccr " + dircolorline(i) + "\">"
-                  "<button title=\"Delete\" onclick=\"deletefile('" + fn + "')\" class=\"b\">D</button> "
-                  "<button title=\"Rename\" onclick=\"renamefile('" + fn + "')\" class=\"b\">R</button> ";
-            fc += "</div>";
+        if (!fn.startsWith("/")) fn = "/" + fn;
+        fc = "<div class=\"ccl " + dircolorline(i) + "\" onclick=\"changedir('" + fn + "')\">" + fnn + "/</div>";
+        fc += "<div class=\"cct " + dircolorline(i) + "\">&lt;DIR&gt;</div>";
+        fc += "<div class=\"cct " + dircolorline(i) + "\">" + bankConfig[dirId].bank_name + "</div>";
+        fc += "<div class=\"ccr " + dircolorline(i) + "\">"
+              "<button title=\"Delete\" onclick=\"deletefile('" + fn + "')\" class=\"b\">D</button> "
+              "<button title=\"Rename\" onclick=\"renamefile('" + fn + "')\" class=\"b\">R</button> ";
+        fc += "</div>";
       } else {
-            fc = "<div "
-                        "class=\"ccl " + colorline(i) + "\""
-                        "onclick=\"downloadfile('" + fn + "')\""
-                        ">" + fnn + "</div>";
-            fc += "<div class=\"cct " + colorline(i) + "\">" + dispIntDotted(file.size()) + "b</div>";
-            fc += "<div class=\"cct " + colorline(i) + "\">" + extractAttr("name",file.name()) + "</div>";
-            fc += "<div class=\"ccr " + colorline(i) + "\">"
-                  "<button title=\"Delete\" onclick=\"deletefile('" + fn + "')\" class=\"b\">D</button> "
-                  "<button title=\"Rename\" onclick=\"renamefile('" + fn + "')\" class=\"b\">R</button> ";
-            // no gziped version and (zipper or gziped zipper) exists
-            if ( (! (fn.endsWith(".gz")) ) && gzipperexists) {
-              fc += "<button title=\"Compress\" onclick=\"compressurlfile('" + fn + "')\" class=\"b\">C</button> ";
-            }
-            // for editor
+        fc = "<div class=\"ccl " + colorline(i) + "\" onclick=\"downloadfile('" + fn + "')\">" + fnn + "</div>";
+        fc += "<div class=\"cct " + colorline(i) + "\">" + dispIntDotted(file.size()) + "b</div>";
+        fc += "<div class=\"cct " + colorline(i) + "\">" + extractAttr("name", fn ) + "</div>";
+        fc += "<div class=\"ccr " + colorline(i) + "\">"
+              "<button title=\"Delete\" onclick=\"deletefile('" + fn + "')\" class=\"b\">D</button> "
+              "<button title=\"Rename\" onclick=\"renamefile('" + fn + "')\" class=\"b\">R</button> ";
+        // no gziped version and (zipper or gziped zipper) exists
+        if ( (! (fn.endsWith(".gz")) ) && gzipperexists) {
+          fc += "<button title=\"Compress\" onclick=\"compressurlfile('" + fn + "')\" class=\"b\">C</button> ";
+        }
+        // for editor
       #ifndef fileManagerEditEverything
             String contentTyp = getContentType(fn);
             if ( (contentTyp.startsWith("text/")) ||

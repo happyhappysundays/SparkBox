@@ -1206,17 +1206,15 @@ void updateFxStatuses() {
 }
 
 // Create directories for storing banks of presets
-bool createFolders() {
-  bool noErr;
+void createFolders() {
   String dirName = "";
   for (int i=0; i<=NUM_BANKS;i++) {
     dirName = "/bank_" + lz(i, 3);
     if (!LittleFS.exists(dirName)) {
-      noErr = noErr && LittleFS.mkdir(dirName);
-      DEBUG("Create folder: " + dirName + " : " + (String)noErr);
+      DEB("Create folder: " + dirName + " : " );
+      DEBUG (LittleFS.mkdir(dirName));
     }
   }
-  return noErr;
 }
 
 void uploadPreset(int presetNum) {

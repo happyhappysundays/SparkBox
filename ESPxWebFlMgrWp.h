@@ -529,7 +529,7 @@ div {
 }
 .gc {    
   display: grid;
-  grid-template-columns: 11em 6em 13em 7em; 
+  grid-template-columns: 11em 6em 17em 7em; 
 }  
   )==g==";
 

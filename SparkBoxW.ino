@@ -15,8 +15,11 @@
 // *WiFi support added with AP/WLAN config, stored in EEPROM (hold BUTTON1 while booting);
 // *Web-based preset file manager added.
 //******************************************************************************************
-
+// #define CONFIG_LITTLEFS_SPIFFS_COMPAT 1
+#define CONFIG_LITTLEFS_HUMAN_READABLE 1
+// #define CONFIG_LITTLEFS_FOR_IDF_3_2 1
 #define FORMAT_LITTLEFS_IF_FAILED true
+#define CONFIG_LITTLEFS_FLUSH_FILE_EVERY_WRITE 1
 #include "config.h"
 #include "Banks.h"
 extern tBankConfig bankConfig[NUM_BANKS+1];
@@ -113,6 +116,8 @@ const uint8_t overlaysCount = 1;
 
 // SETUP() *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
 void setup() {
+  
+  time_to_sleep = millis() + (1000*60); // Preset timeout 
   setCpuFrequencyMhz(180);                      // Hopefully this will let the battery last a bit longer
   #ifdef DEBUG_ON
     Serial.begin(115200);                       // Start serial debug console monitoring via ESP32
@@ -122,17 +127,15 @@ void setup() {
   
   // Check FS
   if(!LittleFS.begin(FORMAT_LITTLEFS_IF_FAILED)){
-    Serial.println("LittleFS Mount Failed");
+    DEBUG("LittleFS Mount Failed");
     return;
   } else {
     DEBUG("LittleFS Mount Completed");    
   }
-  // A bit of cheating here, we only check one last folder 
-   if( !LittleFS.exists("/bank_" + lz(NUM_BANKS, 3)) || !LittleFS.exists("/bank_000")) {
-    createFolders();
-  } else {
-    DEBUG("Bank folders exist");
-  }
+
+  // This will create bank folders if needed
+ 
+  createFolders(); 
 
   // First launch init for bankConfig
   if (bankConfig[1].start_chan == 255) {                        // It is 255 (-1) by default and 0/1 after initializing
@@ -195,6 +198,7 @@ void setup() {
 
 
   // Show welcome message
+  /*
   oled.clear();
   oled.setFont(BIG_FONT);
   oled.setTextAlignment(TEXT_ALIGN_CENTER);
@@ -206,6 +210,12 @@ void setup() {
   mainIcons();
   oled.display();
   delay(1000);                                // Wait for splash screen
+  */
+  
+  showMessage("Welcome!", PGM_NAME, VERSION, 0);
+ // refreshUI();
+  ui.update(); // As loop() ain't running yet, kinda kick-start needed
+  delay(1000); 
 
   EEPROM.begin(512);
   EEPROM.get(0, portalCfg); // try to get our stored values
