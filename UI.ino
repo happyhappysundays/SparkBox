@@ -136,12 +136,15 @@ void frBanks(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t
   display->setColor(WHITE);
   display->setTextAlignment(TEXT_ALIGN_LEFT);
   display->drawString( x, STATUS_HEIGHT-11+y, bankN ); // No +1 cause folder names are also accessable via web so just made them 1-based
+  
+  display->setTextAlignment(TEXT_ALIGN_CENTER);
+  display->setFont(SMALL_FONT);
+  display->drawString(display->width()/2 + x,  y, "Bank select");
   hintIcons(x,y);
 }
 
 // BANK CONFIG MODE =======================================================================
 void frConfig(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t y) {
-  
   hintIcons(x,y);
 }
 

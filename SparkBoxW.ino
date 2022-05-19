@@ -55,9 +55,10 @@ extern eMode_t curMode;
 extern eMode_t oldMode;
 extern eMode_t returnMode;
 extern eMode_t mainMode;
+extern tPedalCfg pedalCfg;
 
 // Variables required to track spark state and also for communications generally
-bool got_presets;
+bool got_presets = false;
 uint8_t display_preset_num;         // Referenced preset number on Spark
 int i, j, p;
 int count;                          // "
@@ -198,7 +199,6 @@ void setup() {
 
 
   // Show welcome message
-  /*
   oled.clear();
   oled.setFont(BIG_FONT);
   oled.setTextAlignment(TEXT_ALIGN_CENTER);
@@ -210,13 +210,7 @@ void setup() {
   mainIcons();
   oled.display();
   delay(1000);                                // Wait for splash screen
-  */
   
-  showMessage("Welcome!", PGM_NAME, VERSION, 0);
- // refreshUI();
-  ui.update(); // As loop() ain't running yet, kinda kick-start needed
-  delay(1000); 
-
   EEPROM.begin(512);
   EEPROM.get(0, portalCfg); // try to get our stored values
   if ((digitalRead(switchPins[0]) == logicON)) {
@@ -224,10 +218,12 @@ void setup() {
     filemanagerRun();
     inWifi = false;
   }
+  EEPROM.get(255, pedalCfg);
+  DEB("pedalCfg.active_bank = ");
+  DEBUG(pedalCfg.active_bank);
   EEPROM.end();
-
+  
   DEBUG("Connecting...");
-
   while (!scan_result && attempt_count < BT_MAX_ATTEMPTS) {     // Trying to connect
     attempt_count++;
     //
@@ -243,11 +239,10 @@ void setup() {
     oled.setTextAlignment(TEXT_ALIGN_CENTER);
     oled.drawString(X1, Y4, "Please wait " + (String)(BT_MAX_ATTEMPTS - attempt_count + 1) + "...");
     mainIcons();
-    oled.display();    
+    oled.display();
     DEBUG("Scanning and connecting");
     scan_result = spark_state_tracker_start();
   }
-  
   attempt_count = 0;
 
   if (!scan_result) {
@@ -261,11 +256,26 @@ void setup() {
   // Proceed if connected
   ui.switchToFrame(curMode);
   time_to_sleep = millis() + (BT_MAX_ATTEMPTS * MILLIS_PER_ATTEMPT); // Preset timeout 
+
+
 }
 
 void loop() {
   static ulong tBefore, tAfter;
   if(spark_state == SPARK_SYNCED){
+    if (!got_presets) {
+      // If it's the first run with banks, then save current presets to Bank_000
+      File root = LittleFS.open("/bank_000/");
+      if (pedalCfg.active_bank == 255 || !root.openNextFile() ) {
+        localBankNum = 0;
+        pedalCfg.active_bank = localBankNum;
+        for (int i = 0; i < 4; i++) {
+          DEBUG("Saving h/w preset " + String(i));
+          savePresetToFile(presets[i], "/bank_000/hw_" + String(i) + ".json");
+        }
+      }
+      got_presets = true;
+    }
     int remainingTimeBudget = ui.update();
   }
 #ifdef EXPRESSION_PEDAL
