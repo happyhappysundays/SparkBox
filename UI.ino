@@ -871,7 +871,8 @@ int batteryCharging() {
     } else {
       return 0;
     }
-  #endif  
+  #endif
+  return -1; // default value
 }
 
 // Stand-by mode with some fun
