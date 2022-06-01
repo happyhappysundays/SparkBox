@@ -9,7 +9,7 @@ SparkMessage msg;
 SparkPreset preset;
 SparkPreset presets[6];
 
-enum spark_status_values {SPARK_DISCONNECTED, SPARK_CONNECTED, SPARK_COMMUNICATING, SPARK_SYNCING, SPARK_SYNCED};
+enum spark_status_values {SPARK_DISCONNECTED, SPARK_CONNECTED, SPARK_COMMUNICATING, SPARK_CHECKSUM, SPARK_SYNCING, SPARK_SYNCED};
 spark_status_values spark_state;
 unsigned long spark_ping_timer;
 
