@@ -46,7 +46,7 @@
 //
 // Logical level of a button being pressed. If your buttons connect to GND, then comment this setting out.
 // This setting also affects Pull-up/down, and waking source settings. 
-//#define ACTIVE_HIGH
+#define ACTIVE_HIGH
 //
 // How many pieces do you wish?
 #define NUM_BANKS 12
@@ -55,8 +55,8 @@
 #define NUM_SWITCHES 4
 //
 // GPIOs of the buttons in your setup in the form of switchPins[]{GPIO_for_button1, GPIO_for_button2, GPIO_for_button3, GPIO_for_button4, ... }
-//const uint8_t switchPins[]{17,5,18,23};                     // Switch gpio numbers (for those who already has built a pedal with these pins)
-const uint8_t switchPins[]{33,14,27,26};  // PH EDIT
+const uint8_t switchPins[]{17,5,18,23};                     // Switch gpio numbers (for those who already has built a pedal with these pins)
+//const uint8_t switchPins[]{33,14,27,26};  // PH EDIT
 //const uint8_t switchPins[]{25,26,27,14};                      // Switch gpio numbers (recommended for those who is building a pedal, these pins allow deep sleep)
 //
 // Startup splash animation
