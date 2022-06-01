@@ -590,6 +590,9 @@ void onLongPress(uint8_t buttonMask) {
         case 12: // buttons 3 an 4
           toggleBypass();
           break;
+        case 8:
+          esp_restart(); 
+          break;
         default:
           //no action yet
           break;

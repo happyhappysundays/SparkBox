@@ -22,6 +22,14 @@ class MyClientCallback : public BLEClientCallbacks
     DEBUG("callback: Spark disconnected");   
     set_conn_status_disconnected(SPK);   
   }
+
+#ifndef CLASSIC
+  bool onConnParamsUpdateRequest(BLEClient* pClient, const ble_gap_upd_params* params) {
+    DEBUG("Connection callback");
+    got_param_callback = true;
+    return true;
+  };
+#endif
 };
 
 // server callback for connection to BLE app
@@ -238,10 +246,12 @@ bool connect_to_all() {
   }
 
   is_ble = true;
+  got_param_callback = false;
 
-  BLEDevice::init("Spark 40 MIDI BLE");
+  BLEDevice::init(SPARK_BT_NAME);
   pClient_sp = BLEDevice::createClient();
   pClient_sp->setClientCallbacks(new MyClientCallback());
+  BLEDevice::setMTU(517);
   
 #ifdef BLE_CONTROLLER  
   pClient_pedal = BLEDevice::createClient();

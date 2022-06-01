@@ -49,7 +49,7 @@ extern String bankConfigFile;
 
 
 #define PGM_NAME "SparkBox"
-#define VERSION "V0.94" 
+#define VERSION "V0.93" 
 
 extern eMode_t curMode;
 extern eMode_t oldMode;

@@ -27,7 +27,8 @@ OLEDDisplayUi ui(&oled);            // Create UI instance for the display (sligh
 #define NUM_FRAMES 8      // How many UI frames we have
 #define CYCLE_MODES 2     // How many pedal modes (first N frames) switch in cycle when button 1 is long-pressed
 #define VBAT_AIN 32       // Vbat sense GPIO (2:1 divider)
-#define CHRG_AIN 33       // Charge pin sense GPIO (10k pull-up)
+//#define CHRG_AIN 33       // Charge pin sense GPIO (10k pull-up)
+#define CHRG_AIN 35       // Charge pin sense (10k pull-up)         // PH EDIT
 #define EXP_AIN 34        // Expression pedal input GPIO (a pot (usually 10-50kOhm) connected via an additional 1kOhm resistor to 3V3)
 #define BT_MAX_ATTEMPTS 5 // Bluetooth (re-)connection attempts before going to sleep
 #define MILLIS_PER_ATTEMPT 6000 // milliseconds per connection attempts, this is used when reconnecting, not quite as expected though
