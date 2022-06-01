@@ -75,7 +75,7 @@ void dump_buf(char *hdr, uint8_t *buf, int len) {
   Serial.print(buf[len-1], HEX);  
   
   int i;
-  for (i=0; i<0 ; i++) {
+  for (i = 0; i < len ; i++) {
     if (buf[i]<16) Serial.print("0");
     Serial.print(buf[i], HEX);
     Serial.print(" ");
@@ -175,8 +175,17 @@ void BlockIn::process() {
     // **** PASSTHROUGH APP AND AMP ****
 
     if (pass_through) {
-      if (io_state == 0 && b == 0x01) 
-        io_state = 1;
+      if (io_state == 0) {
+        if (b == 0x01) {  // block passthough
+          io_state = 1;
+        } 
+        else if (b == 0xf0) { // chunk passthrough (for Spark Mini)
+          io_state = 101;
+          io_buf[0] = 0xf0;
+          io_pos = 1;
+          io_len = MAX_IO_BUFFER;          
+        }
+      }
       else if (io_state == 1) {
         if (b == 0xfe) {
           io_state = 2;
@@ -204,6 +213,16 @@ void BlockIn::process() {
           io_state = 0; 
         }
       }
+      else if (io_state == 101) { // chunk passthrough only
+        io_buf[io_pos++] = b;
+        if (b == 0xf7) { 
+          data_write(io_buf, io_pos);
+
+          io_pos = 0;
+          io_len = MAX_IO_BUFFER; 
+          io_state = 0; 
+        }
+      }
 
       if (io_pos > MAX_IO_BUFFER) {
         DEBUG("SPARKIO IO_PROCESS_IN_BLOCKS OVERRUN");
@@ -212,54 +231,64 @@ void BlockIn::process() {
     }
     // **** END PASSTHROUGH ****
 
-    if (in_bad_block) {
-      Serial.print(" * ");
-      Serial.print(b, HEX);
-      Serial.print(" * ");
-    }
-    
+   
     // check the 7th byte which holds the block length
-    if (rb_state == 6) {
+
+    if (rb_state == 0 && b == 0xf0) { // chunk header not block header
+      rb_state = 101;
+    }
+    else if (rb_state == 6) {
       rb_len = b - 16;
       rb_state++;
-    }
-    // check every other byte in the block header for a match to the header standard
+    }  // check every other byte in the block header for a match to the header standard
     else if (rb_state >= 0 && rb_state < 16) {
       if (b == blk_hdr[rb_state]) {
         rb_state++;
       }
       else {
-        Serial.print(rb_state);
-        Serial.print(" ");
-        Serial.print(b, HEX);
-        Serial.print(" ");
-        Serial.print(blk_hdr[rb_state], HEX);
-        Serial.println();
-        rb_state = -1;
-        in_bad_block = true;
-        DEBUG("SparkIO bad block header");
+        DEB("Bad block header at position: ");
+        DEB(rb_state);
+        DEB(" data: ");
+        DEB(b, HEX);
+        DEB(" expected: ");
+        DEB(blk_hdr[rb_state], HEX);
+        DEBUG();
+        rb_state = 0;
+        if (b == blk_hdr[rb_state])  // in case we found 0x01, the start of the header
+          rb_state++;
       }
     } 
     // and once past the header just read the next bytes as defined by rb_len
     // store these to the chunk buffer
     else if (rb_state == 16) {
-      in_bad_block = false;
-  
       rb->add(b);
+      
+/*        
+      if (b < 16) Serial.print("0");
+      Serial.print(b, HEX);
+      Serial.print("+");     
+*/
       rb_len--;
       if (rb_len == 0) {
         rb_state = 0;
         rb->commit();
+//        Serial.println();
       }
     }
-      
-    // checking for rb_state 0 is done separately so that if a prior step finds a mismatch
-    // and resets the state to 0 it can be processed here for that byte - saves missing the 
-    // first byte of the header if that was misplaced
     
-    if (rb_state == -1) 
-      if (b == blk_hdr[0]) 
-        rb_state = 1;
+    if (rb_state == 101) {
+      rb->add(b);     
+/*
+      if (b < 16) Serial.print("0");
+      Serial.print(b, HEX);
+      Serial.print("-");
+*/
+      if (b == 0xf7) {
+        rb_state == 0;
+        rb->commit(); 
+//        Serial.println();              
+      }
+    }
   }
 }
 
@@ -953,6 +982,21 @@ void MessageOut::get_hardware_preset_number()
    end_message();  
 }
 
+void MessageOut::get_checksum_info() {
+   start_message (0x022a);
+   write_byte(0x94);
+   write_uint(0);
+   write_uint(1);
+   write_uint(2);
+   write_uint(3);   
+   end_message();   
+}
+
+void MessageOut::get_firmware() {
+   start_message (0x022f);
+   end_message(); 
+}
+
 void MessageOut::save_hardware_preset(uint8_t curr_preset, uint8_t preset_num)
 {
    start_message (cmd_base + 0x27);
@@ -1249,7 +1293,11 @@ void BlockOut::process() {
     }
     
     out_block[6] = ob_pos;
-    data_write(out_block, ob_pos);
+    if (is_spark_mini)
+      data_write(out_block + 16, ob_pos - 16); // skip the block header
+    else 
+      data_write(out_block, ob_pos);
+      
 
 
 
