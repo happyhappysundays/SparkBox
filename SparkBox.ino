@@ -1,124 +1,69 @@
 //******************************************************************************************
-// SparkBox - BT pedal board for the Spark 40 amp - David Thompson 2022
-// Supports four-switch pedals. Hold any of the effect buttons down for 1s to switch
+// SparkBox - BT pedal board for the Spark 40 amp - David Thompson June 2022
+// Supports four-switch pedals. Hold the 1st button down for 1s to switch
 // between Preset mode (1 to 4) and Effect mode (Drive, Mod, Delay, Reverb).
 // Hold down all four buttons to activate/deactivate the tuner.
 // Added an expression pedal to modify the current selected effect or toggle an effect. 
 //******************************************************************************************
-//
-// Battery charge function defines. Please uncomment just one.
-// You have no mods to monitor the battery, so it will show empty
-//#define BATT_CHECK_0
-//
-// You are monitoring the battery via a 2:1 10k/10k resistive divider to GPIO23
-// You can see an accurate representation of the remaining battery charge and a kinda-sorta
-// indicator of when the battery is charging. Maybe.
-//#define BATT_CHECK_1
-//
-// You have the battery monitor mod described above AND you have a connection between the 
-// CHRG pin of the charger chip and GPIO 33. Go you! Now you have a guaranteed charge indicator too.
-#define BATT_CHECK_2
-//
-// Expression pedal define. Comment this out if you DO NOT have the expression pedal mod
-#define EXPRESSION_PEDAL
-//
-// Dump preset define. Comment out if you'd prefer to not see so much text output
-//#define DUMP_ON
-//
-// Uncomment for better Bluetooth compatibility with Android devices
-//#define CLASSIC
-//
-// Uncomment when using a Heltec module as their implementation doesn't support setMTU()
-//#define HELTEC_WIFI
-//
-// Choose and uncomment the type of OLED display used: 0.96" SSD1306 or 1.3" SH1106 
-#define SSD1306
-//#define SH1106
-//
-// Uncomment if two-colour OLED screens are used. Offsets some text and alternate tuner
-//#define TWOCOLOUR
-//
-// Comment next line if you want preset number to scroll together with the name, otherwise it'll be locked in place
-#define STALE_NUMBER
-//
-// Uncomment if you don't want the pedal to sleep to save power, this also prevents low-battery sleep
-#define NOSLEEP
-//
-// When adjusting the level of effects, always start with Master level settings. Comment this line out if you like it to remember your last choice
-#define RETURN_TO_MASTER
-//
-// Logical level of a button being pressed. If your buttons connect to GND, then comment this setting out.
-// This setting also affects Pull-up/down, and waking source settings. 
-#define ACTIVE_HIGH
-//
-// How many switches do we have
-#define NUM_SWITCHES 4
-//
-// GPIOs of the buttons in your setup in the form of switchPins[]{GPIO_for_button1, GPIO_for_button2, GPIO_for_button3, GPIO_for_button4, ... }
-uint8_t switchPins[]{17,5,18,23};                     // Switch gpio numbers (for those who already has built a pedal with these pins)
-//uint8_t switchPins[]{25,26,27,14};                    // Switch gpio numbers (recommended for those who is building a pedal, these pins allow deep sleep)
-//
-// Startup splash animation
-#define ANIMATION_1
-//#define ANIMATION_2
-//
-//
+// Extra enchancements by copych 2022:
+// *OLED display library changed to ThingPulse's, supporting most common DIY display types;
+// *minor button routines improvements
+// *minor interface improvements;
+// *ESP32 deep/light sleep ability added;
+// *LittleFS support added;
+// *Preset banks functionality added;
+// *WiFi support added with AP/WLAN config, stored in EEPROM (hold BUTTON1 while booting);
+// *Web-based preset file manager added.
 //******************************************************************************************
-#ifdef SSD1306
-  #include "SSD1306Wire.h"            // https://github.com/ThingPulse/esp8266-oled-ssd1306
-#endif
-#ifdef SH1106
-  #include "SH1106Wire.h"
-#endif
-#include "OLEDDisplayUi.h"          // Include the UI lib
-#include "FS.h"
-#include "SPIFFS.h"
-#include "BluetoothSerial.h"
+// #define CONFIG_LITTLEFS_SPIFFS_COMPAT 1
+#define CONFIG_LITTLEFS_HUMAN_READABLE 1
+// #define CONFIG_LITTLEFS_FOR_IDF_3_2 1
+#define FORMAT_LITTLEFS_IF_FAILED true
+#define CONFIG_LITTLEFS_FLUSH_FILE_EVERY_WRITE 1
+#include "config.h"
+#include "Banks.h"
+extern tBankConfig bankConfig[NUM_BANKS+1];
+extern String bankConfigFile;
+
 #include "Spark.h"                  // Paul Hamshere's SparkIO library https://github.com/paulhamsh/Spark/tree/main/Spark
 #include "SparkIO.h"                // "
 #include "SparkComms.h"             // "
-#include "font.h"                   // Custom large font
+#include "font.h"                   // Custom fonts
 #include "bitmaps.h"                // Custom bitmaps (icons)
-#include "SparkPresets.h"           // Custom bitmaps (icons)
+#include "SparkPresets.h"           // Some hard-coded presets
 #include "UI.h"                     // Any UI-related defines
+//
+#include "FS.h"
+#include "LittleFS.h"
+#include "BluetoothSerial.h"
 #define ARDUINOJSON_USE_DOUBLE 1
 #include "ArduinoJson.h"            // Should be installed already https://github.com/bblanchon/ArduinoJson
 #include "driver/rtc_io.h"
 //
+#include <WiFi.h>
+#include <EEPROM.h>
+#include "WebServer.h"
+#include "SimplePortal.h"
+#include "RequestHandlersImpl.h"
 //******************************************************************************************
 
 #define PGM_NAME "SparkBox"
-#define VERSION "V0.88" 
+#define VERSION "V0.99" 
 
-#ifdef SSD1306
-  SSD1306Wire oled(0x3c, 4, 15);        // Default OLED Screen Definitions - ADDRESS, SDA, SCL
-#endif
-#ifdef SH1106
-  SH1106Wire oled(0x3c, 4, 15);      // or this line if you are using SSH1106
-#endif
-OLEDDisplayUi ui(&oled);              // Create UI instance for the display (slightly advanced frame based GUI)
-
-char str[STR_LEN];                    // Used for processing Spark commands from amp
-char param_str[50]; //debug
-int param = -1;
-float val = 0.0;
-bool expression_target = false;       // False = parameter change, true = effect on/off
-bool effectstate = false;             // Current state of the effect controller by the expression pedal
-bool setting_modified = false;        // Flag that user has modifed a setting
+extern eMode_t curMode;
+extern eMode_t oldMode;
+extern eMode_t returnMode;
+extern eMode_t mainMode;
+extern tPedalCfg pedalCfg;
 
 // Variables required to track spark state and also for communications generally
-bool got_presets;
-uint8_t display_preset_num;           // Referenced preset number on Spark
+bool got_presets = false;
+uint8_t display_preset_num;         // Referenced preset number on Spark
 int i, j, p;
-int count;                            // "
-bool flash_GUI;                       // Flash GUI items if true
-bool isTunerMode;                     // Tuner mode flag
-bool scan_result = false;             // Connection attempt result
-enum eMode_t {MODE_PRESETS, MODE_EFFECTS, MODE_SCENES, MODE_TUNER, MODE_BYPASS, MODE_MESSAGE, MODE_LEVEL};
-eMode_t curMode = MODE_PRESETS;
-eMode_t oldMode = MODE_PRESETS;
-eMode_t returnMode = MODE_PRESETS;
-eMode_t mainMode = MODE_PRESETS;
+int count;                          // "
+bool flash_GUI;                     // Flash GUI items if true
+bool isTunerMode;                   // Tuner mode flag
+bool scan_result = false;           // Connection attempt result
 enum ePresets_t {HW_PRESET_0, HW_PRESET_1, HW_PRESET_2, HW_PRESET_3, TMP_PRESET, CUR_EDITING, TMP_PRESET_ADDR=0x007f};
 enum eEffects_t {FX_GATE, FX_COMP, FX_DRIVE, FX_AMP, FX_MOD, FX_DELAY, FX_REVERB};
 #ifdef ACTIVE_HIGH
@@ -130,15 +75,15 @@ enum eEffects_t {FX_GATE, FX_COMP, FX_DRIVE, FX_AMP, FX_MOD, FX_DELAY, FX_REVERB
 #endif
 
 // interrupts
-hw_timer_t * timer = NULL;            // Timer variables
+hw_timer_t * timer = NULL;          // Timer variables
 portMUX_TYPE timerMux = portMUX_INITIALIZER_UNLOCKED;
-volatile boolean isTimeout = false;   // Update battery icon flag
+volatile bool isTimeout = false; // Update battery icon flag
 
 
 // SWITCHES Init ===========================================================================
 typedef struct {
   const uint8_t pin;
-  const String fxLabel;   // Sorry for using Strings here
+  const String fxLabel;
   uint8_t fxSlotNumber;   // [0-6] number in fx chain
   bool fxOnOff; // Effect onOff
 } s_switches ;
@@ -159,26 +104,50 @@ void IRAM_ATTR onTime() {
    // isRSSIupdate = true;
    portEXIT_CRITICAL_ISR(&timerMux);
 }
-// UI **************************************************************************************
 // array of frame drawing functions
-FrameCallback frames[] = { frPresets, frEffects, frScenes, frTuner, frBypass, frMessage, frLevel };
+FrameCallback frames[] = { frPresets, frEffects, frBanks, frConfig, frTuner, frBypass, frMessage, frLevel };
 // number of frames in UI
-int frameCount = 7;
+const uint8_t frameCount = NUM_FRAMES;
 
 // Overlays are statically drawn on top of a frame eg. a clock
 OverlayCallback overlays[] = { screenOverlay };
-int overlaysCount = 1;
+const uint8_t overlaysCount = 1;
 
-// SETUP() *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+//******************************************************************************************
 void setup() {
-  setCpuFrequencyMhz(180);
+  
+  time_to_sleep = millis() + (1000*60); // Preset timeout 
+  setCpuFrequencyMhz(180);                      // Hopefully this will let the battery last a bit longer
   #ifdef DEBUG_ON
     Serial.begin(115200);                       // Start serial debug console monitoring via ESP32
     while (!Serial);
   #endif
   display_preset_num = 0;
-  int tmp_batt;
+  
+  // Check FS
+  if(!LittleFS.begin(FORMAT_LITTLEFS_IF_FAILED)){
+    DEBUG("LittleFS Mount Failed");
+    return;
+  } else {
+    DEBUG("LittleFS Mount Completed");    
+  }
 
+  // This will create bank folders if needed
+  createFolders(); 
+
+  // First launch init for bankConfig
+  if (bankConfig[1].start_chan == 255) {                        // It is 255 (-1) by default and 0/1 after initializing
+    for (int i = 0; i <= NUM_BANKS; i++) {
+      bankConfig[i].start_chan = 0;
+      strlcpy(bankConfig[i].bank_name , ("Bank " + lz(i, 3) ).c_str(), sizeof(bankConfig[i].bank_name));
+    }
+  }
+
+  loadConfiguration(bankConfigFile, bankConfig);                // Load, or init w/default values
+  strlcpy(bankConfig[0].bank_name , "SPARK", sizeof("SPARK"));  // Always be by that name
+  saveConfiguration(bankConfigFile, bankConfig);                // Save to FS
+
+  
   // Debug - On my Heltec module, leaving this unconnected pin hanging causes
   // a display issue where the screen dims, returning if touched.
   pinMode(21,OUTPUT);
@@ -191,21 +160,20 @@ void setup() {
   digitalWrite(16, HIGH);
 
   // Initialize device OLED display, and flip screen, as OLED library starts upside-down
-  ui.setTargetFPS(30);
+  ui.setTargetFPS(35);
   ui.disableAllIndicators();
   ui.setFrames(frames, frameCount);
   ui.setFrameAnimation(SLIDE_UP);
   ui.setTimePerTransition(TRANSITION_TIME);
   ui.setOverlays(overlays, overlaysCount);
   ui.disableAutoTransition();
- // ui.enableAutoTransition();
+
   // Initialising the UI will init the display too.
   ui.init();
-  //oled.init();
-  oled.flipScreenVertically();
-  ESP_on();
+  oled.flipScreenVertically();  // This allows to flip all the UI upside down depending on your h/w components palacement
+  ESP_on();                     // Show startup animation
   
-  // Set pushbutton inputs to pull-downs
+  // Set pushbutton inputs to pull-downs or pull-ups depending on h/w variant
   for (i = 0; i < NUM_SWITCHES; i++) {    
     #ifdef ACTIVE_HIGH
       pinMode(switchPins[i], INPUT_PULLDOWN);
@@ -214,11 +182,17 @@ void setup() {
     #endif
   }
 
-  // Avg battery voltage
+  // Accumulate battery voltage measurements to average the result
   for(i=0; i<VBAT_NUM; ++i) {
-    delay(10);
+    delay(10);                                // Warm analog delay
     readBattery();
   }
+
+  timer = timerBegin(0, 80, true);            // Setup timer
+  timerAttachInterrupt(timer, &onTime, true); // Attach to our handler
+  timerAlarmWrite(timer, 500000, true);       // 500ms, autoreload
+  timerAlarmEnable(timer);                    // Start timer
+
 
   // Show welcome message
   oled.clear();
@@ -232,19 +206,26 @@ void setup() {
   mainIcons();
   oled.display();
   delay(1000);                                // Wait for splash screen
-
-  DEBUG("Connecting...");  
-
-  timer = timerBegin(0, 80, true);            // Setup timer
-  timerAttachInterrupt(timer, &onTime, true); // Attach to our handler
-  timerAlarmWrite(timer, 500000, true);       // 500ms, autoreload
-  timerAlarmEnable(timer);                    // Start timer
-
-  while (!scan_result && attempt_count < MAX_ATTEMPTS) {     // Trying to connect
-    attempt_count++;
   
+  EEPROM.begin(512);
+  EEPROM.get(0, portalCfg); // try to get our stored values
+  if ((digitalRead(switchPins[0]) == logicON)) {
+    inWifi = true;
+    filemanagerRun();
+    inWifi = false;
+  }
+  EEPROM.get(255, pedalCfg);
+  DEB("pedalCfg.active_bank = ");
+  DEBUG(pedalCfg.active_bank);
+  EEPROM.end();
+  
+  DEBUG("Connecting...");
+  while (!scan_result && attempt_count < BT_MAX_ATTEMPTS) {     // Trying to connect
+    attempt_count++;
+    //
     readBattery();
-    
+    // Process user input
+    doPushButtons();
     // Show connection message
     oled.clear();
     oled.setFont(BIG_FONT);
@@ -252,13 +233,12 @@ void setup() {
     oled.drawString(X1, Y3, "Connecting ");
     oled.setFont(MEDIUM_FONT);
     oled.setTextAlignment(TEXT_ALIGN_CENTER);
-    oled.drawString(X1, Y4, "Please wait " + String(MAX_ATTEMPTS - attempt_count + 1) + "...");
+    oled.drawString(X1, Y4, "Please wait " + (String)(BT_MAX_ATTEMPTS - attempt_count + 1) + "...");
     mainIcons();
-    oled.display();    
+    oled.display();
     DEBUG("Scanning and connecting");
     scan_result = spark_state_tracker_start();
   }
-  
   attempt_count = 0;
 
   if (!scan_result) {
@@ -271,11 +251,27 @@ void setup() {
   }
   // Proceed if connected
   ui.switchToFrame(curMode);
-  time_to_sleep = millis() + (MAX_ATTEMPTS * MILLIS_PER_ATTEMPT); // Preset timeout 
+  time_to_sleep = millis() + (BT_MAX_ATTEMPTS * MILLIS_PER_ATTEMPT); // Preset timeout 
 }
 
+//******************************************************************************************
+
 void loop() {
+  static ulong tBefore, tAfter;
   if(spark_state == SPARK_SYNCED){
+    if (!got_presets) {
+      // If it's the first run with banks, then save current presets to Bank_000
+      File root = LittleFS.open("/bank_000/");
+      if (pedalCfg.active_bank == 255 || !root.openNextFile() ) {
+        localBankNum = 0;
+        pedalCfg.active_bank = localBankNum;
+        for (int i = 0; i < 4; i++) {
+          DEBUG("Saving h/w preset " + String(i));
+          savePresetToFile(presets[i], "/bank_000/hw_" + String(i) + ".json");
+        }
+      }
+      got_presets = true;
+    }
     int remainingTimeBudget = ui.update();
   }
 #ifdef EXPRESSION_PEDAL
@@ -290,17 +286,16 @@ void loop() {
 
   // Check if a message needs to be processed
   if (update_spark_state()) {
-    if (cmdsub == 0x170) {
-      DEBUG();
+    if (cmdsub == 0x0170) {
+      String sLicense = "";            
       for (int i=0; i < 64; i++) {
-        if (license_key[i] < 16)
-          DEBUG("0");
-        DEBUG(license_key[i], HEX);
+        if (license_key[i] < 16) sLicense += "0";
+        sLicense += String(license_key[i], HEX);
       }
-      DEBUG();
+      DEBUG(sLicense);
       change_hardware_preset(display_preset_num); // Refresh app preset when first connected
     }
- 
+
     // Work out if the user is touching a switch or a knob
     if (cmdsub == 0x0115 || cmdsub == 0x0315){
       expression_target = true;
@@ -327,15 +322,13 @@ void loop() {
     }
 
     if (cmdsub == 0x0363) {
-      DEBUG("Tap Tempo " + String(msg.val));
+      DEBUG("Tap Tempo " + (String)(msg.val));
       level = msg.val * 10;
       tempFrame(MODE_LEVEL, curMode, 1000);
-    }   
-   
-    //isOLEDUpdate = true;        // Flag screen update
+    }
   }
 
   // Refresh screen
   refreshUI();
-  
-} // loop()}
+
+} // loop()
