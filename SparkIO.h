@@ -5,9 +5,10 @@
 #include "SparkStructures.h"
 #include "SparkComms.h"
 
-#define MAX_IO_BUFFER 5000
+#define MAX_IO_BUFFER 2048
 
 uint8_t license_key[64];
+bool is_spark_mini = false;
 
 // BLOCK INPUT CLASS
 class BlockIn
@@ -113,6 +114,7 @@ class MessageIn
     void read_onoff(bool *b);
     void read_float(float *f);
     void read_uint(uint8_t *b);
+    void read_general_uint(uint32_t *b);
     void read_byte(uint8_t *b);
 };
 
@@ -159,6 +161,8 @@ class MessageOut
     void get_name();
     void get_hardware_preset_number();
     void get_preset_details(unsigned int preset);
+    void get_checksum_info();
+    void get_firmware();
     void save_hardware_preset(uint8_t curr_preset, uint8_t preset_num);
     void send_firmware_version(uint32_t firmware);
     void send_0x022a_info(byte v1, byte v2, byte v3, byte v4);  
