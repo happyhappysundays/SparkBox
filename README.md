@@ -147,7 +147,7 @@ Until one or the other is voted as a winner you can choose between two animation
 ![alt text](https://github.com/happyhappysundays/SparkBox_old/blob/main/Pictures/V0_4.jpg?raw=true)
 ![alt text](https://github.com/happyhappysundays/SparkBox/blob/main/Pictures/SparkBox_final.jpg?raw=true)
 ![alt text](https://github.com/happyhappysundays/SparkBox_old/blob/main/Pictures/SparkBox_Heltec_Exp.png?raw=true)
-![alt text](https://github.com/happyhappysundays/SparkBox_old/blob/main/Pictures/SparkBox_Battery.png?raw=true)
+![alt text](https://github.com/happyhappysundays/SparkBox/blob/main/Pictures/SparkBox_Battery.png?raw=true)
 
 # ESP32 pedal parts list
 
