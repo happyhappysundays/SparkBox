@@ -14,22 +14,25 @@ SparkBox is a BT pedal for the Positive Grid Spark 40.  Now with expression peda
 - Graphically display the effect state on the display
 - Supports 4-button pedals
 - Battery level indicator on UI
-- Long press (more than 1s) BUTTON 1 to switch between Effect mode and Preset mode
-- Long press BUTTON 3 to adjust effect parameters: use BUTTONS 2 and 4 to decrement/increment, BUTTON 1 to cycle thru parameters and long press BUTTON 3 to save your edits back to the amp.
-- Now with remote guitar TUNER display! Long press BUTTONS 1 and 2 simultaneously, or turn it ON from the app or on the amp.
-- Bypass mode, invoked by long pressing BUTTONS 3 and 4 simultaneously, allows adjusting effect levels to match your raw pickup output. 
 - Inter-operable with both conventional and Heltec ESP32 modules. Also tested on WEMOS LOLIN32 Lite with battery support.
 - Stand-by mode added to reduce power when disconnected - light or deep ESP32 sleep mode will be configured automatically depending on GPIOs of the buttons and logical levels choosen in your build.
 
+# Pedal functions
+- Long press (more than 1s) BUTTON 1 to switch between Effect mode and Preset mode
+- Long press BUTTON 3 to adjust current effect parameters: use BUTTONS 2 and 4 to decrement/increment, BUTTON 1 to cycle thru parameters and long press BUTTON 3 to save your edits back to the amp.
+- Now with remote guitar TUNER display! Long press BUTTONS 1 and 2 simultaneously, or turn it ON from the app or on the amp.
+- Bypass mode, invoked by long pressing BUTTONS 3 and 4 simultaneously, allows adjusting effect levels to match your raw pickup output. 
+- Holding BUTTON 1 during boot will switch the pedal to WiFi mode.
+- 
 # Preset bank functions
-- Long pressing BUTTON 2 or BUTTON 4 invokes Bank Select manu, continue using BUTTONS 2 and 4 to decrease/increase bank number. If you stop scrolling for a few seconds, the selected bank will be uploaded to the amp.
+- Long pressing BUTTON 2 or BUTTON 4 invokes Bank Select menu, continue using BUTTONS 2 and 4 to decrease/increase bank number. If you stop scrolling for a few seconds, the selected bank will be uploaded to the amp.
 - On the first run your current set of hardware presets will be saved to the bank 000.
 - Added WiFi support w/file manager. Holding BUTTON 1 during boot will switch the pedal to WiFi mode.
 - Initially the pedal will launch a WiFi Access Point (AP), SSID is "SparkBox" by default.
 - Connect to this WiFi, using your mobile or PC or whatever.
 - Direct your browser to http://192.168.4.1
 - Submit your local WiFi network credentials (SSID and password), so the pedal could connect to your home WiFi.
-- If everything is done correctly, holding BUTTON 1 on boot again will connect your pedal to your home WiFi network, and the OLED display on the pedal will show the adress of the filemanager site, so you can access the pedal from any device connected to your local wireless network.
+- If everything is done correctly, holding BUTTON 1 on boot again will connect your pedal to your home WiFi network, and the OLED display on the pedal will show the address of the filemanager site, so you can access the pedal from any device connected to your local wireless network.
 - Use the filemanager to upload your tone presets to the banks folders, 4 presets per folder.
 - Format of *.json preset files is the same as backed up files, used by the Spark app (usually you can find them zipped in your Dropbox).
 ![alt text](https://github.com/happyhappysundays/SparkBox/blob/main/Pictures/web-file-manager.png?raw=true)
