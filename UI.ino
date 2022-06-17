@@ -349,7 +349,6 @@ void changeKnobFx(int changeDirection=1) {
   DEBUG(curKnob);
 }
 
-
 // Pushbutton handling
 void doPushButtons(void)
 {
@@ -432,7 +431,7 @@ void doPushButtons(void)
     if (zeroCounter>10) {maxFlags = 0;}
   }
   if (oldActiveFlags != ActiveFlags) {
-//    DEBUG(ActiveFlags);
+  // DEBUG(ActiveFlags);
     oldActiveFlags = ActiveFlags;
     maxFlags = max(maxFlags, ActiveFlags);    
   }
@@ -451,7 +450,7 @@ void doPushButtons(void)
   if (ClickFlags > 0 && ActiveFlags ==0){
     DEBUG("Click " + (String)(maxFlags));
     onClick(maxFlags);      // This will give you multi-button clicks
-  //  onClick(clickFlags);  // This will give only single button at a time to be clicked
+    //  onClick(clickFlags);  // This will give only single button at a time to be clicked
   }
 }
 
@@ -495,8 +494,8 @@ void onClick(uint8_t buttonMask) {
       }
     }
   } else if (curMode == MODE_LEVEL && (buttonMask==2 || buttonMask==8)) {
-// Effect level adjustment with buttons 2 and 4
-    timeToGoBack = millis() + actual_timeout; // Prolongue the Mode as we are not idle
+    // Effect level adjustment with buttons 2 and 4
+    timeToGoBack = millis() + actual_timeout; // Prolong the Mode as we are not idle
     curFx = knobs_order[curKnob].fxSlot;
     curParam = knobs_order[curKnob].fxNumber;
     fxCaption = spark_knobs[curFx][curParam];
@@ -591,7 +590,7 @@ void onLongPress(uint8_t buttonMask) {
           toggleBypass();
           break;
         case 8:
-          esp_restart(); 
+          //  esp_restart(); 
           break;
         default:
           //no action yet
@@ -633,7 +632,6 @@ void cycleModes() {
     DEBUG("Mode: " + (String)(curMode));
   }
 }
-
 
 // Refresh UI ============================================================================
 void refreshUI(void) {
@@ -1320,14 +1318,13 @@ void loadBankPresets(int bankNum) {
   uploadBankPresets(bankNum);
 }
 
-// it's useful sometimes not just to have an error code, but also some random yet valid data to play with.
+// It's useful sometimes not just to have an error code, but also some random yet valid data to play with.
 SparkPreset somePreset(const char* substTitle) {
   SparkPreset ret_preset = *my_presets[random(HARD_PRESETS-1)];
   strcpy(ret_preset.Description, ret_preset.Name);
   strcpy(ret_preset.Name, (String(substTitle) + String(ret_preset.Name)).c_str());
   return ret_preset;
 }
-
 
 void dump_preset_detail(SparkPreset pre)
 {
@@ -1367,8 +1364,6 @@ void dump_preset_detail(SparkPreset pre)
   DEBUG(pre.chksum);
   DEBUG("");
 }
-
-
 
 // Parse PG format JSON preset file saved in the ESP's flash memory FileSystem into retPreset
 void parseJsonPreset(File &presetFile, SparkPreset &retPreset) {
@@ -1414,9 +1409,9 @@ void parseJsonPreset(File &presetFile, SparkPreset &retPreset) {
       }   
       
       // PH debug lines
-      serializeJson(doc, Serial);
-      DEBUG("");
-      dump_preset_detail(retPreset);
+      //serializeJson(doc, Serial);
+      //DEBUG("");
+      //dump_preset_detail(retPreset);
       // PH debug lines
     }
   }
@@ -1446,11 +1441,6 @@ bool savePresetToFile(SparkPreset presetToSave, const String &filePath) {
   }
   File fJson = LittleFS.open(filePath,"w");
   noErr = serializeJson(doc, fJson);
- 
-  // PH debug line
-  //serializeJson(doc, Serial);
-  //DEBUG("");
-  // PH debug line
     
   return noErr;
 }
@@ -1582,11 +1572,11 @@ void filemanagerRun() {
   showMessage("Starting WiFi", "Connecting to: ", portalCfg.SSID, 0);
   ui.update();
   refreshUI();
-//  WiFi.softAPdisconnect();
+  //  WiFi.softAPdisconnect();
   delay(1);
-//  WiFi.disconnect();
+  //  WiFi.disconnect();
   delay(1);
- // WiFi.mode(WIFI_STA); // not clean, we have .mode in cfg, but filemanager in AP mode isn't supported yet
+  // WiFi.mode(WIFI_STA); // not clean, we have .mode in cfg, but filemanager in AP mode isn't supported yet
   delay(1);
   //
   if ((!portalCfg.tried && (String)(portalCfg.SSID) != "") || (portalCfg.tried && portalCfg.succeed ) || (!portalCfg.tried && !portalCfg.succeed ) || (portalCfg.tried && !portalCfg.succeed )){
@@ -1742,8 +1732,6 @@ void showMessage(const String &capText, const String &text1, const String &text2
   oled.display();    
 }
 
-
-
 // Loads the configuration from a file
  void loadConfiguration(const String filename, tBankConfig (&conf)[NUM_BANKS+1]) {
   // Open file for reading
@@ -1768,7 +1756,6 @@ void showMessage(const String &capText, const String &text1, const String &text2
   fJson.close();
 }
 
-
 // Saves the configuration to a file
 void saveConfiguration(const String filename, const tBankConfig (&conf)[NUM_BANKS+1]) {
   // Open file for writing
@@ -1788,7 +1775,6 @@ void saveConfiguration(const String filename, const tBankConfig (&conf)[NUM_BANK
   // Close the file
   fJson.close();
 }
-
 
 // Prints the content of a file to the Serial
 void printFile(const String filename) {

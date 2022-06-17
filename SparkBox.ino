@@ -1,9 +1,13 @@
 //******************************************************************************************
-// SparkBox - BT pedal board for the Spark 40 amp - David Thompson June 2022
-// Supports four-switch pedals. Hold the 1st button down for 1s to switch
-// between Preset mode (1 to 4) and Effect mode (Drive, Mod, Delay, Reverb).
-// Hold down all four buttons to activate/deactivate the tuner.
-// Added an expression pedal to modify the current selected effect or toggle an effect. 
+// SparkBox - BLE pedal board for the Spark 40 amp - David Thompson June 2022
+// Supports four-switch pedals. Added an expression pedal to modify the current selected effect or toggle an effect. 
+// Long press (more than 1s) BUTTON 1 to switch between Effect mode and Preset mode
+// Long press BUTTON 3 to adjust current effect parameters: use BUTTONS 2 and 4 to decrement/increment, 
+// BUTTON 1 to cycle thru parameters and long press BUTTON 3 to save your edits back to the amp.
+// Guitar Tuner: Long press BUTTONS 1 and 2 simultaneously, or turn it ON from the app or on the amp.
+// Bypass mode, invoked by long pressing BUTTONS 3 and 4 simultaneously, allows adjusting effect levels to match your raw pickup output.
+// Holding BUTTON 1 during boot will switch the pedal to WiFi mode.
+//
 //******************************************************************************************
 // Extra enchancements by copych 2022:
 // *OLED display library changed to ThingPulse's, supporting most common DIY display types;
@@ -15,6 +19,7 @@
 // *WiFi support added with AP/WLAN config, stored in EEPROM (hold BUTTON1 while booting);
 // *Web-based preset file manager added.
 //******************************************************************************************
+//
 // #define CONFIG_LITTLEFS_SPIFFS_COMPAT 1
 #define CONFIG_LITTLEFS_HUMAN_READABLE 1
 // #define CONFIG_LITTLEFS_FOR_IDF_3_2 1
@@ -24,7 +29,7 @@
 #include "Banks.h"
 extern tBankConfig bankConfig[NUM_BANKS+1];
 extern String bankConfigFile;
-
+//
 #include "Spark.h"                  // Paul Hamshere's SparkIO library https://github.com/paulhamsh/Spark/tree/main/Spark
 #include "SparkIO.h"                // "
 #include "SparkComms.h"             // "
@@ -45,8 +50,8 @@ extern String bankConfigFile;
 #include "WebServer.h"
 #include "SimplePortal.h"
 #include "RequestHandlersImpl.h"
-//******************************************************************************************
 
+//******************************************************************************************
 #define PGM_NAME "SparkBox"
 #define VERSION "V0.99" 
 
@@ -78,7 +83,6 @@ enum eEffects_t {FX_GATE, FX_COMP, FX_DRIVE, FX_AMP, FX_MOD, FX_DELAY, FX_REVERB
 hw_timer_t * timer = NULL;          // Timer variables
 portMUX_TYPE timerMux = portMUX_INITIALIZER_UNLOCKED;
 volatile bool isTimeout = false; // Update battery icon flag
-
 
 // SWITCHES Init ===========================================================================
 typedef struct {
@@ -114,6 +118,7 @@ OverlayCallback overlays[] = { screenOverlay };
 const uint8_t overlaysCount = 1;
 
 //******************************************************************************************
+
 void setup() {
   
   time_to_sleep = millis() + (1000*60); // Preset timeout 
@@ -192,7 +197,6 @@ void setup() {
   timerAttachInterrupt(timer, &onTime, true); // Attach to our handler
   timerAlarmWrite(timer, 500000, true);       // 500ms, autoreload
   timerAlarmEnable(timer);                    // Start timer
-
 
   // Show welcome message
   oled.clear();
