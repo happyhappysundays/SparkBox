@@ -23,7 +23,7 @@ SparkBox is a BT pedal for the Positive Grid Spark 40.  Now with expression peda
 - Now with remote guitar TUNER display! Long press BUTTONS 1 and 2 simultaneously, or turn it ON from the app or on the amp.
 - Bypass mode, invoked by long pressing BUTTONS 3 and 4 simultaneously, allows adjusting effect levels to match your raw pickup output. 
 - Holding BUTTON 1 during boot will switch the pedal to WiFi mode.
-- 
+
 # Preset bank functions
 - Long pressing BUTTON 2 or BUTTON 4 invokes Bank Select menu, continue using BUTTONS 2 and 4 to decrease/increase bank number. If you stop scrolling for a few seconds, the selected bank will be uploaded to the amp.
 - On the first run your current set of hardware presets will be saved to the bank 000.
@@ -35,6 +35,7 @@ SparkBox is a BT pedal for the Positive Grid Spark 40.  Now with expression peda
 - If everything is done correctly, holding BUTTON 1 on boot again will connect your pedal to your home WiFi network, and the OLED display on the pedal will show the address of the filemanager site, so you can access the pedal from any device connected to your local wireless network.
 - Use the filemanager to upload your tone presets to the banks folders, 4 presets per folder.
 - Format of *.json preset files is the same as backed up files, used by the Spark app (usually you can find them zipped in your Dropbox).
+
 ![alt text](https://github.com/happyhappysundays/SparkBox/blob/main/Pictures/web-file-manager.png?raw=true)
 
 # Arduino libraries and board versions
@@ -138,7 +139,6 @@ Until one or the other is voted as a winner you can choose between two animation
 
 # ESP32 version
 ![alt text](https://github.com/happyhappysundays/SparkBox_old/blob/main/Pictures/thumbnail_IMG_6791.jpg?raw=true)
-![alt text](https://github.com/happyhappysundays/SparkBox_old/blob/main/Pictures/SparkBox.jpg?raw=true)
 ![alt text](https://github.com/happyhappysundays/SparkBox_old/blob/main/Pictures/thumbnail_IMG_6785.jpg?raw=true)
 ![alt text](https://github.com/happyhappysundays/SparkBox_old/blob/main/Pictures/thumbnail_IMG_6786.jpg?raw=true)
 ![alt text](https://github.com/happyhappysundays/SparkBox_old/blob/main/Pictures/thumbnail_IMG_6994.jpg?raw=true)
@@ -156,7 +156,7 @@ Until one or the other is voted as a winner you can choose between two animation
 |   1  | Box                   |https://www.aliexpress.com/item/32693268669.html?spm=a2g0s.9042311.0.0.27424c4dlzGiUH
 |   2  | Stomp switch          |https://www.aliexpress.com/item/32918205335.html?spm=a2g0s.9042311.0.0.27424c4dszp4Ie
 |   3  | ESP-WROOM-32U module  |https://www.aliexpress.com/item/32864722159.html?spm=a2g0s.9042311.0.0.27424c4dlzGiUH
-|   4  | LCD screen            |https://www.ebay.com.au/itm/333085424031
+|   4  | LCD screen            |https://www.ebay.com.au/itm/333085424031 (small) or https://www.aliexpress.com/item/32950307344.html (large)
 |   5  | BT antenna            |https://www.aliexpress.com/item/4001054693109.html?spm=a2g0s.9042311.0.0.27424c4dlzGiUH and https://www.ebay.com.au/itm/233962468558
 |   6  | USB extension         |https://www.aliexpress.com/item/32808991941.html?spm=a2g0s.9042311.0.0.27424c4dlzGiUH
 |   7  | Power switch          |https://www.jaycar.com.au/dpdt-miniature-toggle-switch-solder-tag/p/ST0355
