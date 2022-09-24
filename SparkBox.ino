@@ -64,6 +64,7 @@ extern tPedalCfg pedalCfg;
 // Variables required to track spark state and also for communications generally
 bool got_presets = false;
 uint8_t display_preset_num;         // Referenced preset number on Spark
+int8_t active_led_num = -1;
 int i, j, p;
 int count;                          // "
 bool flash_GUI;                     // Flash GUI items if true
@@ -152,6 +153,8 @@ void setup() {
   strlcpy(bankConfig[0].bank_name , "SPARK", sizeof("SPARK"));  // Always be by that name
   saveConfiguration(bankConfigFile, bankConfig);                // Save to FS
 
+  // Setup GPIOs for led if those are defined
+  setup_leds();
   
   // Debug - On my Heltec module, leaving this unconnected pin hanging causes
   // a display issue where the screen dims, returning if touched.
@@ -287,6 +290,9 @@ void loop() {
 
   // Process user input
   doPushButtons();
+
+  // Process leds
+  doLeds();
 
   // Check if a message needs to be processed
   if (update_spark_state()) {
