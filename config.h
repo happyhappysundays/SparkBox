@@ -55,10 +55,10 @@
 #define NUM_SWITCHES 4
 //
 // Uncomment if you have leds indicating selected channel
-#define LEDS_USED
+//#define LEDS_USED
 //
 // GPIOs of connected leds
-const uint8_t ledPins[]{14,27,26,25};
+//const uint8_t ledPins[]{14,27,26,25};
 //
 // Are we using the normal or alternate IO for measuring the charging state?
 //#define ALTERNATE_CHARGE_AIN
