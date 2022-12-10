@@ -55,7 +55,7 @@ The program won't fit into a standard APP partition. The cure is easy though:
 - in Arduino IDE choose Tools->Partition Scheme->No-OTA(Large APP), or something that gives you around 2MB APP partition along with enough (also 2MB) of SPIFFS space, cause presets are stored there. 
 - Note, that some boards in Arduino IDE don't have Partition Scheme settings, in this case it's recommended to choose some other ESP32 board (ESP Dev Module, Heltec WiFi Kit 32, WEMOS LOLIN32, etc.) which has this menu.
 
-# Compile options
+# Compile options (in config.h)
 
 - **define CLASSIC**
 
