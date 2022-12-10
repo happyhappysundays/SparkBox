@@ -847,12 +847,22 @@ void ESPxWebFlMgr::fileManagerCommandExecutor(void) {
 
   // +--++--++--++--++--++--++--++--++--++--++--++--++--++--++--+
   // one arg, "ren", rename
-  if ( (fileManager->args() == 2) && (fileManager->argName(0) == "ren") ) {
+    if ( (fileManager->args() == 2) && (fileManager->argName(0) == "ren") ) {
     String fn = fileManager->arg(0);
     if ( (_ViewSysFiles) || (allowAccessToThisFile(fn)) ) {
       String fn2 = CheckFileNameLengthLimit(fileManager->arg(1));
+      if (!fn2.startsWith("/")) {
+        fn2 = getcurdir() + "/" + fn2;
+      }
       if ( (_ViewSysFiles) || (allowAccessToThisFile(fn2)) ) {
-        ESPxWebFlMgr_FileSystem.rename("/"+fn, "/"+fn2);
+        if (!fn2.startsWith("/")) {
+          fn2 = "/" + fn2;
+        }
+        DEB("rename ");
+        DEB(fn);
+        DEB(" to ");
+        DEBUG(fn2);
+        ESPxWebFlMgr_FileSystem.rename("/"+fn, fn2);
       }
     }
   }
