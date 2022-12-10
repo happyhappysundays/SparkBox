@@ -1,4 +1,4 @@
-# SparkBox V0.99
+# SparkBox V1.00
 SparkBox is a BT pedal for the Positive Grid Spark 40.  Now with expression pedal input and a web interface for adding up to 12 banks for four presets. V0.99 is a Beta test for the long-awaited V1.0 final release.
 
 ![alt text](https://github.com/happyhappysundays/SparkBox/blob/main/Pictures/SparkBox_final.jpg?raw=true)
