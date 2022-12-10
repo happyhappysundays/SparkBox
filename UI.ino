@@ -349,6 +349,57 @@ void changeKnobFx(int changeDirection=1) {
   DEBUG(curKnob);
 }
 
+// Led handling
+bool ledsActive() {
+  #ifdef LEDS_USED
+    return true;
+  #endif
+  return false;
+}
+
+void setup_leds() {
+  if(ledsActive()){
+    for (int currentPin = 0; currentPin < NUM_SWITCHES; currentPin++){
+        pinMode(ledPins[currentPin],OUTPUT);
+        digitalWrite(ledPins[currentPin], HIGH);
+        delay(10);
+        digitalWrite(ledPins[currentPin], LOW);
+        }
+  }
+}
+
+void doLeds() {
+  if (ledsActive()){ 
+    if(curMode == MODE_PRESETS) { 
+      if(display_preset_num != active_led_num) {
+        switch_led_on(display_preset_num);
+        active_led_num = display_preset_num;
+      }
+    } else {
+      if(display_preset_num >= 0) {
+        switch_leds_off();
+        active_led_num=-1;
+      }
+    }
+  }
+}
+
+void switch_leds_off() {
+  if(ledsActive()) {
+    for (int currentPin = 0; currentPin < NUM_SWITCHES; currentPin++){
+      digitalWrite(ledPins[currentPin], LOW);
+    }
+  }
+}
+
+void switch_led_on(int pinNumber) {
+  if(ledsActive()) {
+    switch_leds_off();
+    digitalWrite(ledPins[pinNumber], HIGH);
+  }
+}
+
+
 // Pushbutton handling
 void doPushButtons(void)
 {
@@ -890,6 +941,8 @@ void ESP_off(){
   // Debug
   DEBUG("deep_sleep_pins = " + (String)(deep_sleep_pins));
   DEBUG("RTC_present = " + (String)(RTC_present));
+
+  switch_leds_off();
     
   if (deep_sleep_pins > 0){
     oled.clear();
