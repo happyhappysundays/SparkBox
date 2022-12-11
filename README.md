@@ -39,6 +39,9 @@ SparkBox is a BT pedal for the Positive Grid Spark 40.  Now with expression peda
 ![alt text](https://github.com/happyhappysundays/SparkBox/blob/main/Pictures/web-file-manager.png?raw=true)
 
 # Arduino libraries and board versions
+
+Note: Currently there may be a problem with LittleFS compiling on the Arduino IDE 2.x. No issues on 1.x.
+
 Under Files->Preferences->Additional Boards Manager URLs, enter the following:
 - https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
 - https://github.com/Heltec-Aaron-Lee/WiFi_Kit_series/releases/download/0.0.5/package_heltec_esp32_index.json
@@ -48,8 +51,10 @@ Under Tools->Board->Board manager ensure that you have the following version:
 - ESP32 by Espressif 2.0.2 (ESP32)
 
 Under Tools->Manage Libraries ensure that you have the following libraries and versions:
-- ThingPulse SSD1306 driver 4.2.1 (ESP32)
-- NimBLE-Arduino 1.3.8
+- ThingPulse SSD1306 driver 4.3.0 (ESP32)
+- NimBLE-Arduino 1.4.1
+- ArduinoJson 6.19.4
+- Heltec ESP 1.1.1 (only for Heltec boards)
 
 The program won't fit into a standard APP partition. The cure is easy though: 
 - in Arduino IDE choose Tools->Partition Scheme->No-OTA(Large APP), or something that gives you around 2MB APP partition along with enough (also 2MB) of SPIFFS space, cause presets are stored there. 
