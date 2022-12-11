@@ -132,6 +132,10 @@ GPIOs of the buttons in your setup in the form of switchPins[]{GPIO_for_button1,
 
 Until one or the other is voted as a winner you can choose between two animations at startup.
 
+- **define LEDS_USED**
+
+Option visual aid to see which tone has been selected. Lights one of four LEDs on pins defined by ledPins[]. 
+
 # Heltec module version
 ![alt text](https://github.com/happyhappysundays/SparkBox/blob/main/Pictures/Dev_board.jpg?raw=true)
 ![alt text](https://github.com/happyhappysundays/SparkBox/blob/main/Pictures/Charge_detect.jpg?raw=true)
