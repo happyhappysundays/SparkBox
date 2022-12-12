@@ -1,5 +1,5 @@
 //******************************************************************************************
-// SparkBox - BLE pedal board for the Spark 40 amp - David Thompson June 2022
+// SparkBox - BLE pedal board for the Spark 40 amp - David Thompson December 2022
 // Supports four-switch pedals. Added an expression pedal to modify the current selected effect or toggle an effect. 
 // Long press (more than 1s) BUTTON 1 to switch between Effect mode and Preset mode
 // Long press BUTTON 3 to adjust current effect parameters: use BUTTONS 2 and 4 to decrement/increment, 
@@ -18,6 +18,11 @@
 // *Preset banks functionality added;
 // *WiFi support added with AP/WLAN config, stored in EEPROM (hold BUTTON1 while booting);
 // *Web-based preset file manager added.
+//
+// Updates to V1.0
+// Aleksei Golikov: Add HW LEDs to indicate which preset is selected.
+// copych: Relative and absolute paths rename fixing
+//
 //******************************************************************************************
 //
 // #define CONFIG_LITTLEFS_SPIFFS_COMPAT 1
@@ -53,7 +58,7 @@ extern String bankConfigFile;
 
 //******************************************************************************************
 #define PGM_NAME "SparkBox"
-#define VERSION "V0.99" 
+#define VERSION "V1.00" 
 
 extern eMode_t curMode;
 extern eMode_t oldMode;
@@ -154,7 +159,9 @@ void setup() {
   saveConfiguration(bankConfigFile, bankConfig);                // Save to FS
 
   // Setup GPIOs for led if those are defined
+  #ifdef LEDS_USED
   setup_leds();
+  #endif
   
   // Debug - On my Heltec module, leaving this unconnected pin hanging causes
   // a display issue where the screen dims, returning if touched.
@@ -292,7 +299,9 @@ void loop() {
   doPushButtons();
 
   // Process leds
+#ifdef LEDS_USED
   doLeds();
+#endif
 
   // Check if a message needs to be processed
   if (update_spark_state()) {
