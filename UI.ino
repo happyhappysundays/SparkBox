@@ -357,6 +357,7 @@ bool ledsActive() {
   return false;
 }
 
+#ifdef LEDS_USED
 void setup_leds() {
   if(ledsActive()){
     for (int currentPin = 0; currentPin < NUM_SWITCHES; currentPin++){
@@ -398,7 +399,7 @@ void switch_led_on(int pinNumber) {
     digitalWrite(ledPins[pinNumber], HIGH);
   }
 }
-
+#endif
 
 // Pushbutton handling
 void doPushButtons(void)
@@ -942,7 +943,9 @@ void ESP_off(){
   DEBUG("deep_sleep_pins = " + (String)(deep_sleep_pins));
   DEBUG("RTC_present = " + (String)(RTC_present));
 
+#ifdef LEDS_USED
   switch_leds_off();
+#endif
     
   if (deep_sleep_pins > 0){
     oled.clear();
