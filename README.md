@@ -165,7 +165,7 @@ Option visual aid to see which tone has been selected. Lights one of four LEDs o
 |   1  | Box                   |https://www.aliexpress.com/item/32693268669.html?spm=a2g0s.9042311.0.0.27424c4dlzGiUH
 |   2  | Stomp switch          |https://www.aliexpress.com/item/32918205335.html?spm=a2g0s.9042311.0.0.27424c4dszp4Ie
 |   3  | ESP-WROOM-32U module  |https://www.aliexpress.com/item/32864722159.html?spm=a2g0s.9042311.0.0.27424c4dlzGiUH
-|   4  | LCD screen            |https://www.ebay.com.au/itm/333085424031 (small) or https://www.aliexpress.com/item/32950307344.html (large)
+|   4  | LCD screen            |https://www.ebay.com.au/itm/333085424031 (small) or https://www.aliexpress.com/item/32950307344.html (large). Be sure to get the i2c version, or you can convert an SPI via this video https://www.youtube.com/watch?v=uPWzL_MZ4q4&list=LL&index=4&t=590s&ab_channel=Defpom%27sElectronicsRepair
 |   5  | BT antenna            |https://www.aliexpress.com/item/4001054693109.html?spm=a2g0s.9042311.0.0.27424c4dlzGiUH and https://www.ebay.com.au/itm/233962468558
 |   6  | USB extension         |https://www.aliexpress.com/item/32808991941.html?spm=a2g0s.9042311.0.0.27424c4dlzGiUH
 |   7  | Power switch          |https://www.jaycar.com.au/dpdt-miniature-toggle-switch-solder-tag/p/ST0355
