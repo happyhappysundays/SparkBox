@@ -50,6 +50,8 @@ OLEDDisplayUi ui(&oled);            // Create UI instance for the display (sligh
 #define BATTERY_87 4.1
 #define BATTERY_100 4.17  // Theoretical max LiPo voltage is 4.20 but under under the smallest load I see 4.17
 
+#define BATTERY_CHRG 4.20
+
 #define BATTERY_OFF BATTERY_0  // Voltage when we decide to force the pedal to switch to stand-by mode
 #define BATTERY_FUDGE 3.70  // Fudge factor to speed up initial averaging calcs
 
