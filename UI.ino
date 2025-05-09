@@ -911,7 +911,7 @@ int batteryCharging() {
   
   // For level-based charge detection (not very reliable)
   #ifdef BATT_CHECK_1
-    if (vbat_result >= BATTERY_CHRG*ADC_COEFF) {
+    if (vbat_result >= CHRG_LOW*ADC_COEFF) {
       return 1;
     } else {
       return 0;
@@ -1642,7 +1642,12 @@ void filemanagerRun() {
     DEBUG("**WiFi** trying to connect to " + (String)(portalCfg.SSID));
     int oldstatus = -100;
     int newstatus = WiFi.status();
+    int loopc=0;
     while(newstatus != WL_CONNECTED && newstatus != WL_CONNECT_FAILED && newstatus != WL_DISCONNECTED && newstatus != WL_CONNECTION_LOST){
+      loopc+=1;
+      if(loopc>WIFI_MAX_ATTEMPTS){
+        break;
+      }
       delay(500);
       if (oldstatus != newstatus) {
         DEB ("**WiFi** status changed: ");
